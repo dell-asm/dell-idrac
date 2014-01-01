@@ -1,0 +1,15 @@
+<SystemConfiguration Model="" ServiceTag="" TimeStamp="">
+    <Component FQDD="BIOS.Setup.1-1">   
+        <Attribute Name="MemTest">Disabled</Attribute>
+        <Attribute Name="ProcVirtualization">Enabled</Attribute>
+        <Attribute Name="ProcCores">All</Attribute>
+        <Attribute Name="BootMode">Bios</Attribute>
+        <Attribute Name="BootSeqRetry">Disabled</Attribute>
+        <Attribute Name="IntegratedRaid">Disabled</Attribute>
+        <Attribute Name="UsbPorts">AllOn</Attribute>
+        <Attribute Name="InternalUsb">Off</Attribute>
+        <Attribute Name="InternalSdCard">On</Attribute>
+        <Attribute Name="InternalSdCardRedundancy">Mirror</Attribute>
+        <Attribute Name="IntegratedNetwork1">Enabled</Attribute>
+    </Component>
+</SystemConfiguration>
