@@ -59,7 +59,7 @@ Puppet::Type.newtype(:importnparsetting) do
       desc "The Ip address of idrac."
       validate do |value|
         if value.strip.length == 0
-          raise ArgumentError, "Server drac Ip address must contain a value. It cannot be null."
+          raise ArgumentError, "Server drac Ip address must contain a value. It cannot be null or empty."
         end
       end
     end
@@ -68,7 +68,7 @@ Puppet::Type.newtype(:importnparsetting) do
       desc "User name."
       validate do |value|
         if value.strip.length == 0
-          raise ArgumentError, "Server drac username must contain a value. It cannot be null."
+          raise ArgumentError, "Server drac username must contain a value. It cannot be null or empty."
         end
       end
     end
@@ -77,7 +77,7 @@ Puppet::Type.newtype(:importnparsetting) do
       desc "Password."
   	  validate do |value|
         if value.strip.length == 0
-          raise ArgumentError, "Server drac password must contain a value. It cannot be null."
+          raise ArgumentError, "Server drac password must contain a value. It cannot be null or empty."
         end
       end
     end
@@ -86,7 +86,7 @@ Puppet::Type.newtype(:importnparsetting) do
       desc "NFS Server ipaddress."
  	  validate do |value|
         if value.strip.length == 0
-          raise ArgumentError, "The NFS share ipaddress must contain a value. It cannot be null."
+          raise ArgumentError, "The NFS share ipaddress must contain a value. It cannot be null or empty."
         end
       end
     end
@@ -95,7 +95,7 @@ Puppet::Type.newtype(:importnparsetting) do
       desc "NFS share path." 
       validate do |value|
         if value.strip.length == 0
-          raise ArgumentError, "The NFS sharepath must contain a value. It cannot be null."
+          raise ArgumentError, "The NFS sharepath must contain a value. It cannot be null or empty."
         end
       end
     end
