@@ -1,5 +1,5 @@
 <SystemConfiguration Model="" ServiceTag="" TimeStamp=""> 
-<Component FQDD="NIC.Integrated"> 
-<Attribute Name="NicPartitioning">Disabled</Attribute>
+<Component FQDD="NIC.Integrated.1-1-1"> 
+<Attribute Name="NicPartitioning">Enabled</Attribute>
 </Component> 
 </SystemConfiguration>
