@@ -5,6 +5,16 @@
 Puppet::Type.newtype(:importnparsetting) do
     @doc = "Enable/Disable NIC partitioning on server."
 
+    validate do
+        raise ArgumentError, 'importnparsetting: nic is required' unless self[:nic]
+        raise ArgumentError, 'importnparsetting: status is required' unless self[:status]
+        raise ArgumentError, 'importnparsetting: dracipaddress is required' unless self[:dracipaddress]
+        raise ArgumentError, 'importnparsetting: dracusername is required' unless self[:dracusername]
+        raise ArgumentError, 'importnparsetting: dracpassword is required' unless self[:dracpassword]
+        raise ArgumentError, 'importnparsetting: nfsipaddress is required' unless self[:nfsipaddress]
+        raise ArgumentError, 'importnparsetting: nfssharepath is required' unless self[:nfssharepath]
+    end
+
     ensurable do
         newvalue(:present) do
             provider.create
@@ -25,7 +35,6 @@ Puppet::Type.newtype(:importnparsetting) do
 
     newparam(:nic) do
       desc "The Target NIC where nic partitioning has to be modified."
-      isrequired
       validate do |value|
             unless value =~ /\w+/
                 raise "\'%s\' is not a valid nic name. Eg. NIC.Integrated.1-1-1" % value
@@ -35,7 +44,6 @@ Puppet::Type.newtype(:importnparsetting) do
     
     newparam(:status) do
         desc "The Required status of Nic Partitioning."
-        isrequired
         newvalues("Enabled", "Disabled")
         munge do |value|
             if value.strip.length == 0
@@ -58,7 +66,7 @@ Puppet::Type.newtype(:importnparsetting) do
 
     newparam(:dracusername) do
       desc "User name."
- 	  validate do |value|
+      validate do |value|
         if value.strip.length == 0
           raise ArgumentError, "Server drac username must contain a value. It cannot be null."
         end
@@ -67,7 +75,7 @@ Puppet::Type.newtype(:importnparsetting) do
 
     newparam(:dracpassword) do
       desc "Password."
- 	  validate do |value|
+  	  validate do |value|
         if value.strip.length == 0
           raise ArgumentError, "Server drac password must contain a value. It cannot be null."
         end
