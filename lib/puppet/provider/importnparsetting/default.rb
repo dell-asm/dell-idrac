@@ -15,8 +15,9 @@ Puppet::Type.type(:importnparsetting).provide(:importnparsetting, :parent => Pup
     requiredstatus = resource[:status]
     targetnic = resource[:nic]
 
-    file = File.new('/etc/puppet/modules/idrac/files/defaultxmls/nparsetting.xml')
-    xmldoc = Document.new(file)
+    xmlfilePath = File.join(Pathname.new(__FILE__).parent.parent.parent.parent.parent, 'files/defaultxmls/nparsetting.xml')
+    file = File.new(xmlfilePath)
+	xmldoc = Document.new(file)
     
     xmldoc.elements.each("SystemConfiguration/Component") {
        |e|  e.attributes["FQDD"] = "#{targetnic}"
