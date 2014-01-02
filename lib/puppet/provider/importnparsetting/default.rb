@@ -43,7 +43,7 @@ Puppet::Type.type(:importnparsetting).provide(:importnparsetting, :parent => Pup
         response = obj.checkjdstatus
         puts "JD status : #{response}"
         if response  == "Completed"
-            Puppet.info "Import System Configuration is completed."
+            Puppet.info "Import NPAR settings is completed."
             break
         else
             Puppet.info "Job is running, wait for 1 minute"
@@ -51,14 +51,12 @@ Puppet::Type.type(:importnparsetting).provide(:importnparsetting, :parent => Pup
         end
     end
     if response != "Completed"
-      raise "Import System Configuration is still running."
-    end
-    
+      raise "Import NPAR Settings is still running."
+    end    
 
   end
   
   def exists?
-    puts "Inside exist"
     obj = Puppet::Provider::Checklcstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword])
     response = obj.checklcstatus
     response = response.to_i
