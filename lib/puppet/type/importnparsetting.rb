@@ -27,8 +27,8 @@ Puppet::Type.newtype(:importnparsetting) do
       desc "The Target NIC where nic partitioning has to be modified."
       isrequired
       validate do |value|
-            unless value =~ /^NIC.Integrated/
-                raise "\'%s\' is not a valid nic name." % value
+            unless value =~ /\w+/
+                raise "\'%s\' is not a valid nic name. Eg. NIC.Integrated.1-1-1" % value
             end
         end
     end
