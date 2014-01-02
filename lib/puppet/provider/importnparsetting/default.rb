@@ -47,8 +47,12 @@ Puppet::Type.type(:importnparsetting).provide(:importnparsetting, :parent => Pup
             Puppet.info "Import NPAR settings is completed."
             break
         else
-            Puppet.info "Job is running, wait for 1 minute"
-            sleep 60
+            if response  == "Running"
+              Puppet.info "Job is running, wait for 1 minute"
+              sleep 60
+            else
+              raise "Failed to apply NPAR settings configuration."
+            end
         end
     end
     if response != "Completed"
