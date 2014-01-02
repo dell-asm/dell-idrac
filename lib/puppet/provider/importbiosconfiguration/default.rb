@@ -23,8 +23,9 @@ Puppet::Type.type(:importbiosconfiguration).provide(:importbiosconfiguration, :p
     internalsdcard = resource[:internalsdcard]
     internalsdcardredundancy = resource[:internalsdcardredundancy]
     integratednetwork1 = resource[:integratednetwork1]
-    puts internalsdcard
-    file = File.new('/etc/puppet/modules/idrac/lib/puppet/provider/defaultxmls/biosconfiguration.xml')
+    biosbootseq = resource[:biosbootseq]
+    xmlfilePath = File.join(Pathname.new(__FILE__).parent.parent.parent.parent.parent, 'files/defaultxmls/biosconfiguration.xml')
+    file = File.new(xmlfilePath)
     xmldoc = Document.new(file)
     
     xmldoc.elements.each("SystemConfiguration/Component/Attribute") { 
@@ -61,13 +62,16 @@ Puppet::Type.type(:importbiosconfiguration).provide(:importbiosconfiguration, :p
            if e.attributes["Name"] == "IntegratedNetwork1"
              e.text = integratednetwork1
            end
+           if e.attributes["Name"] == "BiosBootSeq"
+             e.text = biosbootseq
+           end
     }
-    biosconfigurationfile = "#{resource[:nfssharepath]}/biosconfiguration.xml"
+    biosconfigurationfile = "#{resource[:nfssharepath]}/biosconfiguration_#{resource[:dracipaddress]}.xml"
     file = File.open("#{biosconfigurationfile}", "w")
     xmldoc.write(file)
     #Need to close the file
     file.close
-    biosconfiguration = "biosconfiguration.xml"
+    biosconfiguration = "biosconfiguration_#{resource[:dracipaddress]}.xml"
     #Import System Configuration
     obj = Puppet::Provider::Importtemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],biosconfiguration,resource[:nfsipaddress],resource[:nfssharepath])
     instanceid = obj.importtemplatexml
@@ -80,15 +84,18 @@ Puppet::Type.type(:importbiosconfiguration).provide(:importbiosconfiguration, :p
             Puppet.info "Import System Configuration is completed."
             break
         else
-            Puppet.info "Job is running, wait for 1 minute"
-            sleep 60
+            if response  == "Running"
+              Puppet.info "Job is running, wait for 1 minute"
+              sleep 60
+            else
+              raise "Failed to apply BIOS configuration."
+            end
         end
     end
     if response != "Completed"
       raise "Import System Configuration is still running."
     end
     
-
   end
   
   def exists?
