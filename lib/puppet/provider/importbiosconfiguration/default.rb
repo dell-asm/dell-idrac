@@ -96,6 +96,8 @@ Puppet::Type.type(:importbiosconfiguration).provide(:importbiosconfiguration, :p
       raise "Import System Configuration is still running."
     end
     
+    File.delete("#{biosconfigurationfile}")
+
   end
   
   def exists?

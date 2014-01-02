@@ -59,6 +59,8 @@ Puppet::Type.type(:importnparsetting).provide(:importnparsetting, :parent => Pup
       raise "Import NPAR Settings is still running."
     end    
 
+    File.delete("#{nparsettingfilepath}")
+
   end
   
   def exists?
