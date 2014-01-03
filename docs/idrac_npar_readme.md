@@ -22,10 +22,10 @@ and Disable NPAR setting on the Dell Server.
 # Summary of Params
 #-------------------------------------------------------------------------------
 
-    1. nic - (Mandatory) This parameter defines the target NIC where NPAR 
+  1. nic - (Mandatory) This parameter defines the target NIC where NPAR 
 			  settings have to be modified.
     
-    2. status - (Mandatory) This parameter defines whether to enable or disable
+  2. status - (Mandatory) This parameter defines whether to enable or disable
 				 nic partitioning on a given nic.
     
 	3. dracipaddress - (Mandatory) This parameter defines server iDRAC Ip Address.
