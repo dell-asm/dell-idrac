@@ -11,6 +11,5 @@
         <Attribute Name="InternalSdCard">On</Attribute>
         <Attribute Name="InternalSdCardRedundancy">Mirror</Attribute>
         <Attribute Name="IntegratedNetwork1">Enabled</Attribute>
-        <Attribute Name="BiosBootSeq">HardDisk.List.1-1</Attribute>
-    </Component>
+        </Component>
 </SystemConfiguration>
