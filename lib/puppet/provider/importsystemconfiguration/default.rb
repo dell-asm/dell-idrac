@@ -24,8 +24,12 @@ Puppet::Type.type(:importsystemconfiguration).provide(:importsystemconfiguration
             Puppet.info "Import System Configuration is completed."
             break
         else
-            Puppet.info "Job is running, wait for 1 minute"
-            sleep 60
+		    if response  == "Failed"
+				raise "Job ID is not created."
+			else
+				Puppet.info "Job is running, wait for 1 minute"
+				sleep 60
+			end	
         end
     end
     if response != "Completed"
