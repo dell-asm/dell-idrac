@@ -1,0 +1,4 @@
+<p:ResetConfig_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_RAIDService">
+<p:Target>RAID.Integrated.1-1</p:Target>
+</p:ResetConfig_INPUT>
+

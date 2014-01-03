@@ -1,0 +1,6 @@
+<p:CreateTargetedConfigJob_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_RAIDService">
+<p:Target>RAID.Integrated.1-1</p:Target>
+<p:RebootJobType>1</p:RebootJobType>
+<p:ScheduledStartTime>TIME_NOW</p:ScheduledStartTime>
+</p:CreateTargetedConfigJob_INPUT>
+

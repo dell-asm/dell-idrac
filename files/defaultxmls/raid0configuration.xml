@@ -1,0 +1,10 @@
+<p:CreateVirtualDisk_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_RAIDService">
+<p:Target>RAID.Integrated.1-1</p:Target>
+<p:VDPropNameArray>RAIDLevel</p:VDPropNameArray>
+<p:VDPropNameArray>SpanLength</p:VDPropNameArray>
+<p:VDPropNameArray>VirtualDiskName</p:VDPropNameArray>
+<p:VDPropValueArray>2</p:VDPropValueArray>
+<p:VDPropValueArray>2</p:VDPropValueArray>
+<p:VDPropValueArray>VD0</p:VDPropValueArray>
+</p:CreateVirtualDisk_INPUT>
+
