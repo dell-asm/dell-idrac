@@ -23,7 +23,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       raise "Job ID not created"
     end
     instanceid=instancenode.text
-    puts "Instance id #{instanceid}"
+    Puppet.info "Instance id #{instanceid}"
     return instanceid
   end  
 end

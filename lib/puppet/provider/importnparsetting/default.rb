@@ -38,11 +38,11 @@ Puppet::Type.type(:importnparsetting).provide(:importnparsetting, :parent => Pup
     #Import System Configuration
     obj = Puppet::Provider::Importtemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],nparsettingfilename,resource[:nfsipaddress],resource[:nfssharepath])
     instanceid = obj.importtemplatexml
-    puts "Instance id #{instanceid}"
+    Puppet.info "Instance id #{instanceid}"
     for i in 0..30
         obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
         response = obj.checkjdstatus
-        puts "JD status : #{response}"
+        Puppet.info "JD status : #{response}"
         if response  == "Completed"
             Puppet.info "Import NPAR settings is completed."
             break

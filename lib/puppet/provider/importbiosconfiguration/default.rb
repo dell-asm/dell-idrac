@@ -75,11 +75,11 @@ Puppet::Type.type(:importbiosconfiguration).provide(:importbiosconfiguration, :p
     #Import System Configuration
     obj = Puppet::Provider::Importtemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],biosconfiguration,resource[:nfsipaddress],resource[:nfssharepath])
     instanceid = obj.importtemplatexml
-    puts "Instance id #{instanceid}"
+    Puppet.info "Instance id #{instanceid}"
     for i in 0..30
         obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
         response = obj.checkjdstatus
-        puts "JD status : #{response}"
+        Puppet.info "JD status : #{response}"
         if response  == "Completed"
             Puppet.info "Import System Configuration is completed."
             break
@@ -101,7 +101,7 @@ Puppet::Type.type(:importbiosconfiguration).provide(:importbiosconfiguration, :p
   end
   
   def exists?
-    puts "Inside exist"
+    #puts "Inside exist"
     obj = Puppet::Provider::Checklcstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword])
     response = obj.checklcstatus
     response = response.to_i

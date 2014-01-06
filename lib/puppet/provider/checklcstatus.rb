@@ -33,7 +33,7 @@ class Puppet::Provider::Checklcstatus <  Puppet::Provider
          raise "LC status not valid"
         end
         lcstatus=lcnode.text
-        puts "lc status #{lcstatus}"
+        Puppet.info "lc status #{lcstatus}"
        # return lcstatus
     end
 
