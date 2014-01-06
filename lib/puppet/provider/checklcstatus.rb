@@ -20,7 +20,7 @@ class Puppet::Provider::Checklcstatus <  Puppet::Provider
         |output, input, pid|
         #input.write("hello from parent\n")
         buffer = ""
-        output.readpartial(2048, buffer) until buffer =~ /Authentication failed/ || buffer =~ /xml version=/ || buffer =~ /Connection failed./ || buffer =~ /.*/
+        output.readpartial(2048, buffer) until buffer =~ /Authentication failed/ || buffer =~ /xml version=/ || buffer =~ /Connection failed./ || buffer =~ /.+/
         #puts "#{buffer}"
         response = buffer
     end
