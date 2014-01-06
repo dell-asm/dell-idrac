@@ -19,34 +19,34 @@ The importnparsetting type/provider supports the functionality to Enable
 and Disable NPAR setting on the Dell Server. 
 
 #-------------------------------------------------------------------------------
-# Summary of Params
+# Summary of Parameters
 #-------------------------------------------------------------------------------
 
-  1. nic - (Mandatory) This parameter defines the target NIC where NPAR 
-			  settings have to be modified.
+  1. nic - (Mandatory) This parameter defines the target NIC where the NPAR 
+			  settings are to be modified.
     
-  2. status - (Mandatory) This parameter defines whether to enable or disable
-				 nic partitioning on a given nic.
+  2. status - (Mandatory) This parameter defines whether to enable or disable the NIC partitioning on a given NIC.
     
-	3. dracipaddress - (Mandatory) This parameter defines server iDRAC Ip Address.
+	3. dracipaddress - (Mandatory) This parameter defines the server iDRAC IP Address.
     
-	4. dracusername - (Mandatory) This parameter defines server iDRAC username.
+	4. dracusername - (Mandatory) This parameter defines the server iDRAC username.
 				
-	5. dracpassword - (Mandatory) This parameter defines server iDRAC password.
+	5. dracpassword - (Mandatory) This parameter defines the server iDRAC password.
 				
-	6. nfsipaddress - (Mandatory) This parameter defines local nfs server Ip address.
+	6. nfsipaddress - (Mandatory) This parameter defines the local NFS server IP address.
 	
-	7. nfssharepath - (Mandatory) This parameter defines local nfs export path.
-					   Note: nfs export should be created or mounted on local machine.
+	7. nfssharepath - (Mandatory) This parameter defines the local NFS export path.
+					   Note: NFS export must be created or mounted on a local machine.
     
 #-------------------------------------------------------------------------------
 # Usage
 #-------------------------------------------------------------------------------
 
-The Dell iDRAC module can be used by calling the importnparsetting type from manifest
-file (.pp) in manifest floder, as shown in the example below:
+The Dell iDRAC module can be used by calling the importnparsetting type from the manifest
+file (.pp) in the manifest folder, as shown in the example below:
 
-Usage:- Enable NIC Partitioning
+Usage:- Enable NIC Partitioning:
+
 	importnparsetting { 'nicapplyconfig':
 		nic => 'NIC.Integrated.1-1-1',
 		status => 'Enabled',
@@ -57,7 +57,8 @@ Usage:- Enable NIC Partitioning
 		nfssharepath => '/root/nfsexport1',
 	}
 
-Usage:- Disable NIC Partitioning
+Usage:- Disable NIC Partitioning:
+
 	importnparsetting { 'nicapplyconfig':
 		nic => 'NIC.Integrated.1-1-1',
 		status => 'Disabled',
@@ -67,3 +68,4 @@ Usage:- Disable NIC Partitioning
 		nfsipaddress => '172.28.15.192',
 		nfssharepath => '/root/nfsexport1',
 	}
+
