@@ -20,7 +20,7 @@ class Puppet::Provider::Checklcstatus <  Puppet::Provider
         |output, input, pid|
         #input.write("hello from parent\n")
         buffer = ""
-        output.readpartial(2048, buffer) until buffer =~ /Authentication failed/ || buffer =~ /xml version=/ || buffer =~ /Connection failed./
+        output.readpartial(2048, buffer) until buffer =~ /Authentication failed/ || buffer =~ /xml version=/ || buffer =~ /Connection failed./ || buffer =~ /.*/
         #puts "#{buffer}"
         response = buffer
     end
@@ -28,6 +28,10 @@ class Puppet::Provider::Checklcstatus <  Puppet::Provider
     if response =~ /xml version=/
         xmldoc = Document.new(response)
         lcnode = XPath.first(xmldoc, "//n1:LCStatus")
+        templcnode = lcnode
+        if templcnode.to_s == ""
+         raise "LC status not valid"
+        end
         lcstatus=lcnode.text
         puts "lc status #{lcstatus}"
        # return lcstatus

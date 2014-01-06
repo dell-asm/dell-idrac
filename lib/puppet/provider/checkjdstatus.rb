@@ -15,6 +15,10 @@ class Puppet::Provider::Checkjdstatus <  Puppet::Provider
     Puppet.info "#{response}"
     xmldoc = Document.new(response)
     jdnode = XPath.first(xmldoc, "//n1:JobStatus")
+    tempjdnode = jdnode
+    if tempjdnode.to_s == ""
+      raise "Job ID not created"
+    end
     jdstatus=jdnode.text
     #puts "JD status #{jdstatus}"
     return jdstatus

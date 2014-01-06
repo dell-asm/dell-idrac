@@ -15,6 +15,10 @@ class Puppet::Provider::Reboot <  Puppet::Provider
     # get instance id
     xmldoc = Document.new(response)
     instancenode = XPath.first(xmldoc, '//wsman:Selector Name="InstanceID"')
+    tempinstancenode = instancenode
+    if tempinstancenode.to_s == ""
+      raise "Job ID not created"
+    end
     instanceid=instancenode.text
     puts "Instance id #{instanceid}"
     return instanceid
