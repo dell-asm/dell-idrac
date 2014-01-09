@@ -37,10 +37,10 @@ describe Puppet::Type.type(:importbiosconfiguration).provider(:importbiosconfigu
     describe "when asking exists?" do
         it "should retun true if resource is present" do
              importbiosconfiguration.provider.set(:ensure => :present)
-            # importbiosconfiguration.provider.should_not be_exists
+             importbiosconfiguration.provider.should_not be_exists
         end
         it "Create bios configuration" do
-           # importbiosconfiguration.provider.create
+            importbiosconfiguration.provider.create
            
         end
     end

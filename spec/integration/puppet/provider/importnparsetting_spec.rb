@@ -25,10 +25,10 @@ describe Puppet::Type.type(:importnparsetting).provider(:importnparsetting) do
     describe "when asking exists?" do
         it "should retun true if resource is present" do
              importnparsetting.provider.set(:ensure => :present)
-             #importnparsetting.provider.should_not be_exists
+             importnparsetting.provider.should_not be_exists
         end
         it "Create npar setting" do
-            #importnparsetting.provider.create
+            importnparsetting.provider.create
            
         end
     end

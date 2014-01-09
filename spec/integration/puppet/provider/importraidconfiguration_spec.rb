@@ -24,10 +24,10 @@ describe Puppet::Type.type(:importraidconfiguration).provider(:importraidconfigu
     describe "when asking exists?" do
         it "should retun true if resource is present" do
             importraidconfiguration.provider.set(:ensure => :present)
-           # importraidconfiguration.provider.should_not be_exists
+            importraidconfiguration.provider.should_not be_exists
         end
         it "Create npar setting" do
-            #importraidconfiguration.provider.create
+            importraidconfiguration.provider.create
            
         end
     end

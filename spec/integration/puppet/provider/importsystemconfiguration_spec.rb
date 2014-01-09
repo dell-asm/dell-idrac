@@ -23,10 +23,10 @@ describe Puppet::Type.type(:importsystemconfiguration).provider(:importsystemcon
     describe "when asking exists?" do
         it "should retun true if resource is present" do
              importsystemconfiguration.provider.set(:ensure => :present)
-           #  importsystemconfiguration.provider.should_not be_exists
+             importsystemconfiguration.provider.should_not be_exists
         end
         it "Create system configuration" do
-            #importsystemconfiguration.provider.create
+             importsystemconfiguration.provider.create
            
         end
     end
