@@ -1,4 +1,5 @@
 require 'rexml/document'
+
 include REXML
 
 class Puppet::Provider::Reboot <  Puppet::Provider
@@ -22,5 +23,5 @@ class Puppet::Provider::Reboot <  Puppet::Provider
     instanceid=instancenode.text
     Puppet.info "Instance id #{instanceid}"
     return instanceid
-  end  
+  end
 end

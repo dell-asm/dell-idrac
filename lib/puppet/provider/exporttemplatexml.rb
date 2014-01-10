@@ -1,4 +1,5 @@
 require 'rexml/document'
+
 include REXML
 
 class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
@@ -17,12 +18,12 @@ class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
     # get instance id
     xmldoc = Document.new(response)
     instancenode = XPath.first(xmldoc, '//wsman:Selector Name="InstanceID"')
-	tempinstancenode = instancenode
+    tempinstancenode = instancenode
     if tempinstancenode.to_s == ""
       raise "Job ID not created"
     end
     instanceid=instancenode.text
     puts "Instance id #{instanceid}"
     return instanceid
-  end  
+  end
 end
