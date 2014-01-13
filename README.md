@@ -3,6 +3,12 @@
 ####Table of Contents
 
 1. [Overview](#overview)
+2. [importbiosconfiguration](#importbiosconfiguration)
+3. [importnparsetting](#importnparsetting)
+4. [importraidconfiguration](#importraidconfiguration)
+5. [importsystemconfiguration](#importsystemconfiguration)
+6. [exportsystemconfiguration](#exportsystemconfiguration)
+
 
 ##Overview
 
