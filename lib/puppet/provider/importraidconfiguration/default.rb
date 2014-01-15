@@ -18,19 +18,21 @@ Puppet::Type.type(:importraidconfiguration).provide(:importraidconfiguration, :p
     #Reset Configuration
     resetfilepath = File.join(Pathname.new(__FILE__).parent.parent.parent.parent.parent, 'files/defaultxmls/resetconfig.xml')
     #puts resetfilepath
-
-    response = `wsman invoke -a ResetConfig http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_RAIDService?SystemCreationClassName=DCIM_ComputerSystem,CreationClassName=DCIM_RAIDService,SystemName=DCIM:ComputerSystem,Name=DCIM:RAIDService -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -J #{resetfilepath} -j utf-8 -y basic`
+	resetconf
+  #  response = `wsman invoke -a ResetConfig http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_RAIDService?SystemCreationClassName=DCIM_ComputerSystem,CreationClassName=DCIM_RAIDService,SystemName=DCIM:ComputerSystem,Name=DCIM:RAIDService -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -J #{resetfilepath} -j utf-8 -y basic`
     #puts response
 
     #Reboot
-    rebootfilepath = File.join(Pathname.new(__FILE__).parent.parent.parent.parent.parent, 'files/defaultxmls/reboot.xml')
+   # rebootfilepath = File.join(Pathname.new(__FILE__).parent.parent.parent.parent.parent, 'files/defaultxmls/reboot.xml')
     #puts rebootfilepath
-    obj = Puppet::Provider::Reboot.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],rebootfilepath)
-    instanceid = obj.reboot
+    #obj = Puppet::Provider::Reboot.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],rebootfilepath)
+    #instanceid = obj.reboot
+	instanceid = rebootinstanse
     Puppet.info "instanceid : #{instanceid}"
     for i in 0..30
-      obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
-      response = obj.checkjdstatus
+     # obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
+     # response = obj.checkjdstatus
+	  response = checkjobstatus instanceid
       Puppet.info "JD status : #{response}"
       if response  == "Completed"
         Puppet.info "Reset raid configuration is completed."
@@ -75,17 +77,19 @@ Puppet::Type.type(:importraidconfiguration).provide(:importraidconfiguration, :p
     xmldoc.write(file)
     #Need to close the file
     file.close
-
-    response = `wsman invoke -a CreateVirtualDisk http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_RAIDService?SystemCreationClassName=DCIM_ComputerSystem,CreationClassName=DCIM_RAIDService,SystemName=DCIM:ComputerSystem,Name=DCIM:RAIDService -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -J #{raidconfigurationfile} -j utf-8 -y basic`
+	applyraidconf raidconfigurationfile
+   # response = `wsman invoke -a CreateVirtualDisk http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_RAIDService?SystemCreationClassName=DCIM_ComputerSystem,CreationClassName=DCIM_RAIDService,SystemName=DCIM:ComputerSystem,Name=DCIM:RAIDService -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -J #{raidconfigurationfile} -j utf-8 -y basic`
     #puts response
 
     #Reboot
-    obj = Puppet::Provider::Reboot.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],rebootfilepath)
-    instanceid = obj.reboot
+    #obj = Puppet::Provider::Reboot.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],rebootfilepath)
+    #instanceid = obj.reboot
+	instanceid = rebootinstanse
     Puppet.info "instanceid : #{instanceid}"
     for i in 0..30
-      obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
-      response = obj.checkjdstatus
+      #obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
+      #response = obj.checkjdstatus
+	  response = checkjobstatus instanceid
       Puppet.info "JD status : #{response}"
       if response  == "Completed"
         Puppet.info "Raid configuration is completed."
@@ -104,11 +108,47 @@ Puppet::Type.type(:importraidconfiguration).provide(:importraidconfiguration, :p
     end
 
   end
+  def applyraidconf(raidconfigurationfile)
+	@ip = resource[:dracipaddress]
+    @username = resource[:dracusername]
+    @password = resource[:dracpassword]
 
-  def exists?
-    #puts "Inside exist"
+	  response = `wsman invoke -a CreateVirtualDisk http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_RAIDService?SystemCreationClassName=DCIM_ComputerSystem,CreationClassName=DCIM_RAIDService,SystemName=DCIM:ComputerSystem,Name=DCIM:RAIDService -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -J #{raidconfigurationfile} -j utf-8 -y basic`
+  end
+  def checkjobstatus(instanceid)
+   obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
+      response = obj.checkjdstatus
+  end
+  def rebootinstanse
+  
+	 #Reboot
+    rebootfilepath = File.join(Pathname.new(__FILE__).parent.parent.parent.parent.parent, 'files/defaultxmls/reboot.xml')
+    puts rebootfilepath
+    obj = Puppet::Provider::Reboot.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],rebootfilepath)
+    instanceid = obj.reboot
+	return instanceid
+  end
+  def resetconf
+	 @ip = resource[:dracipaddress]
+    @username = resource[:dracusername]
+    @password = resource[:dracpassword]
+    #Reset Configuration
+    resetfilepath = File.join(Pathname.new(__FILE__).parent.parent.parent.parent.parent, 'files/defaultxmls/resetconfig.xml')
+    #puts resetfilepath
+
+    response = `wsman invoke -a ResetConfig http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_RAIDService?SystemCreationClassName=DCIM_ComputerSystem,CreationClassName=DCIM_RAIDService,SystemName=DCIM:ComputerSystem,Name=DCIM:RAIDService -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -J #{resetfilepath} -j utf-8 -y basic`
+    #puts response
+  end
+  def lcstatus
     obj = Puppet::Provider::Checklcstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword])
     response = obj.checklcstatus
+	return response
+  end  
+  def exists?
+    #puts "Inside exist"
+    #obj = Puppet::Provider::Checklcstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword])
+    #response = obj.checklcstatus
+	response = lcstatus
     response = response.to_i
     if response == 0
       return false

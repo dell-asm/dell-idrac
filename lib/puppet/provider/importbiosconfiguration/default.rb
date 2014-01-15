@@ -73,12 +73,14 @@ Puppet::Type.type(:importbiosconfiguration).provide(:importbiosconfiguration, :p
     file.close
     biosconfiguration = "biosconfiguration_#{resource[:dracipaddress]}.xml"
     #Import System Configuration
-    obj = Puppet::Provider::Importtemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],biosconfiguration,resource[:nfsipaddress],resource[:nfssharepath])
-    instanceid = obj.importtemplatexml
+   # obj = Puppet::Provider::Importtemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],biosconfiguration,resource[:nfsipaddress],resource[:nfssharepath])
+   # instanceid = obj.importtemplatexml
+	instanceid = getinstanceid biosconfiguration
     Puppet.info "Instance id #{instanceid}"
     for i in 0..30
-      obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
-      response = obj.checkjdstatus
+      #obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
+      #response = obj.checkjdstatus
+	  response = getjobstatus instanceid
       Puppet.info "JD status : #{response}"
       if response  == "Completed"
         Puppet.info "Import System Configuration is completed."
@@ -99,9 +101,19 @@ Puppet::Type.type(:importbiosconfiguration).provide(:importbiosconfiguration, :p
     File.delete("#{biosconfigurationfile}")
 
   end
-
+  def getinstanceid(biosconfiguration)
+	obj = Puppet::Provider::Importtemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],biosconfiguration,resource[:nfsipaddress],resource[:nfssharepath])
+    instanceid = obj.importtemplatexml
+	return instanceid
+  end  
+  def getjobstatus(instanceid)
+	obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
+      response = obj.checkjdstatus
+	  return response
+  end
   def exists?
     #puts "Inside exist"
+	#puts resource[:dracipaddress]
     obj = Puppet::Provider::Checklcstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword])
     response = obj.checklcstatus
     response = response.to_i

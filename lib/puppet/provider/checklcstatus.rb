@@ -12,19 +12,11 @@ class Puppet::Provider::Checklcstatus <  Puppet::Provider
 
   def checklcstatus
 
-    cmd = "wsman invoke -a \"GetRemoteServicesAPIStatus\"  http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -j utf-8 -y basic"
+   
     #puts ("#{cmd}")
     lcstatus = ""
     response = ""
-
-    PTY.spawn(cmd) do
-      |output, input, pid|
-      #input.write("hello from parent\n")
-      buffer = ""
-      output.readpartial(2048, buffer) until buffer =~ /Authentication failed/ || buffer =~ /xml version=/ || buffer =~ /Connection failed./ || buffer =~ /.+/
-      #puts "#{buffer}"
-      response = buffer
-    end
+	response=executelccmd
 
     if response =~ /xml version=/
       xmldoc = Document.new(response)
@@ -47,5 +39,19 @@ class Puppet::Provider::Checklcstatus <  Puppet::Provider
     end
 
     return lcstatus
+  end
+  def executelccmd
+	 cmd = "wsman invoke -a \"GetRemoteServicesAPIStatus\"  http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -j utf-8 -y basic"
+	response = ""
+
+    PTY.spawn(cmd) do
+      |output, input, pid|
+      #input.write("hello from parent\n")
+      buffer = ""
+      output.readpartial(2048, buffer) until buffer =~ /Authentication failed/ || buffer =~ /xml version=/ || buffer =~ /Connection failed./ || buffer =~ /.+/
+      #puts "#{buffer}"
+      response = buffer
+    end
+	return response
   end
 end
