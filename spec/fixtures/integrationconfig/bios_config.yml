@@ -1,7 +1,7 @@
 bios_configuration_provider:
   ensure: 'present'
   name: 'importbiosconfiguration'
-  dracipaddress: '172.17.10.106'
+  dracipaddress: '172.17.10.109'
   dracusername: 'root'
   dracpassword: 'calvin'
   nfsipaddress: '172.28.10.191'
@@ -20,7 +20,7 @@ bios_configuration_provider:
 bios_configuration_type:
   ensure: 'present'
   name: 'importbiosconfiguration'
-  dracipaddress: '172.17.10.106'
+  dracipaddress: '172.17.10.109'
   dracusername: 'root'
   dracpassword: 'calvin'
   nfsipaddress: '172.28.10.191'
