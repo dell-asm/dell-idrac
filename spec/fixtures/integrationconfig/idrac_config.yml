@@ -1,0 +1,9 @@
+idrac_cred:
+  ip: 172.17.10.106
+  username: root
+  password: calvin
+  configxmlfilename: 'raidconfiguration_172.17.10.109.xml'
+  nfsipaddress: '172.28.10.191'
+  nfssharepath: '/root/SharedNFS'
+  dummy_job_id: 'JD256489'
+  rebootfilepath: '/files/defaultxmls/reboot.xml'  
