@@ -11,17 +11,12 @@ Puppet::Type.type(:exportsystemconfiguration).provide(:exportsystemconfiguration
   desc "Dell idrac provider for export system configuration."
   $count = 0
   $maxcount = 30
+
   def create
     #Export System Configuration
-    #obj = Puppet::Provider::Exporttemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],resource[:configxmlfilename],resource[:nfsipaddress],resource[:nfssharepath])
-    #instanceid = obj.exporttemplatexml
-	instanceid = exporttemplate
-    puts "Instance id #{instanceid}"
+	  instanceid = exporttemplate
     for i in 0..30
-      #obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
-      #response = obj.checkjdstatus
-	  response = checkjobstatus
-      puts "JD status : #{response}"
+	    response = checkjobstatus
       if response  == "Completed"
         Puppet.info "Export System Configuration is completed."
         break
@@ -37,28 +32,28 @@ Puppet::Type.type(:exportsystemconfiguration).provide(:exportsystemconfiguration
     if response != "Completed"
       raise "Export System Configuration is still running."
     end
-
   end
+  
   def exporttemplate
-  obj = Puppet::Provider::Exporttemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],resource[:configxmlfilename],resource[:nfsipaddress],resource[:nfssharepath])
+    obj = Puppet::Provider::Exporttemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],resource[:configxmlfilename],resource[:nfsipaddress],resource[:nfssharepath])
     instanceid = obj.exporttemplatexml
-	return instanceid
+	  return instanceid
   end
+
   def checkjobstatus
-	obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
-      response = obj.checkjdstatus
+	  obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
+    response = obj.checkjdstatus
 	  return response
   end
- def lcstatus
+ 
+  def lcstatus
     obj = Puppet::Provider::Checklcstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword])
     response = obj.checklcstatus
-	return response
- end 
+	  return response
+  end 
+  
   def exists?
-    puts "Inside exist"
-    #obj = Puppet::Provider::Checklcstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword])
-    #response = obj.checklcstatus
-	response = lcstatus
+	  response = lcstatus
     response = response.to_i
     if response == 0
       return false
@@ -74,6 +69,5 @@ Puppet::Type.type(:exportsystemconfiguration).provide(:exportsystemconfiguration
       return true
     end
   end
-
 end
 

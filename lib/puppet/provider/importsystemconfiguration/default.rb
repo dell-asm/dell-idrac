@@ -11,16 +11,12 @@ Puppet::Type.type(:importsystemconfiguration).provide(:importsystemconfiguration
   desc "Dell idrac provider for import system configuration."
   $count = 0
   $maxcount = 30
+
   def create
-    #Import System Configuration
-    #obj = Puppet::Provider::Importtemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],resource[:configxmlfilename],resource[:nfsipaddress],resource[:nfssharepath])
-    #instanceid = obj.importtemplatexml
-	instanceid = importtemplate
+	  instanceid = importtemplate
     Puppet.info "Instance id #{instanceid}"
     for i in 0..30
-     # obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
-      #response = obj.checkjdstatus
-	  response = checkjobstatus instanceid
+	    response = checkjobstatus instanceid
       Puppet.info "JD status : #{response}"
       if response  == "Completed"
         Puppet.info "Import System Configuration is completed."
@@ -37,29 +33,28 @@ Puppet::Type.type(:importsystemconfiguration).provide(:importsystemconfiguration
     if response != "Completed"
       raise "Import System Configuration is still running."
     end
-
   end
+  
   def checkjobstatus(instanceid)
-
-  obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
-      response = obj.checkjdstatus
+    obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
+    response = obj.checkjdstatus
 	  return response
   end
+
   def importtemplate
-	obj = Puppet::Provider::Importtemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],resource[:configxmlfilename],resource[:nfsipaddress],resource[:nfssharepath])
+	  obj = Puppet::Provider::Importtemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],resource[:configxmlfilename],resource[:nfsipaddress],resource[:nfssharepath])
     instanceid = obj.importtemplatexml
-	return instanceid
+	  return instanceid
   end
+
   def lcstatus
     obj = Puppet::Provider::Checklcstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword])
     response = obj.checklcstatus
-	return response
+	  return response
   end
+
   def exists?
-    #puts "Inside exist"
-    #obj = Puppet::Provider::Checklcstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword])
-    #response = obj.checklcstatus
-	response = lcstatus
+	  response = lcstatus
     response = response.to_i
     if response == 0
       return false
@@ -75,6 +70,4 @@ Puppet::Type.type(:importsystemconfiguration).provide(:importsystemconfiguration
       return true
     end
   end
-
 end
-

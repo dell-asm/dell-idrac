@@ -11,6 +11,7 @@ Puppet::Type.type(:importnparsetting).provide(:importnparsetting, :parent => Pup
   desc "Dell idrac provider for  nic partitioning."
   $count = 0
   $maxcount = 30
+  
   def create
     requiredstatus = resource[:status]
     targetnic = resource[:nic]
@@ -36,14 +37,10 @@ Puppet::Type.type(:importnparsetting).provide(:importnparsetting, :parent => Pup
     file.close
 
     #Import System Configuration
-    #obj = Puppet::Provider::Importtemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],nparsettingfilename,resource[:nfsipaddress],resource[:nfssharepath])
-    #instanceid = obj.importtemplatexml
-	instanceid = importtemplate nparsettingfilename
+	  instanceid = importtemplate nparsettingfilename
     Puppet.info "Instance id #{instanceid}"
     for i in 0..30
-     # obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
-      #response = obj.checkjdstatus
-	  response = checkjobstatus instanceid
+	    response = checkjobstatus instanceid
       Puppet.info "JD status : #{response}"
       if response  == "Completed"
         Puppet.info "Import NPAR settings is completed."
@@ -60,30 +57,29 @@ Puppet::Type.type(:importnparsetting).provide(:importnparsetting, :parent => Pup
     if response != "Completed"
       raise "Import NPAR Settings is still running."
     end
-
     File.delete("#{nparsettingfilepath}")
+  end
 
-  end
   def importtemplate(nparsettingfilename) 
-	obj = Puppet::Provider::Importtemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],nparsettingfilename,resource[:nfsipaddress],resource[:nfssharepath])
+	  obj = Puppet::Provider::Importtemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],nparsettingfilename,resource[:nfsipaddress],resource[:nfssharepath])
     instanceid = obj.importtemplatexml
-	return instanceid
+	  return instanceid
   end
+
   def checkjobstatus(instanceid)
-	obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
-      response = obj.checkjdstatus
+	  obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
+    response = obj.checkjdstatus
 	  return response 
   end
 
   def lcstatus
     obj = Puppet::Provider::Checklcstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword])
     response = obj.checklcstatus
-	return response
+	  return response
   end
+
   def exists?
-    #obj = Puppet::Provider::Checklcstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword])
-    #response = obj.checklcstatus
-	response =  lcstatus
+	  response =  lcstatus
     response = response.to_i
     if response == 0
       return false
@@ -99,5 +95,4 @@ Puppet::Type.type(:importnparsetting).provide(:importnparsetting, :parent => Pup
       return true
     end
   end
-
 end

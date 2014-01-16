@@ -11,12 +11,9 @@ class Puppet::Provider::Checklcstatus <  Puppet::Provider
   end
 
   def checklcstatus
-
-   
-    #puts ("#{cmd}")
     lcstatus = ""
     response = ""
-	response=executelccmd
+	  response=executelccmd
 
     if response =~ /xml version=/
       xmldoc = Document.new(response)
@@ -40,9 +37,10 @@ class Puppet::Provider::Checklcstatus <  Puppet::Provider
 
     return lcstatus
   end
+
   def executelccmd
-	 cmd = "wsman invoke -a \"GetRemoteServicesAPIStatus\"  http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -j utf-8 -y basic"
-	response = ""
+	  cmd = "wsman invoke -a \"GetRemoteServicesAPIStatus\"  http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -j utf-8 -y basic"
+	  response = ""
 
     PTY.spawn(cmd) do
       |output, input, pid|
@@ -52,6 +50,6 @@ class Puppet::Provider::Checklcstatus <  Puppet::Provider
       #puts "#{buffer}"
       response = buffer
     end
-	return response
+	  return response
   end
 end
