@@ -14,23 +14,23 @@ Puppet::Type.type(:exportsystemconfiguration).provide(:exportsystemconfiguration
 
   def create
     #Export System Configuration
-	  instanceid = exporttemplate
+	  instanceid = exporttemplate 
     for i in 0..30
-	    response = checkjobstatus
+	    response = checkjobstatus instanceid
       if response  == "Completed"
         Puppet.info "Export System Configuration is completed."
         break
       else
         if response  == "Failed"
-          raise "Job ID is not created."
+          raise "Job Failed."
         else
-          Puppet.info "Job is running, wait for 1 minute"
+          Puppet.info "Job is running, wait for 1 minute."
           sleep 60
         end
       end
     end
     if response != "Completed"
-      raise "Export System Configuration is still running."
+      raise "Export System Configuration has not completed."
     end
   end
   
@@ -40,7 +40,7 @@ Puppet::Type.type(:exportsystemconfiguration).provide(:exportsystemconfiguration
 	  return instanceid
   end
 
-  def checkjobstatus
+  def checkjobstatus(instanceid)
 	  obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
     response = obj.checkjdstatus
 	  return response
