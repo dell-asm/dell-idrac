@@ -6,6 +6,6 @@ importnparsetting {
 		dracusername => 'root',
 		dracpassword => 'calvin',
 		nfsipaddress => '172.28.15.192',
-		nfssharepath => '/var/lib/nfs',
+		nfssharepath => '/var/nfs',
 }
 
