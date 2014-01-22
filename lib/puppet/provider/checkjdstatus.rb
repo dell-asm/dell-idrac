@@ -17,7 +17,15 @@ class Puppet::Provider::Checkjdstatus <  Puppet::Provider
     Puppet.info "#{response}"
     xmldoc = Document.new(response)
     jdnode = XPath.first(xmldoc, "//n1:JobStatus")
+    jdmsg = XPath.first(xmldoc, "//n1:Message")
     tempjdnode = jdnode
+    if jdmsg.to_s =~ /Staged component configuration is complete/i
+      return "Completed"
+    end
+    if jdmsg.to_s =~ /Completed with Errors/i || jdmsg.to_s =~ /Completed with errors/i
+      return "Failed"
+    end
+    
     if tempjdnode.to_s == ""
       raise "Job ID not created"
     end
