@@ -1,0 +1,7 @@
+<p:CreateTargetedConfigJob_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_BIOSService"> 
+<p:Target>BIOS.Setup.1-1</p:Target> 
+<p:RebootJobType>2</p:RebootJobType> 
+<p:ScheduledStartTime>TIME_NOW</p:ScheduledStartTime> 
+</p:CreateTargetedConfigJob_INPUT>
+
+
