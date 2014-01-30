@@ -1,5 +1,7 @@
 provider_path = Pathname.new(__FILE__).parent.parent
 require 'rexml/document'
+require 'uri'
+require '/etc/puppetlabs/puppet/modules/asm_lib/lib/security/encode'
 
 include REXML
 require File.join(provider_path, 'idrac')
@@ -15,6 +17,7 @@ Puppet::Type.type(:importraidconfiguration).provide(:importraidconfiguration, :p
     @ip = resource[:dracipaddress]
     @username = resource[:dracusername]
     @password = resource[:dracpassword]
+	@password = URI.decode(asm_decrypt(@password))
     #Reset Configuration
     resetfilepath = File.join(Pathname.new(__FILE__).parent.parent.parent.parent.parent, 'files/defaultxmls/resetconfig.xml')
 	  resetconf
@@ -93,6 +96,7 @@ Puppet::Type.type(:importraidconfiguration).provide(:importraidconfiguration, :p
 	  @ip = resource[:dracipaddress]
     @username = resource[:dracusername]
     @password = resource[:dracpassword]
+	@password = URI.decode(asm_decrypt(@password))
 
 	  response = `wsman invoke -a CreateVirtualDisk http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_RAIDService?SystemCreationClassName=DCIM_ComputerSystem,CreationClassName=DCIM_RAIDService,SystemName=DCIM:ComputerSystem,Name=DCIM:RAIDService -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -J #{raidconfigurationfile} -j utf-8 -y basic`
   end
@@ -115,6 +119,7 @@ Puppet::Type.type(:importraidconfiguration).provide(:importraidconfiguration, :p
 	  @ip = resource[:dracipaddress]
     @username = resource[:dracusername]
     @password = resource[:dracpassword]
+	@password = URI.decode(asm_decrypt(@password))
     #Reset Configuration
     resetfilepath = File.join(Pathname.new(__FILE__).parent.parent.parent.parent.parent, 'files/defaultxmls/resetconfig.xml')
 
