@@ -40,10 +40,10 @@ Puppet::Type.type(:importnparsetting).provide(
     file.close
 
     #Import System Configuration
-	  instanceid = importtemplate nparsettingfilename
+    instanceid = importtemplate nparsettingfilename
     Puppet.info "Instance id #{instanceid}"
     for i in 0..30
-	    response = checkjobstatus instanceid
+      response = checkjobstatus instanceid
       Puppet.info "JD status : #{response}"
       if response  == "Completed"
         Puppet.info "Import NPAR settings is completed."

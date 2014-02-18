@@ -16,7 +16,7 @@ class Puppet::Provider::Checkjdstatus <  Puppet::Provider
   def checkjdstatus
     #Get the job status
     #response = `wsman get "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LifecycleJob?InstanceID=#{@instanceid}" -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -j utf-8 -y basic`
-	  response = executecmd 
+	  response = executecmd
     Puppet.info "#{response}"
     xmldoc = Document.new(response)
     jdnode = XPath.first(xmldoc, "//n1:JobStatus")
@@ -28,7 +28,7 @@ class Puppet::Provider::Checkjdstatus <  Puppet::Provider
     if jdmsg.to_s =~ /Completed with Errors/i || jdmsg.to_s =~ /Completed with errors/i
       return "Failed"
     end
-    
+
     if tempjdnode.to_s == ""
       raise "Job ID not created"
     end
@@ -36,7 +36,7 @@ class Puppet::Provider::Checkjdstatus <  Puppet::Provider
     return jdstatus
   end
 
-  def executecmd 
+  def executecmd
     resp = `wsman get "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LifecycleJob?InstanceID=#{@instanceid}" -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -j utf-8 -y basic`
     return resp
   end

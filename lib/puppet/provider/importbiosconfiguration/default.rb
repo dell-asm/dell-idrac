@@ -79,7 +79,7 @@ Puppet::Type.type(:importbiosconfiguration).provide(
 	  instanceid = getinstanceid biosconfiguration
     Puppet.info "Instance id #{instanceid}"
     for i in 0..30
-	    response = getjobstatus instanceid
+      response = getjobstatus instanceid
       Puppet.info "JD status : #{response}"
       if response  == "Completed"
         Puppet.info "Import System Configuration is completed."

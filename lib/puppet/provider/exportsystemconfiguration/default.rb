@@ -17,9 +17,9 @@ Puppet::Type.type(:exportsystemconfiguration).provide(
 
   def create
     #Export System Configuration
-	  instanceid = exporttemplate 
+    instanceid = exporttemplate
     for i in 0..30
-	    response = checkjobstatus instanceid
+      response = checkjobstatus instanceid
       if response  == "Completed"
         Puppet.info "Export System Configuration is completed."
         break

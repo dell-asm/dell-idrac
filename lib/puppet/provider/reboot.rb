@@ -9,7 +9,7 @@ class Puppet::Provider::Reboot <  Puppet::Provider
     @ip = ip
     @username = username
     @password = password
-	@password = URI.decode(asm_decrypt(@password))
+	  @password = URI.decode(asm_decrypt(@password))
     @rebootfilepath = rebootfilepath
   end
 

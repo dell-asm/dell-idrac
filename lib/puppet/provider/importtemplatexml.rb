@@ -9,7 +9,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @ip = ip
     @username = username
     @password = password
-	@password = URI.decode(asm_decrypt(@password))
+	  @password = URI.decode(asm_decrypt(@password))
     @configxmlfilename = configxmlfilename
     @nfsipaddress = nfsipaddress
     @nfssharepath = nfssharepath

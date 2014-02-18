@@ -94,7 +94,7 @@ class Puppet::Provider::BiosConfig <  Puppet::Provider
       resp = `wsman invoke -a ChangeBootSourceState http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_BootConfigSetting?InstanceID=IPL -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -k EnabledState=0 -k source=#{@instid} -j utf-8 -y basic`
       return   resp
     end
-    
+
   end
 
   def parseResponse(xmldata)

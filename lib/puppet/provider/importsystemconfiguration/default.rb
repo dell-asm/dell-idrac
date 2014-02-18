@@ -16,16 +16,16 @@ Puppet::Type.type(:importsystemconfiguration).provide(
   $maxcount = 60
 
   def create
-	  instanceid = importtemplate
+    instanceid = importtemplate
     Puppet.info "Instance id #{instanceid}"
     for i in $count..$maxcount
-	    response = checkjobstatus instanceid
+      response = checkjobstatus instanceid
       Puppet.info "JD status : #{response}"
-      if response  == "Completed" 
+      if response  == "Completed"
         Puppet.info "Import System Configuration is completed."
         break
       else
-        if response  == "Failed"  
+        if response  == "Failed"
           raise "Job Failed ."
         else
           Puppet.info "Job is running, wait for 1 minute"
@@ -33,7 +33,7 @@ Puppet::Type.type(:importsystemconfiguration).provide(
         end
       end
     end
-    if response != "Completed" 
+    if response != "Completed"
       raise "Import System Configuration is still running."
     end
   end

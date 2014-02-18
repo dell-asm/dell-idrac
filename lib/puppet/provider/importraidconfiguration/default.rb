@@ -24,13 +24,13 @@ Puppet::Type.type(:importraidconfiguration).provide(
 	@password = URI.decode(asm_decrypt(@password))
     #Reset Configuration
     resetfilepath = File.join(Pathname.new(__FILE__).parent.parent.parent.parent.parent, 'files/defaultxmls/resetconfig.xml')
-	  resetconf
-    
+    resetconf
+
     #Reboot
-	  instanceid = rebootinstanse
+    instanceid = rebootinstanse
     Puppet.info "instanceid : #{instanceid}"
     for i in 0..30
-	    response = checkjobstatus instanceid
+      response = checkjobstatus instanceid
       Puppet.info "JD status : #{response}"
       if response  == "Completed"
         Puppet.info "Reset raid configuration is completed."
@@ -71,13 +71,13 @@ Puppet::Type.type(:importraidconfiguration).provide(
     xmldoc.write(file)
     #Need to close the file
     file.close
-	applyraidconf raidconfigurationfile
+    applyraidconf raidconfigurationfile
 
     #Reboot
-	  instanceid = rebootinstanse
+    instanceid = rebootinstanse
     Puppet.info "instanceid : #{instanceid}"
     for i in 0..30
-	    response = checkjobstatus instanceid
+      response = checkjobstatus instanceid
       Puppet.info "JD status : #{response}"
       if response  == "Completed"
         Puppet.info "Raid configuration is completed."
@@ -116,7 +116,7 @@ Puppet::Type.type(:importraidconfiguration).provide(
     puts rebootfilepath
     obj = Puppet::Provider::Reboot.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],rebootfilepath)
     instanceid = obj.reboot
-	  return instanceid
+    return instanceid
   end
 
   def resetconf
