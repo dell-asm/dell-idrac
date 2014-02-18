@@ -7,7 +7,10 @@ require File.join(provider_path, 'checklcstatus')
 require File.join(provider_path, 'checkjdstatus')
 require File.join(provider_path, 'importtemplatexml')
 
-Puppet::Type.type(:importnparsetting).provide(:importnparsetting, :parent => Puppet::Provider::Idrac) do
+Puppet::Type.type(:importnparsetting).provide(
+  :importnparsetting,
+  :parent => Puppet::Provider::Idrac
+) do
   desc "Dell idrac provider for  nic partitioning."
   $count = 0
   $maxcount = 30

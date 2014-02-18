@@ -9,7 +9,11 @@ require File.join(provider_path, 'checklcstatus')
 require File.join(provider_path, 'checkjdstatus')
 require File.join(provider_path, 'reboot')
 
-Puppet::Type.type(:importraidconfiguration).provide(:importraidconfiguration, :parent => Puppet::Provider::Idrac) do
+Puppet::Type.type(:importraidconfiguration).provide(
+  :importraidconfiguration,
+  :parent => Puppet::Provider::Idrac
+) do
+
   desc "Dell idrac provider for import system configuration."
   $count = 0
   $maxcount = 30

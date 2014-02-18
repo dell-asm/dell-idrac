@@ -8,9 +8,13 @@ require File.join(provider_path, 'checklcstatus')
 require File.join(provider_path, 'checkjdstatus')
 require File.join(provider_path, 'reboot')
 
-Puppet::Type.type(:updatebootorderconfiguration).provide(:updatebootorderconfiguration, :parent => Puppet::Provider::Idrac) do
   $count = 0
   $maxcount = 30
+Puppet::Type.type(:updatebootorderconfiguration).provide(
+  :updatebootorderconfiguration,
+  :parent => Puppet::Provider::Idrac
+) do
+
   def create
     obj = Puppet::Provider::BiosConfig.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],resource[:target_boot_device])
     obj.GetBootSourceSetting

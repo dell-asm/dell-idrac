@@ -7,7 +7,10 @@ require File.join(provider_path, 'checklcstatus')
 require File.join(provider_path, 'checkjdstatus')
 require File.join(provider_path, 'importtemplatexml')
 
-Puppet::Type.type(:importsystemconfiguration).provide(:importsystemconfiguration, :parent => Puppet::Provider::Idrac) do
+Puppet::Type.type(:importsystemconfiguration).provide(
+  :importsystemconfiguration,
+  :parent => Puppet::Provider::Idrac
+) do
   desc "Dell idrac provider for import system configuration."
   $count = 0
   $maxcount = 60

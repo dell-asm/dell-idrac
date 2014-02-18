@@ -7,7 +7,10 @@ require File.join(provider_path, 'checklcstatus')
 require File.join(provider_path, 'checkjdstatus')
 require File.join(provider_path, 'exporttemplatexml')
 
-Puppet::Type.type(:exportsystemconfiguration).provide(:exportsystemconfiguration, :parent => Puppet::Provider::Idrac) do
+Puppet::Type.type(:exportsystemconfiguration).provide(
+  :exportsystemconfiguration,
+  :parent => Puppet::Provider::Idrac
+) do
   desc "Dell idrac provider for export system configuration."
   $count = 0
   $maxcount = 30
