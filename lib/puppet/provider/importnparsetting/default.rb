@@ -23,15 +23,15 @@ Puppet::Type.type(:importnparsetting).provide(
     file = File.new(xmlfilePath)
     xmldoc = Document.new(file)
 
-    xmldoc.elements.each("SystemConfiguration/Component") {
-      |e|  e.attributes["FQDD"] = "#{targetnic}"
-    }
+    xmldoc.elements.each("SystemConfiguration/Component") do |e|
+      e.attributes["FQDD"] = "#{targetnic}"
+    end
 
-    xmldoc.elements.each("SystemConfiguration/Component/Attribute") {
-      |e|  if e.attributes["Name"] == "NicPartitioning"
+    xmldoc.elements.each("SystemConfiguration/Component/Attribute") do |e|
+      if e.attributes["Name"] == "NicPartitioning"
         e.text = requiredstatus
       end
-    }
+    end
 
     nparsettingfilename = "nparsetting_#{resource[:dracipaddress]}.xml"
     nparsettingfilepath = "#{resource[:nfssharepath]}/#{nparsettingfilename}"
