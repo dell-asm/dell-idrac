@@ -1,6 +1,4 @@
 require 'rexml/document'
-require 'uri'
-require '/etc/puppetlabs/puppet/modules/asm_lib/lib/security/encode'
 
 include REXML
 
@@ -9,7 +7,6 @@ class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
     @ip = ip
     @username = username
     @password = password
-	@password = URI.decode(asm_decrypt(@password))
     @configxmlfilename = configxmlfilename
     @nfsipaddress = nfsipaddress
     @nfssharepath = nfssharepath

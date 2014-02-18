@@ -3,17 +3,12 @@ require 'rexml/document'
 
 include REXML
 require File.join(provider_path, 'idrac')
-require File.join(provider_path, 'checklcstatus')
-require File.join(provider_path, 'checkjdstatus')
-require File.join(provider_path, 'importtemplatexml')
 
 Puppet::Type.type(:importbiosconfiguration).provide(
   :importbiosconfiguration,
   :parent => Puppet::Provider::Idrac
 ) do
   desc "Dell idrac provider for import system configuration."
-  $count = 0
-  $maxcount = 30
   def create
     memtest = resource[:memtest]
     procvirtualization = resource[:procvirtualization]
@@ -31,8 +26,8 @@ Puppet::Type.type(:importbiosconfiguration).provide(
     file = File.new(xmlfilePath)
     xmldoc = Document.new(file)
 
-    xmldoc.elements.each("SystemConfiguration/Component/Attribute") {
-      |e|  if e.attributes["Name"] == "MemTest"
+    xmldoc.elements.each("SystemConfiguration/Component/Attribute") do |e|
+      if e.attributes["Name"] == "MemTest"
         e.text = memtest
       end
       if e.attributes["Name"] == "ProcVirtualization"
@@ -68,15 +63,15 @@ Puppet::Type.type(:importbiosconfiguration).provide(
       if e.attributes["Name"] == "BiosBootSeq"
         e.text = biosbootseq
       end
-    }
-    biosconfigurationfile = "#{resource[:nfssharepath]}/biosconfiguration_#{resource[:dracipaddress]}.xml"
+    end
+    biosconfigurationfile = "#{resource[:nfssharepath]}/biosconfiguration_#{transport[:host]}.xml"
     file = File.open("#{biosconfigurationfile}", "w")
     xmldoc.write(file)
     #Need to close the file
     file.close
-    biosconfiguration = "biosconfiguration_#{resource[:dracipaddress]}.xml"
+    biosconfiguration = "biosconfiguration_#{transport[:host]}.xml"
     #Import System Configuration
-	  instanceid = getinstanceid biosconfiguration
+    instanceid = importtemplate(biosconfiguration)
     Puppet.info "Instance id #{instanceid}"
     for i in 0..30
       response = getjobstatus instanceid
@@ -101,34 +96,4 @@ Puppet::Type.type(:importbiosconfiguration).provide(
 
   end
 
-  def getinstanceid(biosconfiguration)
-	  obj = Puppet::Provider::Importtemplatexml.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],biosconfiguration,resource[:nfsipaddress],resource[:nfssharepath])
-    instanceid = obj.importtemplatexml
-	  return instanceid
-  end  
-  
-  def getjobstatus(instanceid)
-	  obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
-    response = obj.checkjdstatus
-	  return response
-  end
-
-  def exists?
-    obj = Puppet::Provider::Checklcstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword])
-    response = obj.checklcstatus
-    response = response.to_i
-    if response == 0
-      return false
-    else
-      #recursive call  method exists till lcstatus =0
-      while $count < $maxcount  do
-        Puppet.info "LC status busy, wait for 1 minute"
-        sleep 60
-        $count +=1
-        exists?
-      end
-      raise Puppet::Error, "Life cycle controller is busy"
-      return true
-    end
-  end
 end

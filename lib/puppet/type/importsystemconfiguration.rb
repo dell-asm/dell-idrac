@@ -25,45 +25,6 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     end
   end
 
-  newparam(:dracipaddress) do
-    desc "The Ip address of idrac."
-    munge do |value|
-      value.to_s
-    end
-
-    validate do |value|
-      if value.strip.length == 0
-        raise ArgumentError, "The dracipaddress must contain a value. It cannot be null."
-      end
-    end
-  end
-
-  newparam(:dracusername) do
-    desc "User name."
-    munge do |value|
-      value.to_s
-    end
-
-    validate do |value|
-      if value.strip.length == 0
-        raise ArgumentError, "The dracusername must contain a value. It cannot be null."
-      end
-    end
-  end
-
-  newparam(:dracpassword) do
-    desc "Password."
-    munge do |value|
-      value.to_s
-    end
-
-    validate do |value|
-      if value.strip.length == 0
-        raise ArgumentError, "The dracpassword must contain a value. It cannot be null."
-      end
-    end
-  end
-
   newparam(:configxmlfilename) do
     desc "Config Xml file name."
     munge do |value|

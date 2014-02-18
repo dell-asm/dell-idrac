@@ -1,6 +1,4 @@
 require 'rexml/document'
-require 'uri'
-require '/etc/puppetlabs/puppet/modules/asm_lib/lib/security/encode'
 
 include REXML
 require 'pty'
@@ -10,7 +8,6 @@ class Puppet::Provider::Checklcstatus <  Puppet::Provider
     @ip = ip
     @username = username
     @password = password
-	@password = URI.decode(asm_decrypt(@password))
   end
 
   def checklcstatus

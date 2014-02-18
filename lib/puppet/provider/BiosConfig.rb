@@ -1,6 +1,4 @@
 require 'rexml/parsers/treeparser'
-require 'uri'
-require '/etc/puppetlabs/puppet/modules/asm_lib/lib/security/encode'
 
 provider_path = Pathname.new(__FILE__).parent
 require 'rexml/document'
@@ -16,7 +14,6 @@ class Puppet::Provider::BiosConfig <  Puppet::Provider
     @ip = ip
     @username = username
     @password = password
-	@password = URI.decode(asm_decrypt(@password))
     @boottype  = boottype
     @instid = ""
 
