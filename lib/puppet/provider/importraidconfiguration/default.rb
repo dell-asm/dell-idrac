@@ -1,32 +1,31 @@
 provider_path = Pathname.new(__FILE__).parent.parent
 require 'rexml/document'
 require 'uri'
-require '/etc/puppetlabs/puppet/modules/asm_lib/lib/security/encode'
 
 include REXML
 require File.join(provider_path, 'idrac')
-require File.join(provider_path, 'checklcstatus')
-require File.join(provider_path, 'checkjdstatus')
 require File.join(provider_path, 'reboot')
 
-Puppet::Type.type(:importraidconfiguration).provide(:importraidconfiguration, :parent => Puppet::Provider::Idrac) do
+Puppet::Type.type(:importraidconfiguration).provide(
+  :importraidconfiguration,
+  :parent => Puppet::Provider::Idrac
+) do
+
   desc "Dell idrac provider for import system configuration."
-  $count = 0
-  $maxcount = 30
+
   def create
-    @ip = resource[:dracipaddress]
-    @username = resource[:dracusername]
-    @password = resource[:dracpassword]
-	@password = URI.decode(asm_decrypt(@password))
+    @ip       = transport[:host]
+    @username = transport[:user]
+    @password = transport[:password]
     #Reset Configuration
     resetfilepath = File.join(Pathname.new(__FILE__).parent.parent.parent.parent.parent, 'files/defaultxmls/resetconfig.xml')
-	  resetconf
-    
+    resetconf
+
     #Reboot
-	  instanceid = rebootinstanse
+    instanceid = rebootinstanse
     Puppet.info "instanceid : #{instanceid}"
     for i in 0..30
-	    response = checkjobstatus instanceid
+      response = checkjobstatus instanceid
       Puppet.info "JD status : #{response}"
       if response  == "Completed"
         Puppet.info "Reset raid configuration is completed."
@@ -62,18 +61,18 @@ Puppet::Type.type(:importraidconfiguration).provide(:importraidconfiguration, :p
       pdarray.text = "#{disk}"
       xmlroot.add_element pdarray
     end
-    raidconfigurationfile = "#{resource[:nfssharepath]}/raidconfiguration_#{resource[:dracipaddress]}.xml"
+    raidconfigurationfile = "#{resource[:nfssharepath]}/raidconfiguration_#{transport[:host]}.xml"
     file = File.open("#{raidconfigurationfile}", "w")
     xmldoc.write(file)
     #Need to close the file
     file.close
-	applyraidconf raidconfigurationfile
+    applyraidconf raidconfigurationfile
 
     #Reboot
-	  instanceid = rebootinstanse
+    instanceid = rebootinstanse
     Puppet.info "instanceid : #{instanceid}"
     for i in 0..30
-	    response = checkjobstatus instanceid
+      response = checkjobstatus instanceid
       Puppet.info "JD status : #{response}"
       if response  == "Completed"
         Puppet.info "Raid configuration is completed."
@@ -91,35 +90,35 @@ Puppet::Type.type(:importraidconfiguration).provide(:importraidconfiguration, :p
       raise "Raid configuration is still running."
     end
   end
-  
+
   def applyraidconf(raidconfigurationfile)
-	  @ip = resource[:dracipaddress]
-    @username = resource[:dracusername]
-    @password = resource[:dracpassword]
-	@password = URI.decode(asm_decrypt(@password))
+    @ip       = transport[:host]
+    @username = transport[:user]
+    @password = transport[:password]
+    @password = URI.decode(asm_decrypt(@password))
 
-	  response = `wsman invoke -a CreateVirtualDisk http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_RAIDService?SystemCreationClassName=DCIM_ComputerSystem,CreationClassName=DCIM_RAIDService,SystemName=DCIM:ComputerSystem,Name=DCIM:RAIDService -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -J #{raidconfigurationfile} -j utf-8 -y basic`
-  end
-
-  def checkjobstatus(instanceid)
-    obj = Puppet::Provider::Checkjdstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],instanceid)
-    response = obj.checkjdstatus
+    response = `wsman invoke -a CreateVirtualDisk http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_RAIDService?SystemCreationClassName=DCIM_ComputerSystem,CreationClassName=DCIM_RAIDService,SystemName=DCIM:ComputerSystem,Name=DCIM:RAIDService -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -J #{raidconfigurationfile} -j utf-8 -y basic`
   end
 
   def rebootinstanse
 	 #Reboot
     rebootfilepath = File.join(Pathname.new(__FILE__).parent.parent.parent.parent.parent, 'files/defaultxmls/reboot.xml')
     puts rebootfilepath
-    obj = Puppet::Provider::Reboot.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword],rebootfilepath)
+    obj = Puppet::Provider::Reboot.new(
+      transport[:host],
+      transport[:user],
+      transport[:password],
+      rebootfilepath
+    )
     instanceid = obj.reboot
-	  return instanceid
+    return instanceid
   end
 
   def resetconf
-	  @ip = resource[:dracipaddress]
-    @username = resource[:dracusername]
-    @password = resource[:dracpassword]
-	@password = URI.decode(asm_decrypt(@password))
+    @ip       = transport[:host]
+    @username = transport[:user]
+    @password = transport[:password]
+    @password = URI.decode(asm_decrypt(@password))
     #Reset Configuration
     resetfilepath = File.join(Pathname.new(__FILE__).parent.parent.parent.parent.parent, 'files/defaultxmls/resetconfig.xml')
 
@@ -127,29 +126,4 @@ Puppet::Type.type(:importraidconfiguration).provide(:importraidconfiguration, :p
     #puts response
   end
 
-  def lcstatus
-    obj = Puppet::Provider::Checklcstatus.new(resource[:dracipaddress],resource[:dracusername],resource[:dracpassword])
-    response = obj.checklcstatus
-	  return response
-  end
-
-  def exists?
-	  response = lcstatus
-    response = response.to_i
-    if response == 0
-      return false
-    else
-      #recursive call  method exists till lcstatus =0
-      while $count < $maxcount  do
-        Puppet.info "LC status busy, wait for 1 minute"
-        sleep 60
-        $count +=1
-        exists?
-      end
-      raise Puppet::Error, "Life cycle controller is busy"
-      return true
-    end
-  end
-
 end
-

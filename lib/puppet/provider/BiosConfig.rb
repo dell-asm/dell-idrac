@@ -1,6 +1,4 @@
 require 'rexml/parsers/treeparser'
-require 'uri'
-require '/etc/puppetlabs/puppet/modules/asm_lib/lib/security/encode'
 
 provider_path = Pathname.new(__FILE__).parent
 require 'rexml/document'
@@ -16,7 +14,6 @@ class Puppet::Provider::BiosConfig <  Puppet::Provider
     @ip = ip
     @username = username
     @password = password
-	@password = URI.decode(asm_decrypt(@password))
     @boottype  = boottype
     @instid = ""
 
@@ -94,7 +91,7 @@ class Puppet::Provider::BiosConfig <  Puppet::Provider
       resp = `wsman invoke -a ChangeBootSourceState http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_BootConfigSetting?InstanceID=IPL -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -k EnabledState=0 -k source=#{@instid} -j utf-8 -y basic`
       return   resp
     end
-    
+
   end
 
   def parseResponse(xmldata)
