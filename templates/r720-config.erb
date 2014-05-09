@@ -1,0 +1,189 @@
+<%=
+require "json"
+require 'active_support'
+# Format of data for partial/whole changes:
+#  Key is Name/FQDD of Attribute/Component.  If the value is a hash, it is assumed to be a component (and the hash contains the attributes)
+# If the value is a string, it is assumed to be an attribute (or if it is a list, it is a list of the attributes that have the same Name, but different values in the same Component)
+#
+#Format of data for removing changes:
+# changes['remove'] is the list of components to remove. The key name corresponds to a component; if the value for that key is an empty list, remove the component corresponding to the key name.  Otherwise, remove the nodes in the list under that key. 
+#For example:  {node1: [], node2: ["attr1"=>[]]}.  Component FQDD=node1 will be removed, and Attribute Name=attr1 under Component FQDD=node2 will be removed
+#
+#
+changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
+
+#
+# default settings for all
+#
+changes['partial']['NIC.Slot.2-1-1'] =
+    {
+        'LegacyBootProto' => "PXE"
+    }
+changes['partial']['NIC.Slot.2-2-1'] =
+    {
+        'LegacyBootProto' => "NONE"
+    }
+changes['partial']['BIOS.Setup.1-1'] =
+    {
+        'ProcVirtualization' => 'Enabled',
+        'BootMode' => 'Bios',
+        'BiosBootSeq' => 'NIC.Slot.2-1-1, HardDisk.List.1-1',
+        'IntegratedNetwork1' => 'DisabledOs'
+    }
+changes['whole'] = 
+    {
+        'LifecycleController.Embedded.1' =>
+            {
+                'LCAttributes.1#CollectSystemInventoryOnRestart' => 'Enabled'
+            }
+    }
+
+#
+# sysprofile settings
+#
+if !@resource[:sysprofile].nil?
+    changes['partial'].deep_merge!(
+        {'BIOS.Setup.1-1' =>
+            {
+                'SysProfile' => "#{@resource[:sysprofile]}"
+            }
+        })
+else
+    changes['remove']['attributes'].deep_merge!(
+        {'BIOS.Setup.1-1' => 
+            ['SysProfile']
+        })
+end
+#
+# target_boot_device settings
+#
+if @resource[:target_boot_device] == "HD"
+    changes['partial'].deep_merge!(
+        {'BIOS.Setup.1-1' =>
+            {
+                'IntegratedRaid' => 'Enabled',
+                'InternalSDCard'  => 'Off',
+                'HddSeq'  => 'RAID.Integrated.1-1'
+            }
+        })
+    changes['whole']['RAID.Integrated.1-1'] =
+        {
+            'RAIDresetConfig' => "True",
+            'Disk.Virtual.0:RAID.Integrated.1-1' => 
+                {
+                    'RAIDaction'=>'Create',
+                    'RAIDinitOperation'=>'Fast',
+                    'Name'=>'RAID ONE',
+                    'Size'=>'0',
+                    'StripeSize'=>'128',
+                    'SpanDepth'=>'1',
+                    'SpanLength'=>'2',
+                    'RAIDTypes'=>'RAID 1',
+                    'IncludedPhysicalDiskID'=>['Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1',
+                                               'Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1']
+                }
+        }
+elsif @resource[:target_boot_device] == "SD"
+    changes['partial'].deep_merge!(
+        {'BIOS.Setup.1-1' =>
+            {
+                'IntegratedRaid' => 'Disabled',
+                'InternalSdCard' => 'On',
+                'HddSeq' => 'Disk.SDInternal.1-1',
+            }
+        })
+    changes['remove']['components']['RAID.Integrated.1-1'] = {}
+end
+
+#
+# enable_npar settings
+#
+if @resource[:enable_npar] == :true
+    default_partial_nic_settings = {
+        'VirtualizationMode' => 'NPAR',
+        'NicMode' => 'Enabled',
+        'NicPartitioning' => 'Enabled',
+        'iScsiOffloadMode' => 'Disabled',
+        'FCoEOffloadMode' => 'Disabled',
+        'MinBandwidth' => '0',
+        'MaxBandwidth' => '100'
+    }
+    changes['partial'].deep_merge!(
+        'NIC.Slot.2-1-1' => default_partial_nic_settings,
+        'NIC.Slot.2-2-1' => default_partial_nic_settings
+    )
+
+    default_whole_nic_settings = 
+        {   'NicMode'=> 'Enabled',
+            'iScsiOffloadMode' =>'Disabled',
+            'FCoEOffloadMode' =>'Disabled',
+            'MinBandwidth' =>'0',
+            'MaxBandwidth' =>'100'
+        }
+    changes['whole'].deep_merge!(
+            'NIC.Slot.2-1-2' => default_whole_nic_settings,
+            'NIC.Slot.2-1-3' => default_whole_nic_settings,
+            'NIC.Slot.2-1-4' =>
+            {
+                'NicMode' => 'Disabled',
+                'iScsiOffloadMode' => 'Enabled',
+                'FCoEOffloadMode' => 'Disabled',
+                'MinBandwidth' => '0',
+                'MaxBandwidth' => '100'
+            },
+            'NIC.Slot.2-2-2' => default_whole_nic_settings,
+            'NIC.Slot.2-2-3' => default_whole_nic_settings,
+            'NIC.Slot.2-2-4' =>
+            {
+                'NicMode' => 'Disabled',
+                'iScsiOffloadMode' => 'Enabled',
+                'FCoEOffloadMode' => 'Disabled',
+                'MinBandwidth' => '0',
+                'MaxBandwidth' => '100'
+            }
+
+        )
+
+else
+    changes['partial'].deep_merge!(
+        'NIC.Slot.2-1-1' => 
+        {
+            'VirtualizationMode' => 'None',
+            'NicPartitioning' => 'Disabled'
+        },
+        'NIC.Slot.2-2-1' =>
+        {
+            'VirtualizationMode' => 'None',
+            'NicPartitioning' => 'Disabled'
+        },
+    )
+
+    default_attrs_to_remove = 
+    [
+        'iScsiOffloadMode',
+        'FCoEOffloadMode',
+        'MinBandwidth',
+        'MaxBandwidth'
+    ]
+    changes['remove']['attributes'].deep_merge!(
+        {
+            'NIC.Slot.2-1-1' => default_attrs_to_remove,
+            'NIC.Slot.2-2-1' => default_attrs_to_remove
+        }
+    )
+
+    changes['remove']['components'].deep_merge!(
+        {
+            'NIC.Slot.2-1-2' => [],
+            'NIC.Slot.2-1-3' => [],
+            'NIC.Slot.2-1-4' => [],
+            'NIC.Slot.2-2-2' => [],
+            'NIC.Slot.2-2-3' => [],
+            'NIC.Slot.2-2-4' => [],
+        })
+
+end
+
+
+changes.to_json
+%>

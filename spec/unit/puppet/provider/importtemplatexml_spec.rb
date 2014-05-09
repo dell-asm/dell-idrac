@@ -1,13 +1,24 @@
 require 'spec_helper'
 require 'puppet/provider/importtemplatexml'
+require 'puppet/provider/exporttemplatexml'
 require 'yaml'
 require 'rspec/expectations'
 describe Puppet::Provider::Importtemplatexml do
 	
 	before(:each) do
-	@idrac_conf=YAML.load_file(get_configpath('idrac','idrac_config.yml'))
-		@idrac_attrib = @idrac_conf['idrac_cred']
-		@fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'],@idrac_attrib['username'],@idrac_attrib['password'],@idrac_attrib['configxmlfilename'],@idrac_attrib['nfsipaddress'],@idrac_attrib['nfssharepath'])
+        @test_config_dir = URI(File.join(Dir.pwd, "spec", "fixtures"))
+		@idrac_attrib = {
+          :ip => '172.17.10.106',
+          :username => 'root',
+          :password => 'calvin',
+          :configxmlfilename => 'FOOTAG.xml',
+          :nfsipaddress => '172.28.10.191',
+          :enable_npar => 'true',
+          :target_boot_device => 'HD',
+          :servicetag => 'FOOTAG',
+          :nfssharepath => @test_config_dir
+        }
+		@fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'],@idrac_attrib['username'],@idrac_attrib['password'],@idrac_attrib)
 		@fixture.stub(:initialize).and_return("")
 		@commandoutput= <<END
 		<?xml version="1.0" encoding="UTF-8"?>
@@ -62,13 +73,15 @@ end
 			
 		end
 		it "should get the instance variable value"  do
-			
 			@fixture.instance_variable_get(:@ip).should eql(@idrac_attrib['ip'])
 			@fixture.instance_variable_get(:@username).should eql(@idrac_attrib['username'])
 			@fixture.instance_variable_get(:@password).should eql(@idrac_attrib['password'])
-			@fixture.instance_variable_get(:@configxmlfilename).should eql(@idrac_attrib['configxmlfilename'])
-			@fixture.instance_variable_get(:@nfsipaddress).should eql(@idrac_attrib['nfsipaddress'])
-			@fixture.instance_variable_get(:@nfssharepath).should eql(@idrac_attrib['nfssharepath'])
+			@fixture.instance_variable_get(:@resource)['configxmlfilename'].should eql(@idrac_attrib['configxmlfilename'])
+			@fixture.instance_variable_get(:@resource)['nfsipaddress'].should eql(@idrac_attrib['nfsipaddress'])
+			@fixture.instance_variable_get(:@resource)['nfssharepath'].should eql(@idrac_attrib['nfssharepath'])
+			@fixture.instance_variable_get(:@resource)['enable_npar'].should eql(@idrac_attrib['enable_npar'])
+			@fixture.instance_variable_get(:@resource)['servicetag'].should eql(@idrac_attrib['servicetag'])
+			@fixture.instance_variable_get(:@resource)['target_boot_device'].should eql(@idrac_attrib['target_boot_device'])
 		end
 		it "should have method " do
 			@fixture.class.instance_method(:importtemplatexml).should_not == nil
@@ -77,13 +90,29 @@ end
 	context "when exporting template" do
 		it "should get Job id for Export template xml"  do
 			@fixture.should_receive(:executeimportcmd).once.and_return(@commandoutput)
+			@fixture.stub(:munge_config_xml)
 			jobid = @fixture.importtemplatexml
 			jobid.should == "JID_896466295795"
 		end
 		it "should not get Job id if import template fail" do
 			@fixture.should_receive(:executeimportcmd).once.and_return(@failedoutput)
+			@fixture.stub(:munge_config_xml)
 			expect{ @fixture.importtemplatexml}.to raise_error("Job ID not created")
-		     
+		end
+	end
+	context "when importing template" do 
+		it "should munge the config xml data" do
+			Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
+            Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
+            #Needed to call original open method by default
+            original_method = File.method(:open)
+            File.stub(:open).with(anything()) { |*args| original_method.call(*args) }
+            File.stub(:open).with(File.join(@test_config_dir.path, @idrac_attrib[:configxmlfilename]), "w+").and_return('')
+            xml = @fixture.munge_config_xml
+            xml.xpath("//Attribute[@Name='Remove']").size.should == 0
+            xml.xpath("//Component[@FQDD='RemoveMe']").size.should == 0
+            xml.xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute").first.content.should == "Disabled"
+            xml.xpath("//Component[@FQDD='LifecycleController.Embedded.1']/Attribute").size.should_not == 0
 		end
 	end
 end

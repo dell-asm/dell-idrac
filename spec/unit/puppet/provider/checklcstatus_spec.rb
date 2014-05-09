@@ -7,9 +7,17 @@ describe Puppet::Provider::Checklcstatus do
 	
 	
 	before(:each) do
-		@idrac_conf=YAML.load_file(get_configpath('idrac','idrac_config.yml'))
-		@idrac_attrib = @idrac_conf['idrac_cred']
-
+		@idrac_attrib = {
+          :ip => '172.17.10.106',
+          :username => 'root',
+          :password => 'calvin',
+          :configxmlfilename => 'FOOTAG.xml',
+          :nfsipaddress => '172.28.10.191',
+          :enable_npar => 'true',
+          :target_boot_device => 'HD',
+          :servicetag => 'FOOTAG',
+          :nfssharepath => @test_config_dir
+        }
 		@fixture=Puppet::Provider::Checklcstatus.new(@idrac_attrib['ip'],@idrac_attrib['username'],@idrac_attrib['password'])
 		@fixture.stub(:initialize).and_return("")
 		@response= <<END

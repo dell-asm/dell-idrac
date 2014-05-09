@@ -3,11 +3,21 @@ require 'puppet/provider/exporttemplatexml'
 require 'yaml'
 require 'rspec/expectations'
 describe Puppet::Provider::Exporttemplatexml do
-	
+	let(:test_config_dir){ File.join(Dir.pwd, "spec", "fixtures") }
 	before(:each) do
-		@idrac_conf=YAML.load_file(get_configpath('idrac','idrac_config.yml'))
-		@idrac_attrib = @idrac_conf['idrac_cred']
-		@fixture=Puppet::Provider::Exporttemplatexml.new(@idrac_attrib['ip'],@idrac_attrib['username'],@idrac_attrib['password'],@idrac_attrib['configxmlfilename'],@idrac_attrib['nfsipaddress'],@idrac_attrib['nfssharepath'])
+		Puppet::Module.stub(:find).with("idrac").and_return(test_config_dir)
+		@idrac_attrib = {
+          :ip => '172.17.10.106',
+          :username => 'root',
+          :password => 'calvin',
+          :configxmlfilename => 'EXPORT.xml',
+          :nfsipaddress => '172.28.10.191',
+          :enable_npar => 'true',
+          :target_boot_device => 'HD',
+          :servicetag => 'EXPORT',
+          :nfssharepath => test_config_dir
+        }
+		@fixture=Puppet::Provider::Exporttemplatexml.new(@idrac_attrib['ip'],@idrac_attrib['username'],@idrac_attrib['password'],@idrac_attrib,File.join(test_config_dir, "mock_nfs"))
 		@fixture.stub(:initialize).and_return("")
 		@commandoutput = <<END
 		<?xml version="1.0" encoding="UTF-8"?>
@@ -85,13 +95,28 @@ END
 	context "when exporting template" do
 		it "should get Job id for Export template xml"  do
 			@fixture.should_receive(:commandexe).once.and_return(@commandoutput)
+
+			Puppet::Provider::Checkjdstatus.any_instance.stub(:checkjdstatus) do
+				xml_doc = Nokogiri::XML::Builder.new do |xml|
+					xml.send(:"SystemConfiguration")
+				end
+				File.open(File.join(test_config_dir, "mock_nfs", "EXPORT.xml"), 'w+') { |file| file.write(xml_doc.to_xml(:indent => 2)) }
+				"Completed"	
+			end
 			jobid = @fixture.exporttemplatexml
 			jobid.should == "JID_896386820311"
+			File.exist?(File.join(test_config_dir, "EXPORT.xml")).should == true
+			File.exist?(File.join(test_config_dir, "mock_nfs", "EXPORT.xml")).should_not == true
+
 		end
 		it "should not get Job it if export template fail" do
 			 @fixture.should_receive(:commandexe).once.and_return(@failedcommandoutput)
 			 expect{ @fixture.exporttemplatexml}.to raise_error("Job ID not created")
 		     
+		end
+
+		after(:all) do
+			FileUtils.rm(File.join(test_config_dir, "EXPORT.xml"))
 		end
 	end
 end

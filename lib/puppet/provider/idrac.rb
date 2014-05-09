@@ -61,15 +61,12 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     end
   end
 
-  def importtemplate(nparsettingfilename)
-
+  def importtemplate
     obj = Puppet::Provider::Importtemplatexml.new(
       transport[:host],
       transport[:user],
       transport[:password],
-      nparsettingfilename,
-      resource[:nfsipaddress],
-      resource[:nfssharepath]
+      resource
     )
     obj.importtemplatexml
   end
@@ -79,9 +76,8 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       transport[:host],
       transport[:user],
       transport[:password],
-      resource[:configxmlfilename],
-      resource[:nfsipaddress],
-      resource[:nfssharepath]
+      resource,
+      '/var/nfs'
     )
     obj.exporttemplatexml
   end
