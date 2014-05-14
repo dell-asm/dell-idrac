@@ -33,7 +33,6 @@ require 'puppet_spec/verbose'
 require 'puppet_spec/files'
 require 'puppet_spec/settings'
 require 'puppet_spec/fixtures'
-require 'puppet_spec/deviceconf'
 require 'puppet_spec/matchers'
 require 'puppet_spec/database'
 #require 'puppet_spec/factervalue'
@@ -43,7 +42,6 @@ require 'puppet_spec/database'
 
 RSpec.configure do |config|
   include PuppetSpec::Fixtures
-  include PuppetSpec::Deviceconf
  # include PuppetSpec::Setupcleanup
   #include PuppetSpec::Validation
   #include PuppetSpec::Factervalue

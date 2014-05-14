@@ -11,7 +11,7 @@ Puppet::Type.type(:importsystemconfiguration).provide(
   desc "Dell idrac provider for import system configuration."
 
   def create
-    instanceid = importtemplate(resource[:configxmlfilename])
+    instanceid = importtemplate
     Puppet.info "Instance id #{instanceid}"
     for i in 0..30
       response = checkjobstatus instanceid

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SystemConfiguration Model="PowerEdge M620" ServiceTag="" TimeStamp="">
+
+<Component FQDD="BIOS.Setup.1-1">
+    <Attribute Name="ProcVirtualization">Enabled</Attribute>
+    <Attribute Name="Remove"/>
+</Component>
+
+<Component FQDD="RemoveMe">
+</Component>
+
+</SystemConfiguration>
