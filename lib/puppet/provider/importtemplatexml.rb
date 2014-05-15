@@ -14,6 +14,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @nfsipaddress = resource[:nfsipaddress]
     @nfssharepath = resource[:nfssharepath]
     @resource = resource
+    @bios_settings = resource[:bios_settings]
   end
 
   def importtemplatexml

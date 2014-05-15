@@ -123,5 +123,21 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     end
   end
 
+  newparam(:bios_settings) do 
+    desc "A hash of the individual BIOS Settings the user wants to set"
+    munge do |settings|
+      settings.keys.each do |key|
+        if(settings[key] == :undef)
+          settings.delete(key)
+        elsif settings[key] == true
+          settings[key] = "Enabled"
+        elsif settings[key] == false
+          settings[key] = "Disabled"
+        end  
+      end
+      settings
+    end
+  end
+
 
 end

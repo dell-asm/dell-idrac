@@ -38,23 +38,6 @@ changes['whole'] =
     }
 
 #
-# sysprofile settings
-#
-if !@resource[:sysprofile].nil?
-    changes['partial'].deep_merge!(
-        {'BIOS.Setup.1-1' =>
-            {
-                'SysProfile' => "#{@resource[:sysprofile]}"
-            }
-        })
-else
-    changes['remove']['attributes'].deep_merge!(
-        {'BIOS.Setup.1-1' => 
-            ['SysProfile']
-        })
-end
-
-#
 # target_boot_device settings
 #
 if @resource[:target_boot_device] == "HD"
@@ -182,6 +165,14 @@ else
         })
 
 end
+
+#
+# BIOS Settings.  This section should be last, in case the user overrides any configuration that may be set above.
+#
+@bios_settings.keys.each do |key|
+    changes['partial']['BIOS.Setup.1-1'][key] = @bios_settings[key]
+end
+
 
 changes.to_json
 %>
