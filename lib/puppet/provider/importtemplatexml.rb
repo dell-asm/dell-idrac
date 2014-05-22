@@ -1,6 +1,8 @@
 require 'rexml/document'
 require 'json'
 require 'nokogiri'
+require 'hashie'
+require 'activesupport'
 
 include REXML
 
@@ -15,6 +17,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @nfssharepath = resource[:nfssharepath]
     @resource = resource
     @bios_settings = resource[:bios_settings]
+    @network_config_data = resource[:network_config]
   end
 
   def importtemplatexml
@@ -48,6 +51,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     template.close
     changes = JSON.parse(erb.result(binding))
 
+    nic_changes = process_nics
+    changes.deep_merge!(nic_changes)
+
     config_xml_path = "#{@resource[:nfssharepath]}/#{@resource[:configxmlfilename]}"
     if(@resource[:config_xml].nil?)
       obj = Puppet::Provider::Exporttemplatexml.new(@ip, @username, @password, resource)
@@ -62,6 +68,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
     xml_base = xml_doc.xpath('/SystemConfiguration').first
     f.close
+
+    #REMOVE all existing NIC data.  All FQDDs will contain with NIC.
+    xml_base.xpath("//Component[contains(@FQDD, 'NIC.')]").remove()
 
     xml_base['ServiceTag'] = @resource[:servicetag]
 
@@ -175,6 +184,91 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         new_node.content = data
       end
     end
+  end
+
+  def process_nics
+    require 'asm/network_configuration'
+    net_config = ASM::NetworkConfiguration.new(@network_config_data)
+
+    endpoint = Hashie::Mash.new({:host => @ip, :user => @username, :password => @password})
+    net_config.add_nics!(endpoint)
+    config = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
+    net_config.fabrics.each do |fabric|
+      nic_type = fabric.nictype.to_i
+      if(fabric.enabled)
+        fabric.interfaces.each do |interface|
+          partitioned = interface['partitioned']
+          interface.partitions.each do |partition|
+            nic = partition.nic
+            if(nic)
+              fqdd = partition.fqdd
+              #
+              # SET UP NIC IN CASE INTERFACE IS BEING PARTITIONED, equivalent to the enable_npar parameter
+              #
+              changes = config['partial'][fqdd] = {}
+              removes = config['remove']['attributes'][fqdd] = []
+
+              partition_no = nic.partition_no.to_i
+              changes["NicMode"] = "Enabled"
+              if partitioned
+                if(partition_no ==1)
+                  changes["VirtualizationMode"] = "NPAR"
+                  changes["NicPartitioning"] = "Enabled"
+                end
+              else
+                if(partition_no > 1)
+                  #If not being partitioned, and we have a partition that was in the list of NICs, we have to be sure to remove it, and then continue with the loop of partitions 
+                  config['changes']['remove']['components'][fqdd] = []
+                  #These removes are ultimately unnecessary, but just exist to clean up the config hash that will be passed back.
+                  config['partial'].remove(fqdd)
+                  config['remove']['attributes'].remove(fqdd)
+                  next
+                else
+                  changes["VirtualizationMode"] = "NONE"
+                  changes["NicPartitioning"] = "Disabled"
+                  removes.push('FCoEOffloadMode')
+                end
+              end
+
+              changes['MinBandwidth'] = partition.minimum
+              changes['MaxBandwidth'] = partition.maximum
+              #
+              # CONFIGURE ISCSI NETWORK
+              #
+              if partition['networkObjects'] && !partition['networkObjects'].find{ |obj| obj["type"].include?("ISCSI")}.nil?
+                changes['iScsiOffloadMode'] = "Enabled"
+                #FCoEOffloadMode MUST be disabled if iScsiOffloadMode is Enabled
+                changes['FCoEOffloadMode'] = "Disabled"
+              else
+                changes['iScsiOffloadMode'] = "Disabled"
+                #Curently always setting FCoEOffloadMode to Disabled, but any logic to set it otherwise should probably go here in the future
+                changes['FCoEOffloadMode'] = "Disabled"
+              end
+
+              #
+              # CONFIGURE LEGACYBOOTPROTO IN CASE NIC IS FOR PXE
+              #
+              if partition['networkObjects'] && !partition['networkObjects'].find{ |obj| obj["type"] =="PXE"}.nil?
+                changes["LegacyBootProto"] = "PXE"
+              else
+                #Make sure any LegacyBootProto is removed
+                removes.push("LegacyBootProto")
+              end
+              
+            else  
+            #Checks to see if we're configuraing 2 or 4 port set up, and doesn't configure anything if we are currently on a port that isn't being configured in the UI.
+            #For example, selecting 2 port nic type in the UI will cause any port 3/4 to not attempt to be configured.
+              if( nic_type < net_config.name_to_port(interface.name).to_i)
+                next
+              else
+                raise("Trying to configure nic on #{fabric['name']} #{interface['name']} Partition #{partition['name']}, which does not exist on the server.")
+              end
+            end
+          end
+        end
+      end
+    end
+    config
   end
 
 end
