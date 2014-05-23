@@ -88,7 +88,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
     ##Clean up the config file of all the commented text
     xml_doc.xpath('//comment()').remove
-    File.open(config_xml_path, 'w+') { |file| file.write(xml_doc.to_xml(:indent => 2)) }
+    File.open(config_xml_path, 'w+') { |file| file.write(xml_doc.root.to_xml(:indent => 2)) }
     xml_doc
   end
 
