@@ -139,13 +139,8 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     end
   end
 
-
   newparam(:network_config) do
-    munge do |config|
-      require 'json'
-      JSON.parse(config)
-    end
+    desc 'Network configuration settings'
   end
-
 
 end
