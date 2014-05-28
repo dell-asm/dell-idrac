@@ -2,7 +2,7 @@ require 'rexml/document'
 require 'json'
 require 'nokogiri'
 require 'hashie'
-require 'activesupport'
+require 'active_support'
 
 include REXML
 
@@ -45,15 +45,12 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     templates_dir = File.join(Puppet::Module.find('idrac').path, 'templates')
     file_name = File.exist?("#{templates_dir}/#{@resource[:model]}-config.erb") ? "#{@resource[:model]}-config.erb" : "default-config.erb"
     path_to_template = File.join(templates_dir, file_name)
-
     template = File.open(path_to_template)
     erb = ERB.new(template.read)
     template.close
     changes = JSON.parse(erb.result(binding))
-
     nic_changes = process_nics
     changes.deep_merge!(nic_changes)
-
     config_xml_path = "#{@resource[:nfssharepath]}/#{@resource[:configxmlfilename]}"
     if(@resource[:config_xml].nil?)
       obj = Puppet::Provider::Exporttemplatexml.new(@ip, @username, @password, resource)
@@ -68,12 +65,17 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
     xml_base = xml_doc.xpath('/SystemConfiguration').first
     f.close
-
-    #REMOVE all existing NIC data.  All FQDDs will contain with NIC.
+    #REMOVE all existing NIC data.  All NIC FQDDs will contain "NIC."
     xml_base.xpath("//Component[contains(@FQDD, 'NIC.')]").remove()
-
     xml_base['ServiceTag'] = @resource[:servicetag]
-
+    #Current workaround for LC issue, where if BiotBootSeq is already set to what ASM needs it to be, setting it again to the same thing will cause an error.
+    existing_boot_seq = find_bios_boot_seq(xml_base)
+    boot_seq_change = changes['partial']['BIOS.Setup.1-1']['BiosBootSeq']
+    if(existing_boot_seq && boot_seq_change)
+      if(existing_boot_seq == boot_seq_change)
+        changes['partial']['BIOS.Setup.1-1'].delete('BiosBootSeq')
+      end
+    end
     #Handle partial node changes (node should exist already, but needs data edited/added within)
     changes['partial'].keys.each do |parent|
       process_partials(parent, changes['partial'][parent], xml_base)
@@ -99,6 +101,20 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     xml_doc.xpath('//comment()').remove
     File.open(config_xml_path, 'w+') { |file| file.write(xml_doc.root.to_xml(:indent => 2)) }
     xml_doc
+  end
+
+  #Helper function which just searches through the xml comments for BiosBootSeq value, since it will be commented out
+  def find_bios_boot_seq(xml_base)
+    xml_base.xpath("//Component[@FQDD='BIOS.Setup.1-1']/comment()").each do |comment|
+      if comment.content.include?("BiosBootSeq")
+        node = Nokogiri::XML(comment.content)
+        #Other names are possible for the node that contain "BiosBootSeq", such as "OneTimeBiosBootSeq", so must ensure it is exactly "BiosBootSeq"
+        if(node.at_xpath("/Attribute")['Name'] == "BiosBootSeq")
+          return node.at_xpath("/Attribute").content
+        end
+      end
+    end
+    nil
   end
 
   def process_remove_nodes(node_name, data, xml_base, type, path="/SystemConfiguration")
@@ -189,7 +205,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   def process_nics
     require 'asm/network_configuration'
     net_config = ASM::NetworkConfiguration.new(@network_config_data)
-
     endpoint = Hashie::Mash.new({:host => @ip, :user => @username, :password => @password})
     net_config.add_nics!(endpoint)
     config = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
@@ -203,7 +218,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           #
           changes = config['partial'][fqdd] = {}
           removes = config['remove']['attributes'][fqdd] = []
-
           partition_no = partition.partition_no
           changes["NicMode"] = "Enabled"
           if partitioned
@@ -223,7 +237,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
               removes.push('FCoEOffloadMode')
             end
           end
-
           changes['MinBandwidth'] = partition.minimum
           changes['MaxBandwidth'] = partition.maximum
           #
@@ -238,7 +251,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
             #Curently always setting FCoEOffloadMode to Disabled, but any logic to set it otherwise should probably go here in the future
             changes['FCoEOffloadMode'] = "Disabled"
           end
-
           #
           # CONFIGURE LEGACYBOOTPROTO IN CASE NIC IS FOR PXE
           #
