@@ -94,7 +94,7 @@ END
 	end
 	context "when exporting template" do
 		it "should get Job id for Export template xml"  do
-			@fixture.should_receive(:commandexe).once.and_return(@commandoutput)
+                        @fixture.should_receive(:commandexe).once.and_return(@commandoutput)
 
 			Puppet::Provider::Checkjdstatus.any_instance.stub(:checkjdstatus) do
 				xml_doc = Nokogiri::XML::Builder.new do |xml|

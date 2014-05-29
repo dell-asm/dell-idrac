@@ -143,4 +143,12 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     desc 'Network configuration settings'
   end
 
+  newparam(:target_ip) do
+    desc "the first target ip address"
+  end
+
+  newparam(:target_iscsi) do
+    desc "the first target iscsi name"
+  end
+
 end

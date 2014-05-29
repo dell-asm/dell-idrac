@@ -49,6 +49,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     erb = ERB.new(template.read)
     template.close
     changes = JSON.parse(erb.result(binding))
+    
+    #if idrac is booting from san, configure networks / virtual identities
+    munge_network_configuration(@resource[:network_config], changes) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
+
     nic_changes = process_nics
     changes.deep_merge!(nic_changes)
     config_xml_path = "#{@resource[:nfssharepath]}/#{@resource[:configxmlfilename]}"
@@ -115,6 +119,56 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       end
     end
     nil
+  end
+  
+  def munge_network_configuration(network_configuration, changes)
+    require 'asm/network_configuration'
+    nc = ASM::NetworkConfiguration.new(network_configuration)
+    endpoint = Hashie::Mash.new({:host => @ip, :user => @username, :password => @password})
+    nc.add_nics!(endpoint)
+    iscsi_partitions = nc.get_partitions('STORAGE_ISCSI_SAN')
+    bios_boot_sequence = []
+    iscsi_partitions.each do |partition|
+        iscsi_network = get_iscsi_network(partition['networkObjects'])
+        if (ASM::Util.to_boolean(iscsi_network.static))
+          changes['partial'].deep_merge!(
+          { partition.nic.fqdd =>
+            {
+                  'VirtualizationMode' => 'NONE',
+                  'VirtMacAddr' => partition['lanMacAddress'],
+                  'VirtIscsiMacAddr' => partition['iscsiMacAddress'],
+                  'TcpIpViaDHCP' => 'Disabled',
+                  'IscsiViaDHCP' => 'Disabled',
+                  'ChapAuthEnable' => 'Disabled',
+                  'IscsiTgtBoot' => 'Disabled',
+                  'IscsiInitiatorIpAddr' => iscsi_network['staticNetworkConfiguration']['ipAddress'],
+                  'IscsiInitiatorSubnet' => iscsi_network['staticNetworkConfiguration']['subnet'],
+                  'IscsiInitiatorGateway' => iscsi_network['staticNetworkConfiguration']['gateway'],
+                  'IscsiInitiatorName' => partition['iscsiIQN'],
+                  'ConnectFirstTgt' => 'Enabled',
+                  'FirstTgtIpAddress' => @resource[:target_ip],
+                  'FirstTgtTcpPort' => '3260',
+                  'FirstTgtIscsiName' => @resource[:target_iscsi],
+                  'LegacyBootProto' => 'iSCSI',
+                  'VLanMode' => 'Enabled',
+                  'VLanId' => iscsi_network['vlanId'],
+                  'NicPartitioning' => 'Disabled',
+                  'iScsiOffloadMode' => 'Enabled'
+            }
+          })
+          bios_boot_sequence.push(partition.nic.fqdd)
+        else
+          Puppet.warn("Found non-static iSCSI network while configuring boot form SAN: #{iscsi_network.id}")
+        end
+    end
+    changes['partial'].deep_merge!({'BIOS.Setup.1-1' => { 'BiosBootSeq' => bios_boot_sequence.join(',') } })
+    changes
+  end
+
+  def get_iscsi_network(network_objects)
+    network_objects.detect do |network|
+      network['name'] == 'iSCSI'
+    end
   end
 
   def process_remove_nodes(node_name, data, xml_base, type, path="/SystemConfiguration")

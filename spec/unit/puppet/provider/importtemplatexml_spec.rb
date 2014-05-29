@@ -253,6 +253,26 @@ end
       end
     end
 	end
-
+    
+    context "when munging network_configuration" do
+          it 'should configure nic partitions in config.xml' do
+            @network_configuration = JSON.parse(File.read(@test_config_dir.path + '/network_configuration.json'))['networkConfiguration']
+            changes = {'partial' => {}}
+            fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
+                     'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
+                     'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
+                     'NIC.Integrated.1-1-4' => '00:0E:1E:0D:8C:36',
+                     'NIC.Integrated.1-2-1' => '00:0E:1E:0D:8C:31',
+                     'NIC.Integrated.1-2-2' => '00:0E:1E:0D:8C:33',
+                     'NIC.Integrated.1-2-3' => '00:0E:1E:0D:8C:35',
+                     'NIC.Integrated.1-2-4' => '00:0E:1E:0D:8C:37',
+            }
+            require 'asm'
+            ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
+            @fixture.munge_network_configuration(@network_configuration, changes)
+            changes['partial']['NIC.Integrated.1-1-1'].should_not == nil
+            changes['partial']['NIC.Integrated.1-2-1'].should_not == nil
+          end
+    end
 
 end
