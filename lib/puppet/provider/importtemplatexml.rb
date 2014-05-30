@@ -125,7 +125,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     require 'asm/network_configuration'
     nc = ASM::NetworkConfiguration.new(network_configuration)
     endpoint = Hashie::Mash.new({:host => @ip, :user => @username, :password => @password})
-    nc.add_nics!(endpoint)
+    nc.add_nics!(endpoint, :add_partitions => true)
     iscsi_partitions = nc.get_partitions('STORAGE_ISCSI_SAN')
     bios_boot_sequence = []
     iscsi_partitions.each do |partition|
@@ -260,7 +260,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     require 'asm/network_configuration'
     net_config = ASM::NetworkConfiguration.new(@network_config_data)
     endpoint = Hashie::Mash.new({:host => @ip, :user => @username, :password => @password})
-    net_config.add_nics!(endpoint)
+    net_config.add_nics!(endpoint, :add_partitions => true)
     config = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
     net_config.cards.each do |card|
       card.interfaces.each do |interface|
