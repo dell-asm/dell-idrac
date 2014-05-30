@@ -50,11 +50,12 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     template.close
     changes = JSON.parse(erb.result(binding))
     
-    #if idrac is booting from san, configure networks / virtual identities
-    munge_network_configuration(@resource[:network_config], changes) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
-
     nic_changes = process_nics
     changes.deep_merge!(nic_changes)
+
+    #if idrac is booting from san, configure networks / virtual identities
+    munge_network_configuration(@resource[:network_config], changes, @resource[:target_boot_device]) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
+
     config_xml_path = "#{@resource[:nfssharepath]}/#{@resource[:configxmlfilename]}"
     if(@resource[:config_xml].nil?)
       obj = Puppet::Provider::Exporttemplatexml.new(@ip, @username, @password, resource)
@@ -121,11 +122,18 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     nil
   end
   
-  def munge_network_configuration(network_configuration, changes)
+  def munge_network_configuration(network_configuration, changes, target_boot)
     require 'asm/network_configuration'
     nc = ASM::NetworkConfiguration.new(network_configuration)
     endpoint = Hashie::Mash.new({:host => @ip, :user => @username, :password => @password})
     nc.add_nics!(endpoint, :add_partitions => true)
+    munge_iscsi_partitions(nc, changes) if target_boot == 'iSCSI'
+    changes['partial'].deep_merge!({'BIOS.Setup.1-1' => { 'BiosBootSeq' => 'HardDisk.List.1-1' } }) if target_boot == 'FC'
+    munge_virt_mac_addr(nc, changes)
+    changes
+  end
+  
+  def munge_iscsi_partitions(nc, changes)
     iscsi_partitions = nc.get_partitions('STORAGE_ISCSI_SAN')
     bios_boot_sequence = []
     iscsi_partitions.each do |partition|
@@ -158,11 +166,21 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           })
           bios_boot_sequence.push(partition.nic.fqdd)
         else
-          Puppet.warn("Found non-static iSCSI network while configuring boot form SAN: #{iscsi_network.id}")
+          Puppet.warn("Found non-static iSCSI network while configuring boot from SAN: #{iscsi_network.id}")
         end
     end
     changes['partial'].deep_merge!({'BIOS.Setup.1-1' => { 'BiosBootSeq' => bios_boot_sequence.join(',') } })
-    changes
+  end
+  
+  def munge_virt_mac_addr(nc, changes)
+    partitions = nc.get_all_partitions
+    partitions.each do |partition|
+      changes['partial'].deep_merge!({
+        partition.nic.fqdd => {
+          'VirtMacAddr' => partition['lanMacAddress']
+        }
+      })
+    end
   end
 
   def get_iscsi_network(network_objects)
