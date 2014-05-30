@@ -1,0 +1,2015 @@
+{
+  "networkConfiguration": {
+    "id": "e8725a0c-b38c-4a30-9d7d-00fda6c258db",
+    "servertype": "blade",
+    "fabrics": [
+      {
+        "id": "cd763162-f91c-413d-96dd-f193a72e4366",
+        "name": "Fabric A",
+        "redundancy": true,
+        "enabled": true,
+        "usedforfc": false,
+        "nictype": "2",
+        "interfaces": [
+          {
+            "id": "99ca7bde-c232-492d-bdf5-2936415b527b",
+            "name": "Port 1",
+            "partitioned": true,
+            "partitions": [
+              {
+                "id": "18fc1e5f-8d02-4bc0-88a8-cf64a6810ded",
+                "name": "1",
+                "networks": [
+                  "ff808081463d291301463d2be9010000",
+                  "ff808081463d291301463d2d70c20042",
+                  "ff808081463d291301463efb142a0063",
+                  "ff808081463d291301463d2c82800021",
+                  "ff808081463d291301463efb752d0084",
+                  "ff808081463d291301463efbea720085",
+                  "ff808081463d291301463efc167b0086"
+                ],
+                "networkObjects": [
+                  {
+                    "id": "ff808081463d291301463d2be9010000",
+                    "name": "ConvergedNet",
+                    "description": "",
+                    "type": "HYPERVISOR_MANAGEMENT",
+                    "vlanId": 28,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.28.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": "172.20.0.8",
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2be9020001",
+                          "StartingIp": "172.28.10.60",
+                          "EndingIp": "172.28.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.28.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2d70c20042",
+                    "name": "Cluster_Private",
+                    "description": "",
+                    "type": "HYPERVISOR_CLUSTER_PRIVATE",
+                    "vlanId": 24,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.24.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2d70c20043",
+                          "StartingIp": "172.24.10.60",
+                          "EndingIp": "172.24.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.24.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.62"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.63"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2c82800021",
+                    "name": "LiveMigration",
+                    "description": "",
+                    "type": "HYPERVISOR_MIGRATION",
+                    "vlanId": 23,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.23.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2c82800022",
+                          "StartingIp": "172.23.10.60",
+                          "EndingIp": "172.23.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.23.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb752d0084",
+                    "name": "PXE",
+                    "description": "",
+                    "type": "PXE",
+                    "vlanId": 18,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efbea720085",
+                    "name": "Workload-21",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 21,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efc167b0086",
+                    "name": "Workload-22",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 22,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  }
+                ],
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": "00:0E:AA:96:00:36",
+                "iscsiMacAddress": "00:0E:AA:96:00:31",
+                "iscsiIQN": "iqn.asm:software-asm-01-0000000000:0000000012",
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "4440603e-456f-4617-83e9-1663d8d39ca6",
+                "name": "2",
+                "networks": [
+                  "ff808081463d291301463d2d70c20042",
+                  "ff808081463d291301463d2be9010000",
+                  "ff808081463d291301463efb142a0063",
+                  "ff808081463d291301463d2c82800021",
+                  "ff808081463d291301463efb752d0084",
+                  "ff808081463d291301463efbea720085",
+                  "ff808081463d291301463efc167b0086"
+                ],
+                "networkObjects": [
+                  {
+                    "id": "ff808081463d291301463d2d70c20042",
+                    "name": "Cluster_Private",
+                    "description": "",
+                    "type": "HYPERVISOR_CLUSTER_PRIVATE",
+                    "vlanId": 24,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.24.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2d70c20043",
+                          "StartingIp": "172.24.10.60",
+                          "EndingIp": "172.24.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.24.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2be9010000",
+                    "name": "ConvergedNet",
+                    "description": "",
+                    "type": "HYPERVISOR_MANAGEMENT",
+                    "vlanId": 28,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.28.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": "172.20.0.8",
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2be9020001",
+                          "StartingIp": "172.28.10.60",
+                          "EndingIp": "172.28.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.28.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.62"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.63"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2c82800021",
+                    "name": "LiveMigration",
+                    "description": "",
+                    "type": "HYPERVISOR_MIGRATION",
+                    "vlanId": 23,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.23.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2c82800022",
+                          "StartingIp": "172.23.10.60",
+                          "EndingIp": "172.23.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.23.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb752d0084",
+                    "name": "PXE",
+                    "description": "",
+                    "type": "PXE",
+                    "vlanId": 18,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efbea720085",
+                    "name": "Workload-21",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 21,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efc167b0086",
+                    "name": "Workload-22",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 22,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  }
+                ],
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": "00:0E:AA:96:00:3C",
+                "iscsiMacAddress": "00:0E:AA:96:00:37",
+                "iscsiIQN": "iqn.asm:software-asm-01-0000000000:0000000014",
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "87c2a2f8-b77e-4fa4-a021-6b41d40245e6",
+                "name": "3",
+                "networks": [
+                  "ff808081463d291301463d2d70c20042",
+                  "ff808081463d291301463d2be9010000",
+                  "ff808081463d291301463efb142a0063",
+                  "ff808081463d291301463d2c82800021",
+                  "ff808081463d291301463efb752d0084",
+                  "ff808081463d291301463efbea720085",
+                  "ff808081463d291301463efc167b0086"
+                ],
+                "networkObjects": [
+                  {
+                    "id": "ff808081463d291301463d2d70c20042",
+                    "name": "Cluster_Private",
+                    "description": "",
+                    "type": "HYPERVISOR_CLUSTER_PRIVATE",
+                    "vlanId": 24,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.24.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2d70c20043",
+                          "StartingIp": "172.24.10.60",
+                          "EndingIp": "172.24.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.24.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2be9010000",
+                    "name": "ConvergedNet",
+                    "description": "",
+                    "type": "HYPERVISOR_MANAGEMENT",
+                    "vlanId": 28,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.28.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": "172.20.0.8",
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2be9020001",
+                          "StartingIp": "172.28.10.60",
+                          "EndingIp": "172.28.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.28.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.62"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.63"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2c82800021",
+                    "name": "LiveMigration",
+                    "description": "",
+                    "type": "HYPERVISOR_MIGRATION",
+                    "vlanId": 23,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.23.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2c82800022",
+                          "StartingIp": "172.23.10.60",
+                          "EndingIp": "172.23.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.23.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb752d0084",
+                    "name": "PXE",
+                    "description": "",
+                    "type": "PXE",
+                    "vlanId": 18,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efbea720085",
+                    "name": "Workload-21",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 21,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efc167b0086",
+                    "name": "Workload-22",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 22,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  }
+                ],
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": "00:0E:AA:96:00:42",
+                "iscsiMacAddress": "00:0E:AA:96:00:3D",
+                "iscsiIQN": "iqn.asm:software-asm-01-0000000000:0000000016",
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "8c83bff8-2d56-4dc6-8679-5078c994abde",
+                "name": "4",
+                "networks": [
+                  "ff808081463d291301463d2d70c20042",
+                  "ff808081463d291301463d2be9010000",
+                  "ff808081463d291301463efb142a0063",
+                  "ff808081463d291301463d2c82800021",
+                  "ff808081463d291301463efb752d0084",
+                  "ff808081463d291301463efbea720085",
+                  "ff808081463d291301463efc167b0086"
+                ],
+                "networkObjects": [
+                  {
+                    "id": "ff808081463d291301463d2d70c20042",
+                    "name": "Cluster_Private",
+                    "description": "",
+                    "type": "HYPERVISOR_CLUSTER_PRIVATE",
+                    "vlanId": 24,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.24.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2d70c20043",
+                          "StartingIp": "172.24.10.60",
+                          "EndingIp": "172.24.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.24.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2be9010000",
+                    "name": "ConvergedNet",
+                    "description": "",
+                    "type": "HYPERVISOR_MANAGEMENT",
+                    "vlanId": 28,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.28.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": "172.20.0.8",
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2be9020001",
+                          "StartingIp": "172.28.10.60",
+                          "EndingIp": "172.28.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.28.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.62"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.63"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2c82800021",
+                    "name": "LiveMigration",
+                    "description": "",
+                    "type": "HYPERVISOR_MIGRATION",
+                    "vlanId": 23,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.23.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2c82800022",
+                          "StartingIp": "172.23.10.60",
+                          "EndingIp": "172.23.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.23.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb752d0084",
+                    "name": "PXE",
+                    "description": "",
+                    "type": "PXE",
+                    "vlanId": 18,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efbea720085",
+                    "name": "Workload-21",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 21,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efc167b0086",
+                    "name": "Workload-22",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 22,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  }
+                ],
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": "00:0E:AA:96:00:48",
+                "iscsiMacAddress": "00:0E:AA:96:00:43",
+                "iscsiIQN": "iqn.asm:software-asm-01-0000000000:0000000018",
+                "wwnn": null,
+                "wwpn": null
+              }
+            ],
+            "interfaces": null,
+            "enabled": false,
+            "redundancy": false,
+            "usedforfc": false,
+            "nictype": null
+          },
+          {
+            "id": "6ecd1e91-bebc-477e-ae7c-9fc99c70701a",
+            "name": "Port 2",
+            "partitioned": true,
+            "partitions": [
+              {
+                "id": "18fc1e5f-8d02-4bc0-88a8-cf64a6810ded",
+                "name": "1",
+                "networks": [
+                  "ff808081463d291301463d2be9010000",
+                  "ff808081463d291301463d2d70c20042",
+                  "ff808081463d291301463efb142a0063",
+                  "ff808081463d291301463d2c82800021",
+                  "ff808081463d291301463efb752d0084",
+                  "ff808081463d291301463efbea720085",
+                  "ff808081463d291301463efc167b0086"
+                ],
+                "networkObjects": [
+                  {
+                    "id": "ff808081463d291301463d2be9010000",
+                    "name": "ConvergedNet",
+                    "description": "",
+                    "type": "HYPERVISOR_MANAGEMENT",
+                    "vlanId": 28,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.28.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": "172.20.0.8",
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2be9020001",
+                          "StartingIp": "172.28.10.60",
+                          "EndingIp": "172.28.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.28.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2d70c20042",
+                    "name": "Cluster_Private",
+                    "description": "",
+                    "type": "HYPERVISOR_CLUSTER_PRIVATE",
+                    "vlanId": 24,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.24.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2d70c20043",
+                          "StartingIp": "172.24.10.60",
+                          "EndingIp": "172.24.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.24.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.62"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.63"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2c82800021",
+                    "name": "LiveMigration",
+                    "description": "",
+                    "type": "HYPERVISOR_MIGRATION",
+                    "vlanId": 23,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.23.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2c82800022",
+                          "StartingIp": "172.23.10.60",
+                          "EndingIp": "172.23.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.23.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb752d0084",
+                    "name": "PXE",
+                    "description": "",
+                    "type": "PXE",
+                    "vlanId": 18,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efbea720085",
+                    "name": "Workload-21",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 21,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efc167b0086",
+                    "name": "Workload-22",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 22,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  }
+                ],
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": "00:0E:AA:96:00:4E",
+                "iscsiMacAddress": "00:0E:AA:96:00:49",
+                "iscsiIQN": "iqn.asm:software-asm-01-0000000000:000000001A",
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "4440603e-456f-4617-83e9-1663d8d39ca6",
+                "name": "2",
+                "networks": [
+                  "ff808081463d291301463d2d70c20042",
+                  "ff808081463d291301463d2be9010000",
+                  "ff808081463d291301463efb142a0063",
+                  "ff808081463d291301463d2c82800021",
+                  "ff808081463d291301463efb752d0084",
+                  "ff808081463d291301463efbea720085",
+                  "ff808081463d291301463efc167b0086"
+                ],
+                "networkObjects": [
+                  {
+                    "id": "ff808081463d291301463d2d70c20042",
+                    "name": "Cluster_Private",
+                    "description": "",
+                    "type": "HYPERVISOR_CLUSTER_PRIVATE",
+                    "vlanId": 24,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.24.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2d70c20043",
+                          "StartingIp": "172.24.10.60",
+                          "EndingIp": "172.24.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.24.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2be9010000",
+                    "name": "ConvergedNet",
+                    "description": "",
+                    "type": "HYPERVISOR_MANAGEMENT",
+                    "vlanId": 28,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.28.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": "172.20.0.8",
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2be9020001",
+                          "StartingIp": "172.28.10.60",
+                          "EndingIp": "172.28.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.28.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.62"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.63"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2c82800021",
+                    "name": "LiveMigration",
+                    "description": "",
+                    "type": "HYPERVISOR_MIGRATION",
+                    "vlanId": 23,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.23.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2c82800022",
+                          "StartingIp": "172.23.10.60",
+                          "EndingIp": "172.23.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.23.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb752d0084",
+                    "name": "PXE",
+                    "description": "",
+                    "type": "PXE",
+                    "vlanId": 18,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efbea720085",
+                    "name": "Workload-21",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 21,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efc167b0086",
+                    "name": "Workload-22",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 22,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  }
+                ],
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": "00:0E:AA:96:00:54",
+                "iscsiMacAddress": "00:0E:AA:96:00:4F",
+                "iscsiIQN": "iqn.asm:software-asm-01-0000000000:000000001C",
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "87c2a2f8-b77e-4fa4-a021-6b41d40245e6",
+                "name": "3",
+                "networks": [
+                  "ff808081463d291301463d2d70c20042",
+                  "ff808081463d291301463d2be9010000",
+                  "ff808081463d291301463efb142a0063",
+                  "ff808081463d291301463d2c82800021",
+                  "ff808081463d291301463efb752d0084",
+                  "ff808081463d291301463efbea720085",
+                  "ff808081463d291301463efc167b0086"
+                ],
+                "networkObjects": [
+                  {
+                    "id": "ff808081463d291301463d2d70c20042",
+                    "name": "Cluster_Private",
+                    "description": "",
+                    "type": "HYPERVISOR_CLUSTER_PRIVATE",
+                    "vlanId": 24,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.24.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2d70c20043",
+                          "StartingIp": "172.24.10.60",
+                          "EndingIp": "172.24.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.24.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2be9010000",
+                    "name": "ConvergedNet",
+                    "description": "",
+                    "type": "HYPERVISOR_MANAGEMENT",
+                    "vlanId": 28,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.28.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": "172.20.0.8",
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2be9020001",
+                          "StartingIp": "172.28.10.60",
+                          "EndingIp": "172.28.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.28.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.62"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.63"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2c82800021",
+                    "name": "LiveMigration",
+                    "description": "",
+                    "type": "HYPERVISOR_MIGRATION",
+                    "vlanId": 23,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.23.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2c82800022",
+                          "StartingIp": "172.23.10.60",
+                          "EndingIp": "172.23.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.23.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb752d0084",
+                    "name": "PXE",
+                    "description": "",
+                    "type": "PXE",
+                    "vlanId": 18,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efbea720085",
+                    "name": "Workload-21",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 21,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efc167b0086",
+                    "name": "Workload-22",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 22,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  }
+                ],
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": "00:0E:AA:96:00:5A",
+                "iscsiMacAddress": "00:0E:AA:96:00:55",
+                "iscsiIQN": "iqn.asm:software-asm-01-0000000000:000000001E",
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "8c83bff8-2d56-4dc6-8679-5078c994abde",
+                "name": "4",
+                "networks": [
+                  "ff808081463d291301463d2d70c20042",
+                  "ff808081463d291301463d2be9010000",
+                  "ff808081463d291301463efb142a0063",
+                  "ff808081463d291301463d2c82800021",
+                  "ff808081463d291301463efb752d0084",
+                  "ff808081463d291301463efbea720085",
+                  "ff808081463d291301463efc167b0086"
+                ],
+                "networkObjects": [
+                  {
+                    "id": "ff808081463d291301463d2d70c20042",
+                    "name": "Cluster_Private",
+                    "description": "",
+                    "type": "HYPERVISOR_CLUSTER_PRIVATE",
+                    "vlanId": 24,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.24.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2d70c20043",
+                          "StartingIp": "172.24.10.60",
+                          "EndingIp": "172.24.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.24.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2be9010000",
+                    "name": "ConvergedNet",
+                    "description": "",
+                    "type": "HYPERVISOR_MANAGEMENT",
+                    "vlanId": 28,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.28.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": "172.20.0.8",
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2be9020001",
+                          "StartingIp": "172.28.10.60",
+                          "EndingIp": "172.28.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.28.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.62"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb142a0063",
+                    "name": "iSCSI",
+                    "description": "",
+                    "type": "STORAGE_ISCSI_SAN",
+                    "vlanId": 16,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.16.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463efb142b0064",
+                          "StartingIp": "172.16.10.60",
+                          "EndingIp": "172.16.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.16.10.63"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463d2c82800021",
+                    "name": "LiveMigration",
+                    "description": "",
+                    "type": "HYPERVISOR_MIGRATION",
+                    "vlanId": 23,
+                    "static": true,
+                    "staticNetworkConfiguration": {
+                      "gateway": "172.23.0.1",
+                      "subnet": "255.255.0.0",
+                      "primaryDns": null,
+                      "secondaryDns": null,
+                      "dnsSuffix": null,
+                      "ipRange": [
+                        {
+                          "Id": "ff808081463d291301463d2c82800022",
+                          "StartingIp": "172.23.10.60",
+                          "EndingIp": "172.23.10.90"
+                        }
+                      ],
+                      "ipAddress": "172.23.10.61"
+                    }
+                  },
+                  {
+                    "id": "ff808081463d291301463efb752d0084",
+                    "name": "PXE",
+                    "description": "",
+                    "type": "PXE",
+                    "vlanId": 18,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efbea720085",
+                    "name": "Workload-21",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 21,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  },
+                  {
+                    "id": "ff808081463d291301463efc167b0086",
+                    "name": "Workload-22",
+                    "description": "",
+                    "type": "PUBLIC_LAN",
+                    "vlanId": 22,
+                    "static": false,
+                    "staticNetworkConfiguration": null
+                  }
+                ],
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": "00:0E:AA:96:00:60",
+                "iscsiMacAddress": "00:0E:AA:96:00:5B",
+                "iscsiIQN": "iqn.asm:software-asm-01-0000000000:0000000020",
+                "wwnn": null,
+                "wwpn": null
+              }
+            ],
+            "interfaces": null,
+            "enabled": false,
+            "redundancy": false,
+            "usedforfc": false,
+            "nictype": null
+          },
+          {
+            "id": "40f829dc-aaeb-43b2-b2b4-08f28c51fe41",
+            "name": "Port 3",
+            "partitioned": true,
+            "partitions": [
+              {
+                "id": "f936c6b5-917b-492a-b40a-6d7a3ad625ff",
+                "name": "1",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "056d3494-6032-4f07-9fa6-c1d38d765b5b",
+                "name": "2",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "b7fb4713-4a90-4034-9437-e8829316ba01",
+                "name": "3",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "ccfc6f10-aa1a-4737-9193-ea6520f49fab",
+                "name": "4",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              }
+            ],
+            "interfaces": null,
+            "enabled": false,
+            "redundancy": false,
+            "usedforfc": false,
+            "nictype": null
+          },
+          {
+            "id": "9891674b-ab60-4d1b-844c-fd0ce3de93ed",
+            "name": "Port 4",
+            "partitioned": true,
+            "partitions": [
+              {
+                "id": "fcff576f-9140-4b99-bfbb-73be3ca78485",
+                "name": "1",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "8f0509ea-3b57-42b1-9617-383ad5d58775",
+                "name": "2",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "7d7c3482-ef58-4d4c-9e59-5b420590f1a3",
+                "name": "3",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "f1cc5334-d86c-40d5-a7a7-1e3d8ed5cf74",
+                "name": "4",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              }
+            ],
+            "interfaces": null,
+            "enabled": false,
+            "redundancy": false,
+            "usedforfc": false,
+            "nictype": null
+          }
+        ]
+      },
+      {
+        "id": "9d2e9235-f6a9-41ba-8066-a97a07371bd1",
+        "name": "Fabric B",
+        "redundancy": false,
+        "enabled": true,
+        "usedforfc": true,
+        "nictype": "2",
+        "interfaces": [
+          {
+            "id": "d419cbf4-d453-4971-99eb-ab9d731d9721",
+            "name": "Port 1",
+            "partitioned": true,
+            "partitions": [
+              {
+                "id": "834b4e8d-6a91-42b9-ad3f-c7e1cfb6e0e9",
+                "name": "1",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "018ba63f-8fd8-426f-abb6-4fd9565fe8e8",
+                "name": "2",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "b9295810-62b3-4e64-af6b-de57a6e96ed9",
+                "name": "3",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "fe582cd1-4632-4146-bba6-1ada594d07d1",
+                "name": "4",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              }
+            ],
+            "interfaces": null,
+            "enabled": false,
+            "redundancy": false,
+            "usedforfc": false,
+            "nictype": null
+          },
+          {
+            "id": "2c6c115b-cd04-4ea1-83bb-49132712eab3",
+            "name": "Port 2",
+            "partitioned": true,
+            "partitions": [
+              {
+                "id": "d6120aef-5b4d-415c-bc85-c42d24abce46",
+                "name": "1",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "f1210918-81e0-4179-a329-4fc775fd4762",
+                "name": "2",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "24cb496e-84cb-4e0c-8b92-e2f65e6c7ed9",
+                "name": "3",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "fc629fc3-9071-4f67-9825-abd96980a193",
+                "name": "4",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              }
+            ],
+            "interfaces": null,
+            "enabled": false,
+            "redundancy": false,
+            "usedforfc": false,
+            "nictype": null
+          },
+          {
+            "id": "8acd1943-2c84-454a-a98c-9c2a56e1ab42",
+            "name": "Port 3",
+            "partitioned": true,
+            "partitions": [
+              {
+                "id": "1ee8c0e3-0739-4757-959a-8b7b95737571",
+                "name": "1",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "4ebb3b7b-0fa4-4e4e-91d0-f73cdede3eff",
+                "name": "2",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "29104947-cfef-4968-8022-a74ecba23233",
+                "name": "3",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "a5819d69-dbdf-49cf-aceb-9370c95fb8ae",
+                "name": "4",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              }
+            ],
+            "interfaces": null,
+            "enabled": false,
+            "redundancy": false,
+            "usedforfc": false,
+            "nictype": null
+          },
+          {
+            "id": "9e1e516b-a0d8-4ede-bd37-e1dc70afde97",
+            "name": "Port 4",
+            "partitioned": true,
+            "partitions": [
+              {
+                "id": "6190471f-bbf2-4191-87eb-dca4d265e46c",
+                "name": "1",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "4d3e0dbe-89a2-487c-8ae7-437f854baf73",
+                "name": "2",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "2207725f-f2ca-4015-a565-38b34c8295e1",
+                "name": "3",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "d425ec5a-5537-40e4-bb83-c073d899b91a",
+                "name": "4",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              }
+            ],
+            "interfaces": null,
+            "enabled": false,
+            "redundancy": false,
+            "usedforfc": false,
+            "nictype": null
+          }
+        ]
+      },
+      {
+        "id": "6efd7e9e-fe43-448a-b0de-692a28b19843",
+        "name": "Fabric C",
+        "redundancy": false,
+        "enabled": false,
+        "usedforfc": false,
+        "nictype": "2",
+        "interfaces": [
+          {
+            "id": "1f8f8d61-72ba-4339-a95b-08c20598e2a1",
+            "name": "Port 1",
+            "partitioned": true,
+            "partitions": [
+              {
+                "id": "590ac591-b512-4a6f-b938-e286f38c4cf4",
+                "name": "1",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "c97dddf9-4a9a-43d0-898a-f53b7bdfaedb",
+                "name": "2",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "cca2d045-4473-4e8a-ab83-918a4ca9f590",
+                "name": "3",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "8537d0e2-79fe-46ff-a87a-3b462e9ad171",
+                "name": "4",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              }
+            ],
+            "interfaces": null,
+            "enabled": false,
+            "redundancy": false,
+            "usedforfc": false,
+            "nictype": null
+          },
+          {
+            "id": "a54916c6-d0a0-4e60-b79f-68d89a7a1081",
+            "name": "Port 2",
+            "partitioned": true,
+            "partitions": [
+              {
+                "id": "c36e787e-2eb4-4437-8f2c-e410e9b96527",
+                "name": "1",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "9db8ec3c-b8be-4ecb-9790-33ce1654aa09",
+                "name": "2",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "2e7f2298-def1-40bf-8507-27f62510193c",
+                "name": "3",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "dada2ae3-7bc4-4640-8ce1-d69847ca33e1",
+                "name": "4",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              }
+            ],
+            "interfaces": null,
+            "enabled": false,
+            "redundancy": false,
+            "usedforfc": false,
+            "nictype": null
+          },
+          {
+            "id": "6f5f0d62-9c2a-456d-b77b-5eda12dc91f8",
+            "name": "Port 3",
+            "partitioned": true,
+            "partitions": [
+              {
+                "id": "9b052e18-f861-4c23-b148-204917c55b3f",
+                "name": "1",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "8f7d85cb-fbea-416c-a88b-074399cc518f",
+                "name": "2",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "380b955e-13d4-444a-a9e9-b316a65202f5",
+                "name": "3",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "02b8ee22-10e6-47a7-b7fd-75c10ff29b3c",
+                "name": "4",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              }
+            ],
+            "interfaces": null,
+            "enabled": false,
+            "redundancy": false,
+            "usedforfc": false,
+            "nictype": null
+          },
+          {
+            "id": "46fef44e-40bc-49f8-8e27-efb9b0632267",
+            "name": "Port 4",
+            "partitioned": true,
+            "partitions": [
+              {
+                "id": "4822091c-d685-4c8c-aea5-bc1f67b549bc",
+                "name": "1",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "55525bc5-3a61-4aa4-ac9c-eb41913a94d4",
+                "name": "2",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "92b61634-029a-40ba-a2c4-887263e82ab0",
+                "name": "3",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              },
+              {
+                "id": "56d47eb9-6072-4144-81bc-904b75349992",
+                "name": "4",
+                "networks": null,
+                "networkObjects": null,
+                "minimum": 0,
+                "maximum": 100,
+                "lanMacAddress": null,
+                "iscsiMacAddress": null,
+                "iscsiIQN": null,
+                "wwnn": null,
+                "wwpn": null
+              }
+            ],
+            "interfaces": null,
+            "enabled": false,
+            "redundancy": false,
+            "usedforfc": false,
+            "nictype": null
+          }
+        ]
+      }
+    ],
+    "interfaces": null
+  }
+}

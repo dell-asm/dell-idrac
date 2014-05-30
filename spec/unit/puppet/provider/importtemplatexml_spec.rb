@@ -204,16 +204,6 @@ end
       end
     end
 
-    it "should fail if trying to configure nics that the server doesn't have" do
-    fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
-                     'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32'
-      }
-      ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
-      net_config = ASM::NetworkConfiguration.new(@mock_net_config_data)
-      ASM::NetworkConfiguration.stub(:new).and_return(net_config)
-      expect {@fixture.process_nics}.to raise_error
-    end
-
     it "should use the network data to munge the config.xml" do
       Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
       Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
@@ -269,7 +259,25 @@ end
             }
             require 'asm'
             ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
-            @fixture.munge_network_configuration(@network_configuration, changes)
+            @fixture.munge_network_configuration(@network_configuration, changes, 'iSCSI')
+            changes['partial']['NIC.Integrated.1-1-1'].should_not == nil
+            changes['partial']['NIC.Integrated.1-2-1'].should_not == nil
+          end
+          it 'should configure nic partitions in config.xml FC case' do
+            @network_configuration = JSON.parse(File.read(@test_config_dir.path + '/network_configuration_fc.json'))['networkConfiguration']
+            changes = {'partial' => {}}
+            fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
+                     'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
+                     'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
+                     'NIC.Integrated.1-1-4' => '00:0E:1E:0D:8C:36',
+                     'NIC.Integrated.1-2-1' => '00:0E:1E:0D:8C:31',
+                     'NIC.Integrated.1-2-2' => '00:0E:1E:0D:8C:33',
+                     'NIC.Integrated.1-2-3' => '00:0E:1E:0D:8C:35',
+                     'NIC.Integrated.1-2-4' => '00:0E:1E:0D:8C:37',
+            }
+            require 'asm'
+            ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
+            @fixture.munge_network_configuration(@network_configuration, changes, 'FC')
             changes['partial']['NIC.Integrated.1-1-1'].should_not == nil
             changes['partial']['NIC.Integrated.1-2-1'].should_not == nil
           end
