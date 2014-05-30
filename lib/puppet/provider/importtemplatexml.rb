@@ -274,9 +274,12 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           removes = config['remove']['attributes'][fqdd] = []
           partition_no = partition.partition_no
           changes["NicMode"] = "Enabled"
+          changes["VLanMode"] = "Disabled"
           if partitioned
+            if(partition_no == 1)
               changes["VirtualizationMode"] = "NPAR"
               changes["NicPartitioning"] = "Enabled"
+            end
           else
             if partition_no > 1
               #If not being partitioned, and we have a partition that was in the list of NICs, we have to be sure to remove it, and then continue with the loop of partitions
