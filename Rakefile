@@ -1,9 +1,24 @@
 require 'rake'
 require 'rspec/core/rake_task'
 
+# Customize lint option
+task :lint do
+  PuppetLint.configuration.send("disable_80chars")
+  PuppetLint.configuration.send("disable_class_parameter_defaults")
+  PuppetLint.configuration.ignore_paths = ["spec/**/*.pp", "pkg/**/*.pp"]
+end
+
+def spec_opts
+  begin
+    File.read("spec/spec.opts").chomp || ""
+  rescue
+    ""
+  end
+end
+
 desc "Run all RSpec code examples"
 RSpec::Core::RakeTask.new(:rspec) do |t|
-  t.rspec_opts = File.read("spec/spec.opts").chomp || ""
+  t.rspec_opts = spec_opts
 end
 
 SPEC_SUITES = (Dir.entries('spec') - ['.', '..','fixtures']).select {|e| File.directory? "spec/#{e}" }
@@ -12,7 +27,7 @@ namespace :rspec do
     desc "Run #{suite} RSpec code examples"
     RSpec::Core::RakeTask.new(suite) do |t|
       t.pattern = "spec/#{suite}/**/*_spec.rb"
-      t.rspec_opts = File.read("spec/spec.opts").chomp || ""
+      t.rspec_opts = spec_opts
     end
   end
 end
