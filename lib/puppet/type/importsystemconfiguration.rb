@@ -151,4 +151,8 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     desc "the first target iscsi name"
   end
 
+  newparam(:force_reboot) do
+    desc "Whether or not the server should be rebooted"
+  end
+
 end
