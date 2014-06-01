@@ -56,6 +56,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     #if idrac is booting from san, configure networks / virtual identities
     munge_network_configuration(@resource[:network_config], changes, @resource[:target_boot_device]) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
 
+    munge_bfs_bootdevice(changes) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
     config_xml_path = "#{@resource[:nfssharepath]}/#{@resource[:configxmlfilename]}"
     if(@resource[:config_xml].nil?)
       obj = Puppet::Provider::Exporttemplatexml.new(@ip, @username, @password, resource)
@@ -104,6 +105,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
     ##Clean up the config file of all the commented text
     xml_doc.xpath('//comment()').remove
+    # Disable SD card and RAID controller for boot from SAN
     File.open(config_xml_path, 'w+') { |file| file.write(xml_doc.root.to_xml(:indent => 2)) }
     xml_doc
   end
@@ -120,6 +122,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       end
     end
     nil
+  end
+  
+  def munge_bfs_bootdevice(changes)
+    Puppet.debug("configuring the bfs boot device")
+    changes['partial'].deep_merge!({'BIOS.Setup.1-1' => { 'InternalSDCard' => "Off",  'IntegratedRaid' => 'Disabled'} })
   end
   
   def munge_network_configuration(network_configuration, changes, target_boot)
@@ -342,3 +349,4 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
 end
+

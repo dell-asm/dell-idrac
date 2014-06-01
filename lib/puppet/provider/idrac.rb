@@ -32,7 +32,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
         Puppet.debug "LC status busy, wait for 1 minute"
         sleep sleep_time
         @count +=1
-        exists?
+        return exists?
       end
       raise Puppet::Error, "Life cycle controller is busy"
       #
