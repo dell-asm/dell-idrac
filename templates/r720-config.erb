@@ -31,22 +31,6 @@ changes['whole'] =
     }
 
 #
-# sysprofile settings
-#
-if !@resource[:sysprofile].nil?
-    changes['partial'].deep_merge!(
-        {'BIOS.Setup.1-1' =>
-            {
-                'SysProfile' => "#{@resource[:sysprofile]}"
-            }
-        })
-else
-    changes['remove']['attributes'].deep_merge!(
-        {'BIOS.Setup.1-1' => 
-            ['SysProfile']
-        })
-end
-#
 # target_boot_device settings
 #
 if @resource[:target_boot_device] == "HD"
@@ -54,7 +38,7 @@ if @resource[:target_boot_device] == "HD"
         {'BIOS.Setup.1-1' =>
             {
                 'IntegratedRaid' => 'Enabled',
-                'InternalSDCard'  => 'Off',
+                'InternalSdCard'  => 'Off',
                 'HddSeq'  => 'RAID.Integrated.1-1'
             }
         })
