@@ -167,7 +167,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                   'LegacyBootProto' => 'iSCSI',
                   'VLanMode' => 'Enabled',
                   'VLanId' => iscsi_network['vlanId'],
-                  'NicPartitioning' => 'Disabled',
                   'iScsiOffloadMode' => 'Enabled'
             }
           })
