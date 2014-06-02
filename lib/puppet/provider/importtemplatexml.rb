@@ -41,7 +41,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     resp = `#{command}`
   end
 
-  def munge_config_xml
+  def get_config_changes
     templates_dir = File.join(Puppet::Module.find('idrac').path, 'templates')
     file_name = File.exist?("#{templates_dir}/#{@resource[:model]}-config.erb") ? "#{@resource[:model]}-config.erb" : "default-config.erb"
     path_to_template = File.join(templates_dir, file_name)
@@ -57,11 +57,14 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     munge_network_configuration(@resource[:network_config], changes, @resource[:target_boot_device]) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
 
     munge_bfs_bootdevice(changes) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
+    return changes
+  end
+
+  def munge_config_xml
+    changes = get_config_changes
     config_xml_path = "#{@resource[:nfssharepath]}/#{@resource[:configxmlfilename]}"
-    if(@resource[:config_xml].nil?)
-      obj = Puppet::Provider::Exporttemplatexml.new(@ip, @username, @password, resource)
-      obj.exporttemplatexml
-    else
+    #Export from server is not needed here, since the exists? method in the importsystemconfiguration provider will do an export beforehand to check values
+    if(!@resource[:config_xml].nil?)
       config_xml = Nokogiri::XML(@resource[:config_xml])
       File.open(config_xml_path, 'w+') { |file| file.write(config_xml.to_xml(:indent => 2)) }
     end

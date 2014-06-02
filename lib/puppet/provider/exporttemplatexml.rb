@@ -41,7 +41,12 @@ class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
       response = obj.checkjdstatus
       if response  == "Completed"
         Puppet.info "Export System Configuration is completed."
-        FileUtils.mv("#{@nfswritepath}/#{@resource[:configxmlfilename]}", @resource[:nfssharepath])
+        file_path = "#{@nfswritepath}/#{@resource[:configxmlfilename]}"
+        #Need to remove this section because of potentially sensitive data
+        xml = Nokogiri::XML(File.read(file_path))
+        xml.xpath("//Component[@FQDD='iDRAC.Embedded.1']").remove()
+        File.open(file_path, 'w+') { |file| file.write(xml.root.to_xml(:indent => 2)) }
+        FileUtils.mv(file_path, @resource[:nfssharepath])
         break
       else
         if response  == "Failed"
