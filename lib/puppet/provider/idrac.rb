@@ -9,15 +9,11 @@ require File.join(provider_path, 'importtemplatexml')
 class Puppet::Provider::Idrac <  Puppet::Provider
 
   def exists?
-    if(!resource[:force_reboot])
-      wait_for_lc_ready
-      exporttemplate
-      synced = config_in_sync?
-      Puppet.info("Server is already configured correctly.  Skipping import...") if synced
-      return synced
-    else
-      return false
-    end
+    wait_for_lc_ready
+    exporttemplate
+    synced = !resource[:force_reboot] && config_in_sync?
+    Puppet.info("Server is already configured correctly.  Skipping import...") if synced
+    synced
   end
 
   #This function will exit when the LC status is 0, or a puppet error will be raised if the LC status never is 0 (never stops being busy)
