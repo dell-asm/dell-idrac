@@ -100,10 +100,13 @@ class Puppet::Provider::Idrac <  Puppet::Provider
         #BiosBootSeq never seems to be exactly the same after setting it.
         #For example, we set 'NIC.Integrated.1-1-1, HardDisk.List.1-1', but it might still come back as "NIC.Integrated.1-1-1, HardDisk.List.1-1, Floppy.USBFront.1-1, Optical.USBFront.2-1, NIC.Integrated.1-2-1"
         if(key == "BiosBootSeq")
-          next
-        end
+          commented_val = find_commented_attr_val(key, xml_base)
+          if(!commented_val.nil? && !commented_val.start_with?(value))
+            in_sync = false
+            break
+          end
         # These are attributes that will change from our imported values.  They are not important to be the same value though, so they are ignored.
-        if(!["RAIDresetConfig", "RAIDaction", "RAIDinitOperation", "Size"].include?(key))
+        elsif(!["RAIDresetConfig", "RAIDaction", "RAIDinitOperation", "Size"].include?(key))
           node = xml_base.at_xpath("#{path}/Attribute[@Name='#{key}']")
           if(node.nil?)
             #Still a possibility the value is just commented out, so need to check for that.

@@ -81,7 +81,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     existing_boot_seq = find_bios_boot_seq(xml_base)
     boot_seq_change = changes['partial']['BIOS.Setup.1-1']['BiosBootSeq']
     if(existing_boot_seq && boot_seq_change)
-      if(existing_boot_seq == boot_seq_change)
+      if(existing_boot_seq.start_with?(boot_seq_change))
         changes['partial']['BIOS.Setup.1-1'].delete('BiosBootSeq')
       end
     end
@@ -301,7 +301,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           removes = config['remove']['attributes'][fqdd] = []
           partition_no = partition.partition_no
           changes["NicMode"] = "Enabled"
-          changes["VLanMode"] = "Disabled"
+          changes["VLanMode"] = "Disabled" if partition_no == 1
           if partitioned
             if(partition_no == 1)
               changes["VirtualizationMode"] = "NPAR"
