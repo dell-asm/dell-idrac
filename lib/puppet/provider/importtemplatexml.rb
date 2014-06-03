@@ -168,8 +168,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                   'FirstTgtTcpPort' => '3260',
                   'FirstTgtIscsiName' => @resource[:target_iscsi],
                   'LegacyBootProto' => 'iSCSI',
-                  'VLanMode' => 'Enabled',
-                  'VLanId' => iscsi_network['vlanId'],
                   'iScsiOffloadMode' => 'Enabled'
             }
           })
