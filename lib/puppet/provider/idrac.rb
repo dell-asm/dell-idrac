@@ -5,6 +5,7 @@ require File.join(provider_path, 'checklcstatus')
 require File.join(provider_path, 'checkjdstatus')
 require File.join(provider_path, 'exporttemplatexml')
 require File.join(provider_path, 'importtemplatexml')
+require 'puppet/idrac/util'
 
 class Puppet::Provider::Idrac <  Puppet::Provider
 
@@ -12,7 +13,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     wait_for_lc_ready
     exporttemplate
     synced = !resource[:force_reboot] && config_in_sync?
-    Puppet.info("Server is already configured correctly.  Skipping import...") if synced
+    Puppet.info("Server is already configured.  Skipping import...") if synced
     synced
   end
 
@@ -100,8 +101,10 @@ class Puppet::Provider::Idrac <  Puppet::Provider
         #BiosBootSeq never seems to be exactly the same after setting it.
         #For example, we set 'NIC.Integrated.1-1-1, HardDisk.List.1-1', but it might still come back as "NIC.Integrated.1-1-1, HardDisk.List.1-1, Floppy.USBFront.1-1, Optical.USBFront.2-1, NIC.Integrated.1-2-1"
         if(key == "BiosBootSeq")
-          commented_val = find_commented_attr_val(key, xml_base)
-          if(!commented_val.nil? && !commented_val.start_with?(value))
+          node = xml_base.at_xpath("#{path}/Attribute[@Name='#{key}']")
+          existing_seq = node.nil? ? find_commented_attr_val(key, xml_base) : node.content
+          compare = value.delete(' ').split(',').zip(existing_seq.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
+          if(compare.size != 0)
             in_sync = false
             break
           end
@@ -145,17 +148,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
 
 
   def transport
-    #
-    # This is not a perfect solution and needs to be rethought
-    # eventually. It couplees this module with the ASM deployer
-    # in a way that makes it somewhat useful and coupled with
-    # ASM. I should move this to a transport object.
-    #
-    @transport ||= begin
-      t = ASM::Util.parse_device_config(Puppet[:certname])
-      t[:password] = URI.decode(t[:password])
-      t
-    end
+    @transport ||= Puppet::Idrac::Util.get_transport()
   end
 
   def importtemplate
@@ -197,5 +190,4 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     )
     obj.checklcstatus
   end
-
 end
