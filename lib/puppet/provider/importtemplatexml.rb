@@ -140,6 +140,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     munge_iscsi_partitions(nc, changes) if target_boot == 'iSCSI'
     changes['partial'].deep_merge!({'BIOS.Setup.1-1' => { 'BiosBootSeq' => 'HardDisk.List.1-1' } }) if target_boot == 'FC'
     munge_virt_mac_addr(nc, changes)
+    changes['remove']['components']['RAID.Integrated.1-1'] = {}
     changes
   end
   
@@ -158,7 +159,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                   'TcpIpViaDHCP' => 'Disabled',
                   'IscsiViaDHCP' => 'Disabled',
                   'ChapAuthEnable' => 'Disabled',
-                  'IscsiTgtBoot' => 'Disabled',
+                  'IscsiTgtBoot' => 'Enabled',
                   'IscsiInitiatorIpAddr' => iscsi_network['staticNetworkConfiguration']['ipAddress'],
                   'IscsiInitiatorSubnet' => iscsi_network['staticNetworkConfiguration']['subnet'],
                   'IscsiInitiatorGateway' => iscsi_network['staticNetworkConfiguration']['gateway'],
@@ -173,7 +174,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           })
           bios_boot_sequence.push(partition.nic.fqdd)
         else
-          Puppet.warn("Found non-static iSCSI network while configuring boot from SAN: #{iscsi_network.id}")
+          Puppet.warn("Found non-static iSCSI network while configuring boot from SAN")
         end
     end
     changes['partial'].deep_merge!({'BIOS.Setup.1-1' => { 'BiosBootSeq' => bios_boot_sequence.join(',') } })
@@ -182,17 +183,19 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   def munge_virt_mac_addr(nc, changes)
     partitions = nc.get_all_partitions
     partitions.each do |partition|
-      changes['partial'].deep_merge!({
-        partition.nic.fqdd => {
-          'VirtMacAddr' => partition['lanMacAddress']
-        }
-      })
+      if(!partition['lanMacAddress'].nil?)
+	      changes['partial'].deep_merge!({
+	        partition.nic.fqdd => {
+	          'VirtMacAddr' => partition['lanMacAddress']
+	        }
+	      })
+	  end
     end
   end
 
   def get_iscsi_network(network_objects)
     network_objects.detect do |network|
-      network['name'] == 'iSCSI'
+      network['type'] == 'STORAGE_ISCSI_SAN'
     end
   end
 
