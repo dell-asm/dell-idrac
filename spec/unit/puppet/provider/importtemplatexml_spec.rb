@@ -92,7 +92,7 @@ END
 
                   "networkObjects"=>[
                     {
-                      "type" => "HYPERVISOR_MIGRATION"
+                      "type" => "PXE"
                     },
                   ]
                 },
