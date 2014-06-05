@@ -81,7 +81,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     existing_boot_seq = find_bios_boot_seq(xml_base)
     boot_seq_change = changes['partial']['BIOS.Setup.1-1']['BiosBootSeq']
     if(existing_boot_seq && boot_seq_change)
-      if(existing_boot_seq.start_with?(boot_seq_change))
+      seq_diff = boot_seq_change.delete(' ').split(',').zip(existing_boot_seq.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
+      if(seq_diff.size ==0)
         changes['partial']['BIOS.Setup.1-1'].delete('BiosBootSeq')
       end
     end
