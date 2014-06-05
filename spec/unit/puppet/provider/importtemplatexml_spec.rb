@@ -247,7 +247,7 @@ end
     context "when munging network_configuration" do
           it 'should configure nic partitions in config.xml' do
             @network_configuration = JSON.parse(File.read(@test_config_dir.path + '/network_configuration.json'))['networkConfiguration']
-            changes = {'partial' => {}}
+            changes = {'partial' => {}, 'remove' => {'components' => {}} }
             fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
                      'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
                      'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
@@ -265,7 +265,7 @@ end
           end
           it 'should configure nic partitions in config.xml FC case' do
             @network_configuration = JSON.parse(File.read(@test_config_dir.path + '/network_configuration_fc.json'))['networkConfiguration']
-            changes = {'partial' => {}}
+            changes = {'partial' => {}, 'remove' => {'components' => {}} }
             fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
                      'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
                      'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
