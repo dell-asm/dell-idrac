@@ -298,7 +298,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           # SET UP NIC IN CASE INTERFACE IS BEING PARTITIONED, equivalent to the enable_npar parameter
           #
           changes = config['partial'][fqdd] = {}
-          removes = config['remove']['attributes'][fqdd] = []
           partition_no = partition.partition_no
           changes["NicMode"] = "Enabled"
           changes["VLanMode"] = "Disabled" if partition_no == 1
@@ -308,17 +307,12 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
               changes["NicPartitioning"] = "Enabled"
             end
           else
-            if partition_no > 1
-              #If not being partitioned, and we have a partition that was in the list of NICs, we have to be sure to remove it, and then continue with the loop of partitions
-              config['changes']['remove']['components'][fqdd] = []
-              #These removes are ultimately unnecessary, but just exist to clean up the config hash that will be passed back.
-              config['partial'].remove(fqdd)
-              config['remove']['attributes'].remove(fqdd)
-              next
-            else
+            if partition_no == 1
               changes["VirtualizationMode"] = "NONE"
               changes["NicPartitioning"] = "Disabled"
-              removes.push('FCoEOffloadMode')
+            else
+              #This is just to clean up the changes hash, but should be unnecessary
+              config['partial'].remove(fqdd)
             end
           end
           changes['MinBandwidth'] = partition.minimum
@@ -340,9 +334,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           #
           if partition['networkObjects'] && !partition['networkObjects'].find { |obj| obj["type"] =="PXE" }.nil?
             changes["LegacyBootProto"] = "PXE"
-          else
-            #Make sure any LegacyBootProto is removed
-            removes.push("LegacyBootProto")
           end
         end
       end
