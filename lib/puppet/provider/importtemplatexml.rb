@@ -291,6 +291,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     endpoint = Hashie::Mash.new({:host => @ip, :user => @username, :password => @password})
     net_config.add_nics!(endpoint, :add_partitions => true)
     config = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
+    boot_seq = [net_config.get_partitions('PXE').first.fqdd, 'HardDisk.List.1-1'].join(', ')
+    config['partial']['BIOS.Setup.1-1'] = {'BiosBootSeq'=>boot_seq}
     net_config.cards.each do |card|
       card.interfaces.each do |interface|
         partitioned = interface['partitioned']
