@@ -281,6 +281,54 @@ end
             changes['partial']['NIC.Integrated.1-1-1'].should_not == nil
             changes['partial']['NIC.Integrated.1-2-1'].should_not == nil
           end
-    end
+          
+          it "when munging BFS parameters" do
+            @network_configuration = JSON.parse(File.read(@test_config_dir.path + '/network_configuration.json'))['networkConfiguration']
+            #ASM::NetworkConfiguration.any_instance.stub(:new).and_return(ASM::NetworkConfiguration.new(@network_configuration))
+            #ASM::NetworkConfiguration.any_instance.stub(:add_nics!).and_return(nil)   
+            @test_config_dir = URI(File.join(Dir.pwd, "spec", "fixtures"))
+            Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
+            #Puppet::Provider::Importtemplatexml.any_instance.stub(:process_nics).and_return({"partial" => {"NIC.Integrated.1-1-1" => {"IntegratedRaid"=>"Disabled"}}})
+            @fixture.resource[:target_boot_device] = 'iSCSI'
+            @fixture.resource[:network_config] = @network_configuration
+            @fixture.resource[:target_ip] = "172.16.15.100"
+            @fixture.resource[:target_iscsi] = "mytargetiscsiiqn"
+            @fixture.resource[:enable_npar] = 'false'
+            changes = {'partial' => {}, 'remove' => {'components' => {}} }
+            fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
+               'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
+               'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
+               'NIC.Integrated.1-1-4' => '00:0E:1E:0D:8C:36',
+               'NIC.Integrated.1-2-1' => '00:0E:1E:0D:8C:31',
+               'NIC.Integrated.1-2-2' => '00:0E:1E:0D:8C:33',
+               'NIC.Integrated.1-2-3' => '00:0E:1E:0D:8C:35',
+               'NIC.Integrated.1-2-4' => '00:0E:1E:0D:8C:37',
+            }
+            require 'asm'
+            ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
+            @fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'],@idrac_attrib['username'],@idrac_attrib['password'],@idrac_attrib)
+            xml = @fixture.munge_config_xml
+            xml.xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
+            comp = xml.at_xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
+            comp.should_not == nil 
+            comp.at_xpath("Attribute[@Name='VirtualizationMode']").content.should == "NONE"
+            comp.at_xpath("Attribute[@Name='VirtMacAddr']").content.should == "00:0E:AA:6B:00:05"
+	    comp.at_xpath("Attribute[@Name='VirtIscsiMacAddr']").content.should == "00:0E:AA:6B:00:01"
+	    comp.at_xpath("Attribute[@Name='TcpIpViaDHCP']").content.should == "Disabled"
+	    comp.at_xpath("Attribute[@Name='IscsiViaDHCP']").content.should == "Disabled"
+	    comp.at_xpath("Attribute[@Name='ChapAuthEnable']").content.should == "Disabled"
+	    comp.at_xpath("Attribute[@Name='IscsiTgtBoot']").content.should == "Enabled"
+	    comp.at_xpath("Attribute[@Name='IscsiInitiatorIpAddr']").content.should == "172.16.119.3"
+	    comp.at_xpath("Attribute[@Name='IscsiInitiatorSubnet']").content.should == "255.255.0.0"
+	    comp.at_xpath("Attribute[@Name='IscsiInitiatorGateway']").content.should == "172.16.0.1"
+	    comp.at_xpath("Attribute[@Name='IscsiInitiatorName']").content.should == "iqn.asm:software-asm-01-0000000000:0000000002"
+	    comp.at_xpath("Attribute[@Name='ConnectFirstTgt']").content.should == "Enabled"
+	    comp.at_xpath("Attribute[@Name='FirstTgtIpAddress']").content.should == @fixture.resource[:target_ip]
+	    comp.at_xpath("Attribute[@Name='FirstTgtTcpPort']").content.should == "3260"
+	    comp.at_xpath("Attribute[@Name='FirstTgtIscsiName']").content.should == @fixture.resource[:target_iscsi]
+	    comp.at_xpath("Attribute[@Name='LegacyBootProto']").content.should == "iSCSI"
+	    comp.at_xpath("Attribute[@Name='iScsiOffloadMode']").should == nil
+          end
 
+    end
 end

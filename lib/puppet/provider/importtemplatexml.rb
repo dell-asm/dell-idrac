@@ -169,8 +169,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                   'FirstTgtIpAddress' => @resource[:target_ip],
                   'FirstTgtTcpPort' => '3260',
                   'FirstTgtIscsiName' => @resource[:target_iscsi],
-                  'LegacyBootProto' => 'iSCSI',
-                  'iScsiOffloadMode' => 'Enabled'
+                  'LegacyBootProto' => 'iSCSI'
             }
           })
           bios_boot_sequence.push(partition.nic.fqdd)
@@ -309,6 +308,20 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           partition_no = partition.partition_no
           changes['VLanMode'] = 'Disabled' if partition_no == 1
           if partitioned
+            #
+            # CONFIGURE ISCSI NETWORK
+            #
+            if @resource[:target_boot_device] != 'iSCSI' && @resource[:target_boot_device] != 'FC'
+              if partition['networkObjects'] && !partition['networkObjects'].find { |obj| obj['type'].include?('ISCSI') }.nil?
+                changes['iScsiOffloadMode'] = 'Enabled'
+                #FCoEOffloadMode MUST be disabled if iScsiOffloadMode is Enabled
+                changes['FCoEOffloadMode'] = 'Disabled'
+              else
+                changes['iScsiOffloadMode'] = 'Disabled'
+                #Curently always setting FCoEOffloadMode to Disabled, but any logic to set it otherwise should probably go here in the future
+                changes['FCoEOffloadMode'] = 'Disabled'
+              end
+            end
             changes['NicMode'] = 'Enabled'
             changes['MinBandwidth'] = partition.minimum
             changes['MaxBandwidth'] = partition.maximum
@@ -323,20 +336,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
             else
               #This is just to clean up the changes hash, but should be unnecessary
               config['partial'].remove(fqdd)
-            end
-          end
-          #
-          # CONFIGURE ISCSI NETWORK
-          #
-          if @resource[:target_boot_device] != 'iSCSI' && @resource[:target_boot_device] != 'FC'
-            if partition['networkObjects'] && !partition['networkObjects'].find { |obj| obj['type'].include?('ISCSI') }.nil?
-              changes['iScsiOffloadMode'] = 'Enabled'
-              #FCoEOffloadMode MUST be disabled if iScsiOffloadMode is Enabled
-              changes['FCoEOffloadMode'] = 'Disabled'
-            else
-              changes['iScsiOffloadMode'] = 'Disabled'
-              #Curently always setting FCoEOffloadMode to Disabled, but any logic to set it otherwise should probably go here in the future
-              changes['FCoEOffloadMode'] = 'Disabled'
             end
           end
           #
