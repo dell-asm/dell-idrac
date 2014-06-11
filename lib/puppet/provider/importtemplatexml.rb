@@ -154,7 +154,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           changes['partial'].deep_merge!(
           { partition.nic.fqdd =>
             {
-                  'VirtualizationMode' => 'NONE',
                   'VirtMacAddr' => partition['lanMacAddress'],
                   'VirtIscsiMacAddr' => partition['iscsiMacAddress'],
                   'TcpIpViaDHCP' => 'Disabled',
