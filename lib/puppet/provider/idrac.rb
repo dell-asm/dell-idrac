@@ -6,12 +6,19 @@ require File.join(provider_path, 'checkjdstatus')
 require File.join(provider_path, 'exporttemplatexml')
 require File.join(provider_path, 'importtemplatexml')
 require 'puppet/idrac/util'
+require 'net/ssh'
 
 class Puppet::Provider::Idrac <  Puppet::Provider
 
   def exists?
     wait_for_lc_ready
-    exporttemplate
+    begin
+      exporttemplate
+    rescue
+      Puppet.debug 'Export template failed.'
+      reset
+      exporttemplate
+    end
     synced = !resource[:force_reboot] && config_in_sync?
     Puppet.info("Server is already configured.  Skipping import...") if synced
     synced
@@ -146,6 +153,29 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     nil
   end
 
+  def reset
+    Puppet.info("Resetting Idrac...")
+    Net::SSH.start( transport[:host],
+                    transport[:user], 
+                    :password => transport[:password] ) do |ssh|
+      ssh.exec "racadm racreset hard" do |ch, stream, data|
+        Puppet.debug(data)
+        raise Puppet::Error, 'Error resetting Idrac' if stream == :stderr
+      end
+    end
+    wait_for_idrac
+  end
+
+  def wait_for_idrac (timeout = 180, state = 0)
+    raise Puppet::Error, 'Timeout waiting for Idrac' if timeout == 0
+    Puppet.debug("waiting #{timeout} seconds for Idrac...")
+    sleep timeout
+    begin
+      wait_for_idrac(timeout/2) if lcstatus.to_i != state
+    rescue
+      wait_for_idrac(timeout/2)
+    end
+  end
 
   def transport
     @transport ||= Puppet::Idrac::Util.get_transport()
