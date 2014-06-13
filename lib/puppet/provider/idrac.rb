@@ -49,7 +49,8 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       resource
     )
     changes = import_obj.get_config_changes
-    config_xml_path = "#{resource[:nfssharepath]}/#{resource[:configxmlfilename]}"
+    exported_config = File.basename(resource[:configxmlfilename], ".xml")+"_exported.xml"
+    config_xml_path = File.join(resource[:nfssharepath], exported_config)
     f = File.open(config_xml_path)
     xml_doc = Nokogiri::XML(f.read) do |config|
       config.default_xml.noblanks
@@ -59,9 +60,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     changes['whole'].merge(changes['partial']).each do |fqdd, children|
       component_path = "//Component[@FQDD='#{fqdd}']"
       in_sync &= check_changes(children, component_path, xml_base)
-      if(!in_sync)
-        break;
-      end
+      break if !in_sync
     end
     changes['remove']['attributes'].each do |fqdd, children|
       break if !in_sync
@@ -73,8 +72,10 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       component_path = "//Component[@FQDD='#{fqdd}']"
       in_sync &= check_removes(fqdd, children, "/SystemConfiguration", xml_base, "Component")
     end
+    in_sync &= import_obj.raid_in_sync?(xml_base, true)
     return in_sync
   end
+
 
   def check_removes(node_name, data, path, xml_base, node_type)
     in_sync = true
@@ -88,6 +89,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       node_path = "#{path}/#{node_type}[@#{name_attr}='#{node_name}']"
       existing = xml_base.at_xpath(node_path)
       if(!existing.nil?)
+        Puppet.debug("#{node_type} #{node_name} under xpath #{node_path} exists in the exported config.xml.  Need to import to ensure the #{node_type.downcase} is removed from configuration.")
         in_sync = false
       end
     end
@@ -98,30 +100,23 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     in_sync = true
     changes.each do |key, value|
       if(value.is_a?(String))
-        #BiosBootSeq never seems to be exactly the same after setting it.
-        #For example, we set 'NIC.Integrated.1-1-1, HardDisk.List.1-1', but it might still come back as "NIC.Integrated.1-1-1, HardDisk.List.1-1, Floppy.USBFront.1-1, Optical.USBFront.2-1, NIC.Integrated.1-2-1"
-        if(key == "BiosBootSeq")
-          node = xml_base.at_xpath("#{path}/Attribute[@Name='#{key}']")
-          existing_seq = node.nil? ? find_commented_attr_val(key, xml_base) : node.content
-          compare = value.delete(' ').split(',').zip(existing_seq.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
-          if(compare.size != 0)
+        node = xml_base.at_xpath("#{path}/Attribute[@Name='#{key}']")
+        existing_val = node.nil? ? find_commented_attr_val(key, xml_base) : node.content
+        if(!existing_val.nil? && existing_val != value)
+          if(key == "BiosBootSeq")
+            compare = value.delete(' ').split(',').zip(existing_val.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
+            if(compare.size != 0)
+              Puppet.debug("Value of BiosBootSeq does not match up. Existing Seq: #{existing_val}, trying to set to  #{value}")
+              in_sync = false
+              break
+            end
+          else
+            Puppet.debug("Need to set #{key}=#{value} under FQDD at xpath #{path}.  Server's config has this set to #{key}=#{existing_val}.")
             in_sync = false
             break
           end
-        # These are attributes that will change from our imported values.  They are not important to be the same value though, so they are ignored.
-        elsif(!["RAIDresetConfig", "RAIDaction", "RAIDinitOperation", "Size"].include?(key))
-          node = xml_base.at_xpath("#{path}/Attribute[@Name='#{key}']")
-          if(node.nil?)
-            #Still a possibility the value is just commented out, so need to check for that.
-            commented_val = find_commented_attr_val(key, xml_base)
-              if(!commented_val.nil? && find_commented_attr_val(key, xml_base) != value)
-              in_sync = false
-              break;
-            end
-          elsif(node.content != value)
-            in_sync=false
-            break;
-          end
+        elsif existing_val.nil?
+          Puppet.debug("Could not find a value for #{key} under FQDD at xpath #{path}. Will need need to import new configuration.")
         end
       elsif(value.is_a?(Hash))
         new_path = "#{path}/Component[@FQDD='#{key}']"

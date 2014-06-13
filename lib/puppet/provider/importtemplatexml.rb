@@ -49,24 +49,25 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     erb = ERB.new(template.read)
     template.close
     changes = JSON.parse(erb.result(binding))
-    
     nic_changes = process_nics
     changes.deep_merge!(nic_changes)
-
     #if idrac is booting from san, configure networks / virtual identities
     munge_network_configuration(@resource[:network_config], changes, @resource[:target_boot_device]) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
-
     munge_bfs_bootdevice(changes) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
     return changes
   end
 
   def munge_config_xml
     changes = get_config_changes
-    config_xml_path = "#{@resource[:nfssharepath]}/#{@resource[:configxmlfilename]}"
+    exported_file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_exported.xml"
+    config_xml_path = File.join(@resource[:nfssharepath], @resource[:configxmlfilename])
     #Export from server is not needed here, since the exists? method in the importsystemconfiguration provider will do an export beforehand to check values
     if(!@resource[:config_xml].nil?)
       config_xml = Nokogiri::XML(@resource[:config_xml])
       File.open(config_xml_path, 'w+') { |file| file.write(config_xml.to_xml(:indent => 2)) }
+    else
+      #Want to leave the exported copy alone so we have, mostly for debugging/reference purposes.
+      FileUtils.cp(File.join(@resource[:nfssharepath], exported_file_name), config_xml_path)
     end
     f = File.open(config_xml_path)
     xml_doc = Nokogiri::XML(f.read) do |config|
@@ -85,6 +86,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       if(seq_diff.size ==0)
         changes['partial']['BIOS.Setup.1-1'].delete('BiosBootSeq')
       end
+    end
+    if(!raid_in_sync?(xml_base))
+      #Need xml_base to check raid_config_changes, so need to do here instead of in get_config_changes
+      changes.deep_merge!(get_raid_config_changes(xml_base))
     end
     #Handle partial node changes (node should exist already, but needs data edited/added within)
     changes['partial'].keys.each do |parent|
@@ -141,7 +146,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     munge_iscsi_partitions(nc, changes) if target_boot == 'iSCSI'
     changes['partial'].deep_merge!({'BIOS.Setup.1-1' => { 'BiosBootSeq' => 'HardDisk.List.1-1' } }) if target_boot == 'FC'
     munge_virt_mac_addr(nc, changes)
-    changes['remove']['components']['RAID.Integrated.1-1'] = {}
     changes
   end
   
@@ -190,6 +194,52 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 	      })
 	  end
     end
+  end
+
+  def get_raid_config_changes(xml_base)
+    changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
+    if @resource[:target_boot_device] == "HD"
+        changes['whole']['RAID.Integrated.1-1'] =
+            {
+                'RAIDresetConfig' => "True",
+                'Disk.Virtual.0:RAID.Integrated.1-1' => 
+                    {
+                        'RAIDaction'=>'Create',
+                        'RAIDinitOperation'=>'Fast',
+                        'Name'=>'RAID ONE',
+                        'Size'=>'0',
+                        'StripeSize'=>'128',
+                        'SpanDepth'=>'1',
+                        'SpanLength'=>'2',
+                        'RAIDTypes'=>'RAID 1',
+                        'IncludedPhysicalDiskID'=>['Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1',
+                                                   'Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1']
+                    }
+            }
+    else
+        changes['remove']['components']['RAID.Integrated.1-1'] = {}
+    end
+    return changes
+  end
+
+  def raid_in_sync?(xml_base, log=false)
+    in_sync = true
+    raid_fqdd_xpath = '//Component[@FQDD="RAID.Integrated.1-1"]'
+    if(@resource[:target_boot_device] == "HD")
+      comments = xml_base.xpath("#{raid_fqdd_xpath}/Component[@FQDD='Disk.Virtual.0:RAID.Integrated.1-1']//comment()")
+      disks = comments.collect{|c| Nokogiri::XML(c.content).at_xpath("/Attribute").content if c.content.include?("IncludedPhysicalDiskID")}.compact
+      raid_types = comments.collect{|c| Nokogiri::XML(c.content).at_xpath("/Attribute").content if c.content.include?("RAIDTypes")}.compact.first
+      expected = ["Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1", "Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1"]
+      if((expected - disks).size != 0)
+        in_sync = false
+        Puppet.debug("RAID config needs to be updated.  Expected IncludedPhysicalDiskIDs to be #{expected}, but got #{disks}") if log
+      end
+      if(in_sync && raid_types != "RAID 1")
+        in_sync = false
+        Puppet.debug("RAID config needs to be updated.  Expected RAIDTypes to be RAID 1, but got #{raid_types}") if log
+      end
+    end
+    in_sync
   end
 
   def get_iscsi_network(network_objects)
