@@ -3,6 +3,7 @@ require 'json'
 require 'nokogiri'
 require 'hashie'
 require 'active_support'
+require 'puppet/idrac/util'
 
 include REXML
 
@@ -154,7 +155,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     bios_boot_sequence = []
     iscsi_partitions.each do |partition|
         iscsi_network = get_iscsi_network(partition['networkObjects'])
-        if (ASM::Util.to_boolean(iscsi_network.static))
+        if (Puppet::Idrac::Util.to_boolean(iscsi_network.static))
           changes['partial'].deep_merge!(
           { partition.nic.fqdd =>
             {
