@@ -10,6 +10,7 @@ class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
     @password = password
     @resource = resource
     @nfswritepath = nfswritepath
+    @file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_exported.xml"
   end
 
   def exporttemplatexml
@@ -29,7 +30,7 @@ class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
   end
 
   def commandexe
-    command = "wsman invoke http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -a ExportSystemConfiguration -k \"IPAddress=#{@resource['nfsipaddress']}\" -k \"ShareName=#{@nfswritepath}\" -k \"ShareType=0\" -k \"FileName=#{@resource['configxmlfilename']}\""
+    command = "wsman invoke http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -a ExportSystemConfiguration -k \"IPAddress=#{@resource['nfsipaddress']}\" -k \"ShareName=#{@nfswritepath}\" -k \"ShareType=0\" -k \"FileName=#{@file_name}\""
 	  resp = `#{command}`
 	  return resp
   end
@@ -41,7 +42,7 @@ class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
       response = obj.checkjdstatus
       if response  == "Completed"
         Puppet.info "Export System Configuration is completed."
-        file_path = "#{@nfswritepath}/#{@resource[:configxmlfilename]}"
+        file_path = File.join(@nfswritepath, @file_name)
         #Need to remove this section because of potentially sensitive data
         xml = Nokogiri::XML(File.read(file_path))
         xml.xpath("//Component[@FQDD='iDRAC.Embedded.1']").remove()

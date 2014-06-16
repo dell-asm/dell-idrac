@@ -40,23 +40,6 @@ if @resource[:target_boot_device] == "HD"
                 'HddSeq'  => 'RAID.Integrated.1-1'
             }
         })
-    changes['whole']['RAID.Integrated.1-1'] =
-        {
-            'RAIDresetConfig' => "True",
-            'Disk.Virtual.0:RAID.Integrated.1-1' => 
-                {
-                    'RAIDaction'=>'Create',
-                    'RAIDinitOperation'=>'Fast',
-                    'Name'=>'RAID ONE',
-                    'Size'=>'0',
-                    'StripeSize'=>'128',
-                    'SpanDepth'=>'1',
-                    'SpanLength'=>'2',
-                    'RAIDTypes'=>'RAID 1',
-                    'IncludedPhysicalDiskID'=>['Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1',
-                                               'Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1']
-                }
-        }
 elsif @resource[:target_boot_device] == "SD"
     changes['partial'].deep_merge!(
         {'BIOS.Setup.1-1' =>
@@ -66,7 +49,6 @@ elsif @resource[:target_boot_device] == "SD"
                 'HddSeq' => 'Disk.SDInternal.1-1',
             }
         })
-    changes['remove']['components']['RAID.Integrated.1-1'] = {}
 end
 
 #

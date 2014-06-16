@@ -100,13 +100,13 @@ END
 				xml_doc = Nokogiri::XML::Builder.new do |xml|
 					xml.send(:"SystemConfiguration")
 				end
-				File.open(File.join(test_config_dir, "mock_nfs", "EXPORT.xml"), 'w+') { |file| file.write(xml_doc.to_xml(:indent => 2)) }
+				File.open(File.join(test_config_dir, "mock_nfs", "EXPORT_exported.xml"), 'w+') { |file| file.write(xml_doc.to_xml(:indent => 2)) }
 				"Completed"	
 			end
 			jobid = @fixture.exporttemplatexml
 			jobid.should == "JID_896386820311"
-			File.exist?(File.join(test_config_dir, "EXPORT.xml")).should == true
-			File.exist?(File.join(test_config_dir, "mock_nfs", "EXPORT.xml")).should_not == true
+			File.exist?(File.join(test_config_dir, "EXPORT_exported.xml")).should == true
+			File.exist?(File.join(test_config_dir, "mock_nfs", "EXPORT_exported.xml")).should_not == true
 
 		end
 		it "should not get Job it if export template fail" do
@@ -116,7 +116,7 @@ END
 		end
 
 		after(:all) do
-			FileUtils.rm(File.join(test_config_dir, "EXPORT.xml"))
+			FileUtils.rm(File.join(test_config_dir, "EXPORT_exported.xml"))
 		end
 	end
 end

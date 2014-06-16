@@ -116,7 +116,7 @@ END
           :enable_npar => 'true',
           :target_boot_device => 'HD',
           :servicetag => 'FOOTAG',
-          :nfssharepath => @test_config_dir,
+          :nfssharepath => @test_config_dir.to_s,
           :network_config_data => @mock_net_config_data
         }
     @fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'],@idrac_attrib['username'],@idrac_attrib['password'],@idrac_attrib)
@@ -157,14 +157,23 @@ end
 		end
 	end
 	context "when importing template" do 
+    before(:each) do
+      @exported_name = File.basename(@idrac_attrib[:configxmlfilename], ".xml") + "_exported.xml"
+      #Needed to call original open method by default
+      original_method = FileUtils.method(:cp)
+      FileUtils.stub(:cp).with(anything()) { |*args| original_method.call(*args) }
+      FileUtils.stub(:cp).with(File.join(@test_config_dir.path, @exported_name), File.join(@idrac_attrib[:nfssharepath], @idrac_attrib[:configxmlfilename])).and_return('')
+      original_method = File.method(:open)
+      File.stub(:open).with(anything()) { |*args| original_method.call(*args) }
+      File.stub(:open).with(File.join(@test_config_dir.path, @idrac_attrib[:configxmlfilename]), "w+").and_return('')
+    end
+
 		it "should munge basic config xml data" do
 			Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
       Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
       Puppet::Provider::Importtemplatexml.any_instance.stub(:process_nics).and_return({"partial" => {"NIC.Integrated.1-1-1" => {"IntegratedRaid"=>"Disabled"}}})
       #Needed to call original open method by default
       original_method = File.method(:open)
-      File.stub(:open).with(anything()) { |*args| original_method.call(*args) }
-      File.stub(:open).with(File.join(@test_config_dir.path, @idrac_attrib[:configxmlfilename]), "w+").and_return('')
       xml = @fixture.munge_config_xml
       xml.xpath("//Attribute[@Name='Remove']").size.should == 0
       xml.xpath("//Component[@FQDD='RemoveMe']").size.should == 0
@@ -215,11 +224,6 @@ end
       ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
       net_config = ASM::NetworkConfiguration.new(@mock_net_config_data)
       ASM::NetworkConfiguration.stub(:new).and_return(net_config)
-
-      #Needed to call original open method by default
-      original_method = File.method(:open)
-      File.stub(:open).with(anything()) { |*args| original_method.call(*args) }
-      File.stub(:open).with(File.join(@test_config_dir.path, @idrac_attrib[:configxmlfilename]), "w+").and_return('')
       xml = @fixture.munge_config_xml
       xml.xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
       ['NIC.Integrated.1-1-1', 'NIC.Integrated.1-1-2', 'NIC.Integrated.1-1-3', 'NIC.Integrated.1-1-4'].all? do |s| 
@@ -307,7 +311,15 @@ end
             require 'asm'
             ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
             @fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'],@idrac_attrib['username'],@idrac_attrib['password'],@idrac_attrib)
-            xml = @fixture.munge_config_xml
+            @exported_name = File.basename(@idrac_attrib[:configxmlfilename], ".xml") + "_exported.xml"
+            #Needed to call original open method by default
+            original_method = FileUtils.method(:cp)
+            FileUtils.stub(:cp).with(anything()) { |*args| original_method.call(*args) }
+            FileUtils.stub(:cp).with(File.join(@test_config_dir.path, @exported_name), File.join(@idrac_attrib[:nfssharepath], @idrac_attrib[:configxmlfilename])).and_return('')
+            original_method = File.method(:open)
+            File.stub(:open).with(anything()) { |*args| original_method.call(*args) }
+            File.stub(:open).with(File.join(@test_config_dir.path, @idrac_attrib[:configxmlfilename]), "w+").and_return('')
+                  xml = @fixture.munge_config_xml
             xml.xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
             comp = xml.at_xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
             comp.should_not == nil 
