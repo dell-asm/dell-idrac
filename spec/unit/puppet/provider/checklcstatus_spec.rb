@@ -64,7 +64,7 @@ END
 	
 	context "when checking lc status" do
 		it "should lc check status retun value"  do
-			@fixture.should_receive(:executelccmd).once.and_return("0")
+			@fixture.should_receive(:executelccmd).once.and_return(@response)
 			status = @fixture.checklcstatus
 			status.should == "0"
 		end
