@@ -19,12 +19,31 @@ module Puppet
       # to be factored out into a separate library both dell-idrac and
       # asm-deployer can use
 
+      PUPPET_CONF_DIR='/etc/puppetlabs/puppet'
+      DEVICE_CONF_DIR="#{PUPPET_CONF_DIR}/devices"
+      DEVICE_SSL_DIR="/var/opt/lib/pe-puppet/devices"
+
       def self.to_boolean(b)
         if(b.is_a?(String))
           b.downcase == "true"
         else
           b
         end
+      end
+
+      def self.get_plain_password(encoded_password)
+        # NOTE: The actual decryption code in encode_asm.rb is being executed in
+        # MRI ruby because it fails in jruby with "OpenSSL::Cipher::CipherError:
+        # Illegal key size".
+        #
+        # Additionally the env command is being used to clear the environment
+        # before running MRI ruby to ensure that any torquebox environment
+        # variables do not confuse the execution. We saw a few strange cases
+        # where jruby gems were being pulled into MRI that were causing
+        # decryption failures.
+        cmd = "env --ignore-environment /opt/puppet/bin/ruby /opt/asm-deployer/lib/asm/encode_asm.rb #{encoded_password}"
+        results = run_command_success(cmd)
+        URI.decode(results.stdout.strip)
       end
 
       def self.parse_device_config(cert_name)
