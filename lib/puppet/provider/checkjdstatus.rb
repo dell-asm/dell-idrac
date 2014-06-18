@@ -10,27 +10,17 @@ class Puppet::Provider::Checkjdstatus <  Puppet::Provider
     @instanceid = instanceid
   end
 
+  #Get the job status
   def checkjdstatus
-    #Get the job status
-    #response = `wsman get "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LifecycleJob?InstanceID=#{@instanceid}" -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -j utf-8 -y basic`
-	  response = executecmd
+    response = executecmd
     Puppet.info "#{response}"
     xmldoc = Document.new(response)
     jdnode = XPath.first(xmldoc, "//n1:JobStatus")
-    jdmsg = XPath.first(xmldoc, "//n1:Message")
-    tempjdnode = jdnode
-    if jdmsg.to_s =~ /Staged component configuration is complete/i
-      return "Completed"
-    end
-    if jdmsg.to_s =~ /Completed with Errors/i || jdmsg.to_s =~ /Completed with errors/i
-      return "Failed"
-    end
-
-    if tempjdnode.to_s == ""
+    if !jdnode || jdnode.text.empty?
       raise "Job ID not created"
+    else 
+      jdnode.text
     end
-    jdstatus=jdnode.text
-    return jdstatus
   end
 
   def executecmd
