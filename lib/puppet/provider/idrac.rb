@@ -5,6 +5,7 @@ require File.join(provider_path, 'checklcstatus')
 require File.join(provider_path, 'checkjdstatus')
 require File.join(provider_path, 'exporttemplatexml')
 require File.join(provider_path, 'importtemplatexml')
+require 'asm/wsman'
 require 'puppet/idrac/util'
 require 'net/ssh'
 
@@ -159,6 +160,8 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       end
     end
     wait_for_idrac
+    reboot
+    wait_for_idrac
   end
 
   def wait_for_idrac (timeout = 180, state = 0)
@@ -215,4 +218,9 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     )
     obj.checklcstatus
   end
+
+  def reboot
+    ASM::WsMan.reboot({:host=>transport[:host], :user=>transport[:user], :password=>transport[:password]})
+  end
+
 end
