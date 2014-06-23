@@ -36,8 +36,7 @@ if @resource[:target_boot_device] == "HD"
         {'BIOS.Setup.1-1' =>
             {
                 'IntegratedRaid' => 'Enabled',
-                'InternalSdCard'  => 'Off',
-                'HddSeq'  => 'RAID.Integrated.1-1'
+                'InternalSdCard'  => 'Off'
             }
         })
 elsif @resource[:target_boot_device] == "SD"
@@ -45,8 +44,7 @@ elsif @resource[:target_boot_device] == "SD"
         {'BIOS.Setup.1-1' =>
             {
                 'IntegratedRaid' => 'Disabled',
-                'InternalSdCard' => 'On',
-                'HddSeq' => 'Disk.SDInternal.1-1',
+                'InternalSdCard' => 'On'
             }
         })
 end
