@@ -19,7 +19,7 @@ class Puppet::Provider::Checkjdstatus <  Puppet::Provider
     jdnode = XPath.first(xmldoc, "//n1:JobStatus")
     jdmsg = XPath.first(xmldoc, "//n1:Message")
     tempjdnode = jdnode
-    if jdmsg.to_s =~ /Completed with Errors/i || jdmsg.to_s =~ /Completed with errors/i
+    if jdmsg.to_s =~ /Completed with Errors/i || jdmsg.to_s =~ /Completed with errors/i || jdnode.to_s =~ /Completed with Errors/i || jdnode.to_s =~ /Completed with errors/i
       return "Failed"
     end
 
