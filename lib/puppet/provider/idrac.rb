@@ -65,7 +65,9 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     end
     xml_base = xml_doc.xpath('/SystemConfiguration')
     #can check partial and whole node changes in the same way
-    changes['whole'].merge(changes['partial']).each do |fqdd, children|
+    edits = changes['whole'].merge(changes['partial'])
+    check_for_important_attrs(xml_base, edits)
+    edits.each do |fqdd, children|
       component_path = "//Component[@FQDD='#{fqdd}']"
       in_sync &= check_changes(children, component_path, xml_base)
       break if !in_sync
@@ -80,8 +82,19 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       component_path = "//Component[@FQDD='#{fqdd}']"
       in_sync &= check_removes(fqdd, children, "/SystemConfiguration", xml_base, "Component")
     end
-    in_sync &= import_obj.raid_in_sync?(xml_base, true)
+    in_sync &= import_obj.raid_in_sync?(xml_base, true) if in_sync
     return in_sync
+  end
+
+  def check_for_important_attrs(xml_base, changes)
+    bios_settings_path = "//Component[@FQDD='BIOS.Setup.1-1']"
+    ['InternalSdCard', 'IntegratedRaid'].each do |attr_name|
+      node = xml_base.at_xpath("#{bios_settings_path}/Attribute[@Name='#{attr_name}']")
+      value = changes['BIOS.Setup.1-1'][attr_name]
+      if(node.nil? && ['On','Enabled'].include?(value))
+        raise("Need to set #{attr_name} to #{value}, but that attribute does not exist on the server.")
+      end
+    end
   end
 
 
@@ -110,7 +123,10 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       if(value.is_a?(String))
         node = xml_base.at_xpath("#{path}/Attribute[@Name='#{key}']")
         existing_val = node.nil? ? find_commented_attr_val(key, xml_base) : node.content
-        if(!existing_val.nil? && existing_val != value)
+        if(existing_val.nil?)
+          Puppet.debug("Could not find a value for #{key} under FQDD at xpath #{path}. Will need need to import new configuration.")
+          in_sync=false
+        elsif(existing_val != value)
           if(key == "BiosBootSeq")
             compare = value.delete(' ').split(',').zip(existing_val.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
             if(compare.size != 0)
@@ -123,8 +139,6 @@ class Puppet::Provider::Idrac <  Puppet::Provider
             in_sync = false
             break
           end
-        elsif existing_val.nil?
-          Puppet.debug("Could not find a value for #{key} under FQDD at xpath #{path}. Will need need to import new configuration.")
         end
       elsif(value.is_a?(Hash))
         new_path = "#{path}/Component[@FQDD='#{key}']"

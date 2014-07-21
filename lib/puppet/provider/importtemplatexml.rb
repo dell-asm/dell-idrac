@@ -87,6 +87,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         changes['partial']['BIOS.Setup.1-1'].delete('BiosBootSeq')
       end
     end
+    handle_missing_devices(xml_base, changes)
+
     if(!raid_in_sync?(xml_base))
       #Need xml_base to check raid_config_changes, so need to do here instead of in get_config_changes
       changes.deep_merge!(get_raid_config_changes(xml_base))
@@ -117,6 +119,20 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     # Disable SD card and RAID controller for boot from SAN
     File.open(config_xml_path, 'w+') { |file| file.write(xml_doc.root.to_xml(:indent => 2)) }
     xml_doc
+  end
+
+  #Helper function which will let us ignore device values that don't exist if we can (ex: Ignoring that the server doesn't have an SD card if we're setting SD to off anyway)
+  def handle_missing_devices(xml_base, changes)
+    ['InternalSdCard', 'IntegratedRaid'].each do |dev_attr|
+      #Check if Attribute name exists in the xml, and if it doesn't, check if we're trying to set to disabled.  If so, delete from the list of changes.
+      if(xml_base.at_xpath("//Attribute[@Name='#{dev_attr}']").nil?)
+        value = changes['partial']['BIOS.Setup.1-1'][dev_attr]
+        if(['Off', 'Disabled'].include?(value))
+          Puppet.debug("Trying to set #{dev_attr} to #{value}, but the relevant device does not exist on the server. The attribute will be ignored.")
+          changes['partial']['BIOS.Setup.1-1'].delete(dev_attr)
+        end
+      end
+    end
   end
 
   #Helper function which just searches through the xml comments for BiosBootSeq value, since it will be commented out
