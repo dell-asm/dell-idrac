@@ -156,7 +156,13 @@ class Puppet::Provider::Idrac <  Puppet::Provider
                     :password => transport[:password] ) do |ssh|
       ssh.exec "racadm racreset hard" do |ch, stream, data|
         Puppet.debug(data)
-        raise Puppet::Error, 'Error resetting Idrac' if stream == :stderr
+        
+        #Issue warning for the message 'Could not chdir to home directory /flash/data0/home/root: No such file or directory' else raise error                
+        if stream.include? 'Could not chdir to home directory'
+           Puppet.warn("Warning for message - #{stream}")
+        elsif stream == :stderr
+           raise Puppet::Error, 'Error resetting Idrac'   
+        end               
       end
     end
     wait_for_idrac
