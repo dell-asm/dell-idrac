@@ -160,7 +160,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
         
         #Issue warning for the message 'Could not chdir to home directory /flash/data0/home/root: No such file or directory' else raise error                
         if data.include? "Could not chdir to home directory"          
-           Puppet.warning "Warning for message - #{stream}"
+           Puppet.warning "Warning for message - #{data}"
         elsif stream == :stderr
            raise Puppet::Error, 'Error resetting Idrac'   
         end               
