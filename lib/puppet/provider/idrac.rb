@@ -8,6 +8,7 @@ require File.join(provider_path, 'importtemplatexml')
 require 'asm/wsman'
 require 'puppet/idrac/util'
 require 'net/ssh'
+require 'puppet/util/warnings'
 
 class Puppet::Provider::Idrac <  Puppet::Provider
 
@@ -158,8 +159,8 @@ class Puppet::Provider::Idrac <  Puppet::Provider
         Puppet.debug(data)
         
         #Issue warning for the message 'Could not chdir to home directory /flash/data0/home/root: No such file or directory' else raise error                
-        if stream.include? 'Could not chdir to home directory'
-           Puppet.warn("Warning for message - #{stream}")
+        if data.include? "Could not chdir to home directory"          
+           Puppet.warning "Warning for message - #{stream}"
         elsif stream == :stderr
            raise Puppet::Error, 'Error resetting Idrac'   
         end               
