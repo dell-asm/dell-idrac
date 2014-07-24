@@ -360,18 +360,24 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
             #
             # CONFIGURE ISCSI NETWORK
             #
+            changes['NicMode'] = 'Enabled'
             if @resource[:target_boot_device] != 'iSCSI' && @resource[:target_boot_device] != 'FC'
               if partition['networkObjects'] && !partition['networkObjects'].find { |obj| obj['type'].include?('ISCSI') }.nil?
                 changes['iScsiOffloadMode'] = 'Enabled'
                 #FCoEOffloadMode MUST be disabled if iScsiOffloadMode is Enabled
                 changes['FCoEOffloadMode'] = 'Disabled'
+              elsif partition['networkObjects'] && !partition['networkObjects'].find { |obj| obj['type'].include?('FCOE') }.nil?
+                changes['iScsiOffloadMode'] = 'Disabled'
+                #FCoEOffloadMode MUST be disabled if iScsiOffloadMode is Enabled
+                changes['FCoEOffloadMode'] = 'Enabled'
+                changes['NicMode'] = 'Disabled'
               else
                 changes['iScsiOffloadMode'] = 'Disabled'
                 #Curently always setting FCoEOffloadMode to Disabled, but any logic to set it otherwise should probably go here in the future
                 changes['FCoEOffloadMode'] = 'Disabled'
               end
             end
-            changes['NicMode'] = 'Enabled'
+            
             changes['MinBandwidth'] = partition.minimum
             changes['MaxBandwidth'] = partition.maximum
             if(partition_no == 1)
