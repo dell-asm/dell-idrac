@@ -168,7 +168,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     Net::SSH.start( transport[:host],
                     transport[:user], 
                     :password => transport[:password] ) do |ssh|
-      ssh.exec "racadm racreset hard" do |ch, stream, data|
+      ssh.exec "racadm racreset soft" do |ch, stream, data|
         Puppet.debug(data)
         raise Puppet::Error, 'Error resetting Idrac' if stream == :stderr
       end
