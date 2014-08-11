@@ -4,7 +4,7 @@ require 'puppet/provider/exporttemplatexml'
 require 'yaml'
 require 'rspec/expectations'
 require 'hashie'
-require 'asm'
+require 'asm/network_configuration'
 
 describe Puppet::Provider::Importtemplatexml do
 	

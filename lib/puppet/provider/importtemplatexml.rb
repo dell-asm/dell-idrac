@@ -155,7 +155,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
   
   def munge_network_configuration(network_configuration, changes, target_boot)
-    require 'asm'
+    require 'asm/network_configuration'
     nc = ASM::NetworkConfiguration.new(network_configuration)
     endpoint = Hashie::Mash.new({:host => @ip, :user => @username, :password => @password})
     nc.add_nics!(endpoint, :add_partitions => true)
@@ -350,7 +350,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def process_nics
-    require 'asm'
+    require 'asm/network_configuaration'
     net_config = ASM::NetworkConfiguration.new(@network_config_data)
     endpoint = Hashie::Mash.new({:host => @ip, :user => @username, :password => @password})
     net_config.add_nics!(endpoint, :add_partitions => true)
