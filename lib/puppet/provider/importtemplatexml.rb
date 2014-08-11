@@ -350,7 +350,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def process_nics
-    require 'asm/network_configuaration'
+    require 'asm/network_configuration'
     net_config = ASM::NetworkConfiguration.new(@network_config_data)
     endpoint = Hashie::Mash.new({:host => @ip, :user => @username, :password => @password})
     net_config.add_nics!(endpoint, :add_partitions => true)
