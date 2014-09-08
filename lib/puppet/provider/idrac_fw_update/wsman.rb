@@ -33,11 +33,24 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
     @transport ||= Puppet::Idrac::Util.get_transport()
   end
 
+  def run_wsman(cmd)
+    i = 0
+    until i == 3
+      resp = %x[#{cmd}]
+      if resp.length == 0
+        sleep 30
+      elsif i == 3
+        Puppet.error("Could not connect connect to wsman enpoint")
+      else
+        return resp
+      end
+    end
+  end
 
   def parse_for_updates
     #Returns true when there is no updates to be installed
     wsman_cmd = "wsman invoke -a \"GetRepoBasedUpdateList\" http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService+SystemCreationClassName=DCIM_ComputerSystem+SystemName=IDRAC:ID+Name=SoftwareUpdate   -h #{transport[:host]} -u #{transport[:user]} -p #{transport[:password]} -P 443 -c Dummy -y basic -V -v"
-    resp = %x[ #{wsman_cmd} ]
+    resp = run_wsman(wsman_cmd)
     doc = Nokogiri::XML(resp)
     if doc.xpath('//n1:ReturnValue').text == '2'
       if doc.xpath('//n1:MessageID').text == 'SUP029'
@@ -67,7 +80,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
       end
     end
     $updates.each do |update|
-      Puppet.debug("Firmware update available for: #{$update}")
+      Puppet.debug("Firmware update available for: #{update}")
     end
     false
   end
@@ -76,7 +89,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
     Puppet.debug('ABOUT TO APPLY FIRMWARE UPDATES')
     wsman_cmd =  "wsman invoke -a 'InstallFromRepository' http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService+SystemCreationClassName=DCIM_ComputerSystem+SystemName=IDRAC:ID+Name=SoftwareUpdate -h #{transport[:host]} -P 443 -u #{transport[:user]} -p #{transport[:password]} -c Dummy -y basic -V -v -k \"ipaddress=#{@asm_hostname}\" -k \"sharename=/var/nfs\" -k \"sharetype=0\" -k \"RebootNeeded=#{@restart}\" -k \"ApplyUpdate=1\""
     Puppet.debug("Running command: #{wsman_cmd}")
-    resp = %x[ #{wsman_cmd} ]
+    resp = run_wsman(wsman_cmd)
     Puppet.debug("WSMAN RESPONSE: #{resp}")
     doc = Nokogiri::XML(resp)
     if doc.xpath('//n1:ReturnValue').text == '4096'
@@ -115,7 +128,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
         end
       end
     end
-    if status.values.all? {|v| v =~ /Complete|Failed/ }
+    if status.values.all? {|v| v =~ /Completed|Failed/ }
       Puppet.debug(status)
       return true
     else
@@ -128,7 +141,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
 
   def get_data(job_id)
     wsman_cmd = "wsman enumerate \"http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LifecycleJob\" -h #{transport[:host]} -V -v -c Dummy -P 443 -u #{transport[:user]} -p #{transport[:password]} -j utf-8 -y basic -V -v"
-    resp = %x[ #{wsman_cmd} ]
+    resp = run_wsman(wsman_cmd)
     header =  "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
     bucket = []
     bucket << header
