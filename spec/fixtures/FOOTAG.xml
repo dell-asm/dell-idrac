@@ -5,8 +5,15 @@
     <Attribute Name="ProcVirtualization">Enabled</Attribute>
     <Attribute Name="Remove"/>
 </Component>
+<Component FQDD="NIC.Integrated.1-1-1">
+    <Attribute Name="VirtualizationMode">NONE</Attribute>
+</Component>
+<Component FQDD="NIC.Integrated.1-2-1">
+    <Attribute Name="VirtualizationMode">NONE</Attribute>
+</Component>
 
 <Component FQDD="RemoveMe">
 </Component>
 
 </SystemConfiguration>
+
