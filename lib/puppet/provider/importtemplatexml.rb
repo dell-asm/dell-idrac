@@ -56,26 +56,33 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     munge_bfs_bootdevice(changes) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
     return changes
   end
+  
+    def xml_base
+    @xml_base ||= get_xml_base
+  end
 
-  def munge_config_xml
-    changes = get_config_changes
+  def get_xml_base
     exported_file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_exported.xml"
-    config_xml_path = File.join(@resource[:nfssharepath], @resource[:configxmlfilename])
+    @config_xml_path = File.join(@resource[:nfssharepath], @resource[:configxmlfilename])
     #Export from server is not needed here, since the exists? method in the importsystemconfiguration provider will do an export beforehand to check values
     if(!@resource[:config_xml].nil?)
       config_xml = Nokogiri::XML(@resource[:config_xml])
-      File.open(config_xml_path, 'w+') { |file| file.write(config_xml.to_xml(:indent => 2)) }
+      File.open(@config_xml_path, 'w+') { |file| file.write(config_xml.to_xml(:indent => 2)) }
     else
       #Want to leave the exported copy alone so we have, mostly for debugging/reference purposes.
-      FileUtils.cp(File.join(@resource[:nfssharepath], exported_file_name), config_xml_path)
+      FileUtils.cp(File.join(@resource[:nfssharepath], exported_file_name), @config_xml_path)
     end
-    f = File.open(config_xml_path)
-    xml_doc = Nokogiri::XML(f.read) do |config|
+    f = File.open(@config_xml_path)
+    @xml_doc = Nokogiri::XML(f.read) do |config|
       config.default_xml.noblanks
     end
-    xml_base = xml_doc.xpath('/SystemConfiguration').first
+    finalxml = @xml_doc.xpath('/SystemConfiguration').first
     f.close
-    #REMOVE all existing NIC data.  All NIC FQDDs will contain "NIC."
+    finalxml
+  end
+
+  def munge_config_xml
+    changes = get_config_changes
     xml_base.xpath("//Component[contains(@FQDD, 'NIC.')]").remove()
     xml_base['ServiceTag'] = @resource[:servicetag]
     #Current workaround for LC issue, where if BiotBootSeq is already set to what ASM needs it to be, setting it again to the same thing will cause an error.
@@ -115,10 +122,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       process_remove_nodes(parent, changes["remove"]["components"][parent], xml_base, "Component")
     end
     ##Clean up the config file of all the commented text
-    xml_doc.xpath('//comment()').remove
+    @xml_doc.xpath('//comment()').remove
     # Disable SD card and RAID controller for boot from SAN
-    File.open(config_xml_path, 'w+') { |file| file.write(xml_doc.root.to_xml(:indent => 2)) }
-    xml_doc
+    File.open(@config_xml_path, 'w+') { |file| file.write(@xml_doc.root.to_xml(:indent => 2)) }
+    xml_base
   end
 
   #Helper function which will let us ignore device values that don't exist if we can (ex: Ignoring that the server doesn't have an SD card if we're setting SD to off anyway)
@@ -402,8 +409,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
             end
           else
             if partition_no == 1
-              changes['VirtualizationMode'] = 'NONE'
-              changes['NicPartitioning'] = 'Disabled'
+             handle_missing_intelattributes(changes)
             else
               #This is just to clean up the changes hash, but should be unnecessary
               config['partial'].remove(fqdd)
@@ -420,6 +426,17 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
     config
   end
-
+   #Helper function to remove two attributes from config.xml for Intel cards only.
+  def handle_missing_intelattributes(changes)
+    changes['VirtualizationMode'] = 'NONE'
+    changes['NicPartitioning'] = 'Disabled'
+    ['VirtualizationMode','NicPartitioning'].each do |dev_attr|
+      #Check if Attribute name exists in the xml, and if it doesn't, check if we're trying to set to disabled.  If so, delete from the list of changes.
+      if(xml_base.at_xpath("//Attribute[@Name='#{dev_attr}']").nil?)
+        Puppet.debug("Trying to set #{dev_attr}  but the relevant device does not exist on the server. The attribute will be ignored.")
+         changes.delete(dev_attr)
+      end
+    end
+  end 
 end
 
