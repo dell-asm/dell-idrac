@@ -409,7 +409,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
             end
           else
             if partition_no == 1
-             handle_missing_intelattributes(changes)
+             handle_missing_attributes(changes)
             else
               #This is just to clean up the changes hash, but should be unnecessary
               config['partial'].remove(fqdd)
@@ -427,7 +427,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     config
   end
    #Helper function to remove two attributes from config.xml for Intel cards only.
-  def handle_missing_intelattributes(changes)
+  def handle_missing_attributes(changes)
     changes['VirtualizationMode'] = 'NONE'
     changes['NicPartitioning'] = 'Disabled'
     ['VirtualizationMode','NicPartitioning'].each do |dev_attr|
