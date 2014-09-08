@@ -35,15 +35,18 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
 
   def run_wsman(cmd)
     i = 0
-    until i == 3
+    sleeptime = 30
+    4.times do
       resp = %x[#{cmd}]
       if resp.length == 0
-        sleep 30
-      elsif i == 3
+        sleep sleeptime
+        sleeptime += 30
+      elsif i == 4
         Puppet.error("Could not connect connect to wsman enpoint")
       else
         return resp
       end
+      i += 1
     end
   end
 
@@ -68,15 +71,21 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
   def show_available_updates(doc)
     out = doc.xpath('//n1:PackageList')
     $updates = []
-    switch = false
+    $targets = []
+    switch = 0
     out.first.to_s.each_line do |ln|
       if ln.include? "DisplayName"
-        switch = true
-      elsif switch
+        switch = 1
+      elsif switch == 1
         $updates << ln.split(/&lt;\/?VALUE&gt;/).join
-        switch = false
+        switch = 0
+      elsif ln.include? "\"Target\""
+        switch = 2
+      elsif switch == 2
+        $targets << ln.split(/&lt;\/?VALUE&gt;/).join.gsub(' ','').chop
+        switch = 0
       else
-        switch = false
+        switch = 0
       end
     end
     $updates.each do |update|
@@ -108,17 +117,9 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
     #What updates are we tracking?
     status = {}
     looking_for = []
-    $updates.each do |u|
-      if u.match(/Integrated Dell Remote/i)
-        looking_for << '#iDRAC'
-        status['#iDRAC'] = 'unknown'
-      elsif u.match(/BIOS/i)
-        looking_for << 'BIOS'
-        status['BIOS'] = 'unknown'
-      elsif u.match(/Lifecycle Controller/i)
-        looking_for << 'LC.Embedded'
-        status['LC.Embedded'] = 'unknown'
-      end
+    $targets.each do |target|
+      looking_for << "update:#{target}"
+      status["update:#{target}"] = 'unknown'
     end
     data = get_data(job_id)
     data.values.each do |value|
