@@ -1,7 +1,4 @@
-require 'asm/util'
-require 'uri'
 require 'puppet/idrac/util'
-require 'net/ssh'
 require 'nokogiri'
 require 'active_support'
 
