@@ -14,4 +14,8 @@ Puppet::Type.newtype(:idrac_fw_update) do
   newparam(:path) do
     desc "The path to the remote location of the firmwre (on the network share)"
   end
+ 
+  newparam(:force_restart, :boolean => true) do 
+    desc "To force the reestart automatically or wait"
+  end
 end
