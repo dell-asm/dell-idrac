@@ -20,7 +20,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
 
   def check_for_update
     wsman_cmd =  "wsman invoke -a 'InstallFromRepository' http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService+SystemCreationClassName=DCIM_ComputerSystem+SystemName=IDRAC:ID+Name=SoftwareUpdate -h #{transport[:host]} -P 443 -u #{transport[:user]} -p #{transport[:password]} -c Dummy -y basic -V -v -k \"ipaddress=#{@asm_hostname}\" -k \"sharename=/var/nfs\" -k \"sharetype=0\" -k \"RebootNeeded=#{@restart}\" -k \"ApplyUpdate=0\""
-    resp = %x[ #{wsman_cmd} ]
+    resp = run_wsman(wsman_cmd)
     doc = Nokogiri::XML(resp)
     if doc.xpath('//n1:ReturnValue').text == '4096'
       return parse_for_updates
