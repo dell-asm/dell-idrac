@@ -67,14 +67,14 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
 
   def show_available_updates(doc)
     out = doc.xpath('//n1:PackageList')
-    $updates = []
+    updates = []
     $targets = []
     switch = 0
     out.first.to_s.each_line do |ln|
       if ln.include? "DisplayName"
         switch = 1
       elsif switch == 1
-        $updates << ln.split(/&lt;\/?VALUE&gt;/).join
+        updates << ln.split(/&lt;\/?VALUE&gt;/).join
         switch = 0
       elsif ln.include? "\"Target\""
         switch = 2
@@ -85,7 +85,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
         switch = 0
       end
     end
-    $updates.each do |update|
+    updates.each do |update|
       Puppet.debug("Firmware update available for: #{update}")
     end
     false
