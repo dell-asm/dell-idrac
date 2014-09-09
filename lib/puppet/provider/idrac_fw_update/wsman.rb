@@ -68,7 +68,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
   def show_available_updates(doc)
     out = doc.xpath('//n1:PackageList')
     updates = []
-    $targets = []
+    @targets = []
     switch = 0
     out.first.to_s.each_line do |ln|
       if ln.include? "DisplayName"
@@ -79,7 +79,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
       elsif ln.include? "\"Target\""
         switch = 2
       elsif switch == 2
-        $targets << ln.split(/&lt;\/?VALUE&gt;/).join.gsub(' ','').chop
+        @targets << ln.split(/&lt;\/?VALUE&gt;/).join.gsub(' ','').chop
         switch = 0
       else
         switch = 0
@@ -114,7 +114,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
     #What updates are we tracking?
     status = {}
     looking_for = []
-    $targets.each do |target|
+    @targets.each do |target|
       looking_for << "update:#{target}"
       status["update:#{target}"] = 'unknown'
     end
