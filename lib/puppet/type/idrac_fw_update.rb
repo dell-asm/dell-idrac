@@ -14,7 +14,7 @@ Puppet::Type.newtype(:idrac_fw_update) do
   newparam(:path) do
     desc "The path to the remote location of the firmware (on the network share)"
     validate do |value|
-      unless File.directory? value
+      unless File.exist? value
         raise ArgumentError, "The path: %x does not exist" % value
       end
     end

@@ -5,7 +5,8 @@ require 'active_support'
 Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
 
   def exists?
-    @path = resource[:path]
+    @share = resource[:path].split('/')[0..-2].join('/')
+    @catalog_name = resource[:path].split('/')[-1]
     @asm_hostname = resource[:asm_hostname]
     @restart = resource[:force_restart]
     updates_available = check_for_update
@@ -16,7 +17,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
 
 
   def check_for_update
-    wsman_cmd =  "wsman invoke -a 'InstallFromRepository' http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService+SystemCreationClassName=DCIM_ComputerSystem+SystemName=IDRAC:ID+Name=SoftwareUpdate -h #{transport[:host]} -P 443 -u #{transport[:user]} -p #{transport[:password]} -c Dummy -y basic -V -v -k \"ipaddress=#{@asm_hostname}\" -k \"sharename=/var/nfs\" -k \"sharetype=0\" -k \"RebootNeeded=#{@restart}\" -k \"ApplyUpdate=0\""
+    wsman_cmd =  "wsman invoke -a 'InstallFromRepository' http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService+SystemCreationClassName=DCIM_ComputerSystem+SystemName=IDRAC:ID+Name=SoftwareUpdate -h #{transport[:host]} -P 443 -u #{transport[:user]} -p #{transport[:password]} -c Dummy -y basic -V -v -k \"ipaddress=#{@asm_hostname}\" -k \"sharename=#{@share}\" -k \"sharetype=0\" -k \"RebootNeeded=#{@restart}\" -k \"ApplyUpdate=0\" -k \"CatalogName=#{@catalog_name}\""
     resp = run_wsman(wsman_cmd)
     doc = Nokogiri::XML(resp)
     if doc.xpath('//n1:ReturnValue').text == '4096'
@@ -33,6 +34,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
   def run_wsman(cmd)
     i = 0
     sleeptime = 30
+    Puppet.debug("Running command: #{cmd}")
     4.times do
       resp = %x[#{cmd}]
       if resp.length == 0
@@ -55,6 +57,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
     if doc.xpath('//n1:ReturnValue').text == '2'
       if doc.xpath('//n1:MessageID').text == 'SUP029'
         Puppet.debug doc.xpath('//n1:Message').text
+        Puppet.debug("---------- NO UPDATES AVAILABLE -----------")
         return true
       else
         raise Puppet::Error, doc.xpath('//n1:Message').text
@@ -93,7 +96,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
 
   def create
     Puppet.debug('ABOUT TO APPLY FIRMWARE UPDATES')
-    wsman_cmd =  "wsman invoke -a 'InstallFromRepository' http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService+SystemCreationClassName=DCIM_ComputerSystem+SystemName=IDRAC:ID+Name=SoftwareUpdate -h #{transport[:host]} -P 443 -u #{transport[:user]} -p #{transport[:password]} -c Dummy -y basic -V -v -k \"ipaddress=#{@asm_hostname}\" -k \"sharename=/var/nfs\" -k \"sharetype=0\" -k \"RebootNeeded=#{@restart}\" -k \"ApplyUpdate=1\""
+    wsman_cmd =  "wsman invoke -a 'InstallFromRepository' http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService+SystemCreationClassName=DCIM_ComputerSystem+SystemName=IDRAC:ID+Name=SoftwareUpdate -h #{transport[:host]} -P 443 -u #{transport[:user]} -p #{transport[:password]} -c Dummy -y basic -V -v -k \"ipaddress=#{@asm_hostname}\" -k \"sharename=#{@share}\" -k \"sharetype=0\" -k \"RebootNeeded=#{@restart}\" -k \"ApplyUpdate=1\" -k \"CatalogName=#{@catalog_name}\""
     Puppet.debug("Running command: #{wsman_cmd}")
     resp = run_wsman(wsman_cmd)
     Puppet.debug("WSMAN RESPONSE: #{resp}")
