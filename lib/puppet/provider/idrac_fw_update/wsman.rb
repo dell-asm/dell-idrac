@@ -102,10 +102,14 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
       job_id = doc.xpath('//wsman:Selector').first.text
       Puppet.debug("Firmware update job started successfully")
       Puppet.debug("Job ID: #{job_id}")
-      sleep 20
-      finished = false
-      until finished
-        finished = get_update_logs(job_id)
+      if @restart == "false"
+        Puppet.debug("Any firmware updates requiring restart will occur on next reboot")
+      else
+        sleep 20
+        finished = false
+        until finished
+          finished = get_update_logs(job_id)
+        end
       end
     else
       raise Puppet::Error, "Error running wsman: InstallFromRepository. Error message: #{doc.xpath('//n1:Message').text}"
