@@ -103,7 +103,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
       Puppet.debug("Firmware update job started successfully")
       Puppet.debug("Job ID: #{job_id}")
       if @restart == "false"
-        Puppet.debug("Any firmware updates requiring restart will be occur on next reboot")
+        Puppet.debug("Any firmware updates requiring restart will occur on next reboot")
       else
         sleep 20
         finished = false
