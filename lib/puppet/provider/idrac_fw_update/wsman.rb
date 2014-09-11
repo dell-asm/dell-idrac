@@ -32,7 +32,6 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
   end
 
   def run_wsman(cmd)
-    i = 0
     sleeptime = 30
     Puppet.debug("Running command: #{cmd}")
     4.times do
@@ -40,13 +39,11 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
       if resp.length == 0
         sleep sleeptime
         sleeptime += 30
-      elsif i == 4
-        Puppet.error("Could not connect connect to wsman enpoint")
       else
         return resp
       end
-      i += 1
     end
+    Puppet.error("Could not connect connect to wsman endpoint")
   end
 
   def parse_for_updates
@@ -110,6 +107,8 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
       until finished
         finished = get_update_logs(job_id)
       end
+    else
+      raise Puppet::Error, "Error running wsman: InstallFromRepository. Error message: #{doc.xpath('//n1:Message').text}"
     end
   end
 
