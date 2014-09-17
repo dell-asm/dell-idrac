@@ -33,7 +33,6 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
 
   def run_wsman(cmd)
     sleeptime = 30
-    Puppet.debug("Running command: #{cmd}")
     4.times do
       resp = %x[#{cmd}]
       if resp.length == 0
@@ -49,6 +48,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
   def parse_for_updates
     #Returns true when there is no updates to be installed
     wsman_cmd = "wsman invoke -a \"GetRepoBasedUpdateList\" http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService+SystemCreationClassName=DCIM_ComputerSystem+SystemName=IDRAC:ID+Name=SoftwareUpdate   -h #{transport[:host]} -u #{transport[:user]} -p #{transport[:password]} -P 443 -c Dummy -y basic -V -v"
+    Puppet.debug("WSMAN invoking: GetRepoBasedUpdateList")
     resp = run_wsman(wsman_cmd)
     doc = Nokogiri::XML(resp)
     if doc.xpath('//n1:ReturnValue').text == '2'
@@ -94,7 +94,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
   def create
     Puppet.debug('ABOUT TO APPLY FIRMWARE UPDATES')
     wsman_cmd =  "wsman invoke -a 'InstallFromRepository' http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService+SystemCreationClassName=DCIM_ComputerSystem+SystemName=IDRAC:ID+Name=SoftwareUpdate -h #{transport[:host]} -P 443 -u #{transport[:user]} -p #{transport[:password]} -c Dummy -y basic -V -v -k \"ipaddress=#{@asm_hostname}\" -k \"sharename=#{@share}\" -k \"sharetype=0\" -k \"RebootNeeded=#{@restart}\" -k \"ApplyUpdate=1\" -k \"CatalogName=#{@catalog_name}\""
-    Puppet.debug("Running command: #{wsman_cmd}")
+    Puppet.debug("WSMAN invoking: InstallFromRepository")
     resp = run_wsman(wsman_cmd)
     Puppet.debug("WSMAN RESPONSE: #{resp}")
     doc = Nokogiri::XML(resp)
