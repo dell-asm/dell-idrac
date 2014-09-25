@@ -37,12 +37,15 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
     4.times do
       resp = %x[#{cmd}]
       if resp.length == 0
+        Puppet.debug("WSMAN O length response received, retrying after sleep")
         sleep sleeptime
         sleeptime += 30
       elsif resp.include? 'Authentication failed'
+        Puppet.debug("WSMAN authentication failed, retrying after sleep")
         sleep sleeptime
         sleeptime += 30
       elsif resp.include? 'Connection failed'
+        Puppet.debug("WSMAN connection failed, retrying after sleep")
         sleep sleeptime
         sleeptime += 30
       else
