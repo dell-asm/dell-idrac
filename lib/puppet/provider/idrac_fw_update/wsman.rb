@@ -116,6 +116,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
       else
         sleep 20
         finished = false
+        @all_unknown = 0
         @status = {}
         @looking_for = []
         @targets.each do |target|
@@ -145,6 +146,13 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
     if @status.values.all? {|v| v =~ /Completed|Failed/ }
       Puppet.debug(@status)
       return true
+    elsif @all_unknown == 10
+      Puppet.debug(@status)
+      raise Puppet::Error, "Firmware components returned unknown status 10 times in a row.  Potential false positive"
+    elsif @status.values.all? {|v| v =~ /unknown/ }
+      @all_unknown += 1
+      Puppet.debug(@status)
+      return false
     else
       Puppet.debug(@status)
       sleep 30
