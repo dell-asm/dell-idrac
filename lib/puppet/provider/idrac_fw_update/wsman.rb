@@ -48,6 +48,10 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
         Puppet.debug("WSMAN connection failed, retrying after sleep")
         sleep sleeptime
         sleeptime += 30
+      elsif resp.include? 'TimedOut'
+        Puppet.debug("WSMAN response timed out, retrying after sleep")
+        sleep sleeptime
+        sleeptime += 30
       else
         return resp.encode('utf-8', 'binary', :invalid => :replace, :undef => :replace)
       end
@@ -105,7 +109,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
 
   def create
     Puppet.debug('ABOUT TO APPLY FIRMWARE UPDATES')
-    wsman_cmd =  "wsman invoke -a 'InstallFromRepository' http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService+SystemCreationClassName=DCIM_ComputerSystem+SystemName=IDRAC:ID+Name=SoftwareUpdate -h #{transport[:host]} -P 443 -u #{transport[:user]} -p #{transport[:password]} -c Dummy -y basic -V -v -k \"ipaddress=#{@asm_hostname}\" -k \"sharename=#{@share}\" -k \"sharetype=0\" -k \"RebootNeeded=#{@restart}\" -k \"ApplyUpdate=1\" -k \"CatalogName=#{@catalog_name}\""
+    wsman_cmd =  "wsman invoke -a 'InstallFromRepository' http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService+SystemCreationClassName=DCIM_ComputerSystem+SystemName=IDRAC:ID+Name=SoftwareUpdate -h #{transport[:host]} -P 443 -u #{transport[:user]} -p #{transport[:password]} -c Dummy -y basic -V -v -k \"ipaddress=#{@asm_hostname}\" -k \"sharename=#{@share}\" -k \"sharetype=0\" -k \"RebootNeeded=#{@restart}\" -k \"ApplyUpdate=0\" -k \"CatalogName=#{@catalog_name}\""
     Puppet.debug("WSMAN invoking: InstallFromRepository")
     resp = run_wsman(wsman_cmd)
     Puppet.debug("WSMAN RESPONSE: #{resp}")
@@ -120,6 +124,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
         sleep 20
         finished = false
         @all_unknown = 0
+        @retry_restart = 0
         @status = {}
         @looking_for = []
         @targets.each do |target|
@@ -142,7 +147,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
     new_data.values.each do |value|
       @looking_for.any? do |l|
         if value["Name"] =~ /#{l}/
-          @status[l] = value["JobStatus"]
+          #@status[l] = value["JobStatus"]
         end
       end
     end
@@ -150,8 +155,14 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
       Puppet.debug(@status)
       return true
     elsif @all_unknown == 10
-      Puppet.debug(@status)
-      raise Puppet::Error, "Firmware components returned unknown status 10 times in a row.  Potential false positive"
+      if @retry_restart < 1
+        @retry_restart += 1
+        Puppet.debug(@status)
+        Puppet.debug("Firmware components returned unknown status 10 times in a row.  Potential false positive")
+        create
+      else
+        raise Puppet::Error, "Firmware components returned unknown status through too many attempts.  Unknown error occured"
+      end
     elsif @status.values.all? {|v| v =~ /unknown/ }
       @all_unknown += 1
       Puppet.debug(@status)
