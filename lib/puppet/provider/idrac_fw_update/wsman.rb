@@ -154,16 +154,16 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
     if @status.values.all? {|v| v =~ /Completed|Failed/ }
       Puppet.debug(@status)
       return true
-    elsif @all_unknown == 10
+    elsif @all_unknown == 20
       if @retry_restart < 1
         @retry_restart += 1
         Puppet.debug(@status)
-        Puppet.debug("Firmware components returned unknown status 10 times in a row.  Potential false positive")
+        Puppet.debug("Firmware components returned unknown status 20 times in a row.  Potential false positive")
         create
       else
         raise Puppet::Error, "Firmware components returned unknown status through too many attempts.  Unknown error occured"
       end
-    elsif @status.values.all? {|v| v =~ /unknown/ }
+    elsif @status.values.all? {|v| v =~ /unknown|New/ }
       @all_unknown += 1
       Puppet.debug(@status)
       return false
