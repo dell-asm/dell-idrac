@@ -9,6 +9,8 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
     @catalog_name = resource[:path].split('/')[-1]
     @asm_hostname = resource[:asm_hostname]
     @restart = resource[:force_restart]
+    clear_job_queue
+    sleep 30
     updates_available = check_for_update
     if !updates_available
       create
@@ -33,6 +35,10 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
   end
 
   def run_wsman(cmd)
+    api_status = "busy"
+    until api_status == "ready"
+      api_status = get_api_status
+    end
     sleeptime = 30
     4.times do
       resp = %x[#{cmd}]
@@ -46,6 +52,10 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
         sleeptime += 30
       elsif resp.include? 'Connection failed'
         Puppet.debug("WSMAN connection failed, retrying after sleep")
+        sleep sleeptime
+        sleeptime += 30
+      elsif resp.include? 'TimedOut'
+        Puppet.debug("WSMAN response timed out, retrying after sleep")
         sleep sleeptime
         sleeptime += 30
       else
@@ -119,6 +129,8 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
       else
         sleep 20
         finished = false
+        @all_unknown = 0
+        @retry_restart = 0
         @status = {}
         @looking_for = []
         @targets.each do |target|
@@ -136,9 +148,9 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
 
   def get_update_logs(job_id)
     #What updates are we tracking?
+    data = nil
     data = get_data
-    new_data = get_new_data(data,job_id)
-    new_data.values.each do |value|
+    data.values.each do |value|
       @looking_for.any? do |l|
         if value["Name"] =~ /#{l}/
           @status[l] = value["JobStatus"]
@@ -148,6 +160,19 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
     if @status.values.all? {|v| v =~ /Completed|Failed/ }
       Puppet.debug(@status)
       return true
+    elsif @all_unknown == 20
+      if @retry_restart < 1
+        @retry_restart += 1
+        Puppet.debug(@status)
+        Puppet.debug("Firmware components returned unknown status 20 times in a row.  Potential false positive")
+        create
+      else
+        raise Puppet::Error, "Firmware components returned unknown status through too many attempts.  Unknown error occured"
+      end
+    elsif @status.values.all? {|v| v =~ /unknown/ }
+      @all_unknown += 1
+      Puppet.debug(@status)
+      return false
     else
       Puppet.debug(@status)
       sleep 30
@@ -189,16 +214,31 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
     data
   end
  
-  def get_new_data(data,job_id)
-    ##Gets on the job events for this run
-    data.keys.each do |jid|
-      if jid == job_id
-        break
-      else
-        data.delete(jid)
-      end
+  def clear_job_queue
+    Puppet.debug("Clearing Job Queue")
+    wsman_cmd = "wsman invoke -a \"DeleteJobQueue\" http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\",SystemName=\"Idrac\",Name=\"JobService\",SystemCreationClassName=\"DCIM_ComputerSystem\" -N root/dcim -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -j utf-8 -y basic -o -m 256 -c Dummy -V  -k \"JobID=JID_CLEARALL\" "
+    resp = run_wsman(wsman_cmd)
+    doc = Nokogiri::XML(resp)
+    if doc.xpath('//n1:MessageID').text == 'SUP020'
+      Puppet.debug("Job Queue cleared successfully")
+    else
+      raise Puppet::Error, "Error clearing job queue.  Message: #{doc.xpath('//n1:Message')}"
     end
-    data
   end
   
+  def get_api_status
+    Puppet.debug("Checking API Status")
+    wsman_cmd = "wsman invoke -a GetRemoteServicesAPIStatus http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -y basic -c Dummy -V"
+    resp = %x[ #{wsman_cmd} ]
+    doc = Nokogiri::XML(resp)
+    if doc.xpath('//n1:LCStatus').text == "0"
+      Puppet.debug("API Ready")
+      return "ready"
+    else
+      Puppet.debug("API Not Ready, checking again in 30 seconds")
+      sleep 30
+      return "busy"
+    end
+  end
+
 end
