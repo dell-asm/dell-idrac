@@ -17,6 +17,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
 
 
   def check_for_update
+    clear_job_queue
     wsman_cmd =  "wsman invoke -a 'InstallFromRepository' http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService+SystemCreationClassName=DCIM_ComputerSystem+SystemName=IDRAC:ID+Name=SoftwareUpdate -h #{transport[:host]} -P 443 -u #{transport[:user]} -p #{transport[:password]} -c Dummy -y basic -V -v -k \"ipaddress=#{@asm_hostname}\" -k \"sharename=#{@share}\" -k \"sharetype=0\" -k \"RebootNeeded=#{@restart}\" -k \"ApplyUpdate=0\" -k \"CatalogName=#{@catalog_name}\""
     resp = run_wsman(wsman_cmd)
     Puppet.debug(resp)
@@ -220,4 +221,16 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
     data
   end
   
+  def clear_job_queue
+    Puppet.debug("Clearing Job Queue")
+    wsman_cmd = "wsman invoke -a \"DeleteJobQueue\" http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\",SystemName=\"Idrac\",Name=\"JobService\",SystemCreationClassName=\"DCIM_ComputerSystem\" -N root/dcim -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -j utf-8 -y basic -o -m 256 -c Dummy -V  -k \"JobID=JID_CLEARALL\" "
+    resp = run_wsman(wsman_cmd)
+    doc = Nokogiri::XML(resp)
+    if doc.xpath('//n1:MessageID').text == 'SUP020'
+      Puppet.debug("Job Queue cleared successfully")
+    else
+      raise Puppet::Error, "Error clearing job queue.  Message: #{doc.xpath('//n1:Message')}"
+    end
+  end
+
 end
