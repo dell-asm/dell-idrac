@@ -3,7 +3,7 @@ Puppet::Type.newtype(:idrac_fw_installfromuri) do
 
   ensurable
 
-  newparam(:instanceid, :namevar => true) do
+  newparam(:instance_id, :namevar => true) do
     desc "InstanceID to be updated (InstanceID is the SofwareIdentity instanceID that represents the firmware that is to be updated)"
   end
 

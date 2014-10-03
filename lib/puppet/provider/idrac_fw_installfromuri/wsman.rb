@@ -2,6 +2,7 @@ require 'puppet/idrac/util'
 require 'nokogiri'
 require 'active_support'
 require 'liquid'
+require 'fileutils'
 
 Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
 
@@ -9,11 +10,12 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
     @uri_path = resource[:uri_path]
     @instance_id = resource[:instance_id]
     @force_restart = resource[:force_restart]
-    true
+    false
   end
     
   def create 
     clear_out_jobqueue
+    sleep 20
     config_file_path = create_xml_config_file
     job_id = install_from_uri(config_file_path)
     remove_config_file(config_file_path)
@@ -62,7 +64,6 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
     Puppet.debug("Clearing old job queue")
     wsman_cmd = "wsman invoke -a \"DeleteJobQueue\" http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\",SystemName=\"Idrac\",Name=\"JobService\",SystemCreationClassName=\"DCIM_ComputerSystem\" -N root/dcim -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -j utf-8 -y basic -o -m 256 -c Dummy -V  -k \"JobID=JID_CLEARALL\""
     resp = run_wsman(wsman_cmd)
-    Puppet.debug(resp)
     doc = Nokogiri::XML(resp)
     if doc.xpath('//n1:MessageID').text == 'SUP020'
       Puppet.debug("Job queue cleared successfully")
@@ -76,6 +77,10 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
   end
 
   def run_wsman(cmd)
+    api_status = 'busy'
+    until api_status = 'ready'
+      api_status = get_api_status
+    end
     sleeptime = 30
     4.times do
       resp = %x[#{cmd}]
@@ -92,6 +97,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
         sleep sleeptime
         sleeptime += 30
       else
+        Puppet.debug("WSMAN RESPONSE:  #{resp}")
         return resp.encode('utf-8', 'binary', :invalid => :replace, :undef => :replace)
       end
     end
@@ -101,7 +107,6 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
   def install_from_uri(config_file_path)
     wsman_cmd = "wsman invoke -a InstallFromURI http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService,SystemCreationClassName=DCIM_ComputerSystem,SystemName=IDRAC:ID,Name=SoftwareUpdate -h #{transport[:host]} -V -v -c Dummy -P 443 -u #{transport[:user]} -p #{transport[:password]} -J #{config_file_path} -j utf-8 -y basic"
     resp = run_wsman(wsman_cmd)
-    Puppet.debug(resp)
     doc = Nokogiri::XML(resp)
     if doc.xpath('//n1:ReturnValue').text == '4096'
       job_id = doc.xpath('//wsman:Selector').first.text
@@ -117,13 +122,13 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
     random_hash = rand(36**24).to_s(36)
     template = <<-EOF
 <p:InstallFromURI_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService">
-<p:URI>http://xx.xx.xx.xx:1278/install_packages/Packages/ESM_Firmware_NV7KM_WN32_1.31.30_A00.EXE</p:URI>
+<p:URI>{{uri_path}}</p:URI>
 <p:Target xmlns:a="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:w="http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd">
 <a:Address>http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous</a:Address>
 <a:ReferenceParameters>
 <w:ResourceURI>http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_SoftwareIdentity</w:ResourceURI>
 <w:SelectorSet>
-<w:Selector Name="InstanceID">DCIM:INSTALLED#iDRAC.Embedded.1-1#IDRACinfo</w:Selector>
+<w:Selector Name="InstanceID">{{instance_id}}</w:Selector>
 </w:SelectorSet> </a:ReferenceParameters> </p:Target> </p:InstallFromURI_INPUT>
     EOF
     xml_template = Liquid::Template.parse(template)
@@ -159,7 +164,7 @@ EOF
 <p:StartTimeInterval>TIME_NOW</p:StartTimeInterval>
 </p:SetupJobQueue_INPUT>
 EOF
-    xml_template - Liquid::Template.parse(template)
+    xml_template = Liquid::Template.parse(template)
     xml_config = xml_template.render('job_id' => job_id, 'reboot_id' => reboot_id)
     file_path = "/tmp/#{random_hash}.xml"
     File.open(file_path,'w') do |f|
@@ -173,12 +178,11 @@ EOF
     resp = run_wsman(wsman_cmd)
     doc = Nokogiri::XML(resp)
     status = doc.xpath('//n1:JobStatus').text
-    Puppet.debub("JOB_ID Status: #{status}")
     status
   end
 
   def create_reboot_job(reboot_file)
-    wsman_cmd = "wsman invoke -a InstallFromURI http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService,SystemCreationClassName=DCIM_ComputerSystem,SystemName=IDRAC:ID,Name=SoftwareUpdate -h #{transport[:host]} -V -v -c Dummy -P 443 -u #{transport[:root]} -p #{transport[:password]} -J #{reboot_file} -j utf-8 -y basic"
+    wsman_cmd = "wsman invoke -a CreateRebootJob http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService,SystemCreationClassName=DCIM_ComputerSystem,SystemName=IDRAC:ID,Name=SoftwareUpdate -h #{transport[:host]} -V -v -c Dummy -P 443 -u #{transport[:user]} -p #{transport[:password]} -J #{reboot_file} -j utf-8 -y basic"
     Puppet.debug("Creating Reboot Job")
     resp = run_wsman(wsman_cmd)
     doc = Nokogiri::XML(resp)
@@ -193,7 +197,7 @@ EOF
   end
 
   def remove_config_file(config_file_path)
-    FileUtil.rm(config_file_path)
+    FileUtils.rm(config_file_path)
   end
 
   def setup_job_queue(job_queue_config_file)
@@ -207,6 +211,22 @@ EOF
       raise Puppet::Error, "Problem scheduling the job queue.  Message: #{doc.xpath('//n1:Message').text}"
     end
   end
+
+  def get_api_status
+    Puppet.debug("Checking API Status")
+    wsman_cmd = "wsman invoke -a GetRemoteServicesAPIStatus http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -y basic -c Dummy -V"
+    resp = %x[ #{wsman_cmd} ]
+    doc = Nokogiri::XML(resp)
+    if doc.xpath('//n1:LCStatus').text == "0"
+      Puppet.debug("API Ready")
+      return "ready"
+    else
+      Puppet.debug("API Not Ready, checking again in 30 seconds")
+      sleep 30
+      return "busy"
+    end
+  end
+
     
 end
 
