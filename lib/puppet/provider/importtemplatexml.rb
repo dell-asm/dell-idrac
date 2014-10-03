@@ -83,7 +83,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def munge_config_xml
     changes = get_config_changes
-    xml_base.xpath("//Component[contains(@FQDD, 'NIC.')]").remove()
+    xml_base.xpath("//Component[contains(@FQDD, 'NIC.')]").remove() unless @resource[:target_boot_device].downcase == 'none'
     xml_base['ServiceTag'] = @resource[:servicetag]
     #Current workaround for LC issue, where if BiotBootSeq is already set to what ASM needs it to be, setting it again to the same thing will cause an error.
     existing_boot_seq = find_bios_boot_seq(xml_base)
@@ -123,9 +123,20 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
     ##Clean up the config file of all the commented text
     @xml_doc.xpath('//comment()').remove
+    remove_unique_settings
     # Disable SD card and RAID controller for boot from SAN
     File.open(@config_xml_path, 'w+') { |file| file.write(@xml_doc.root.to_xml(:indent => 2)) }
     xml_base
+  end
+
+  #Certain attributes might cause issues trying to set between servers, so this function will be used to remove those from the xml
+  #Mostly IP/networking settings
+  def remove_unique_settings
+    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'OS-BMC.')]").remove()
+    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPBlocking.')]").remove()
+    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPv4Static.')]").remove()
+    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPv6Static.')]").remove()
+    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'vFlashPartition.')]").remove()
   end
 
   #Helper function which will let us ignore device values that don't exist if we can (ex: Ignoring that the server doesn't have an SD card if we're setting SD to off anyway)
@@ -144,12 +155,17 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   #Helper function which just searches through the xml comments for BiosBootSeq value, since it will be commented out
   def find_bios_boot_seq(xml_base)
-    xml_base.xpath("//Component[@FQDD='BIOS.Setup.1-1']/comment()").each do |comment|
-      if comment.content.include?("BiosBootSeq")
-        node = Nokogiri::XML(comment.content)
-        #Other names are possible for the node that contain "BiosBootSeq", such as "OneTimeBiosBootSeq", so must ensure it is exactly "BiosBootSeq"
-        if(node.at_xpath("/Attribute")['Name'] == "BiosBootSeq")
-          return node.at_xpath("/Attribute").content
+    uncommented = xml_base.at_xpath("//Attribute[@Name='BiosBootSeq']")
+    if(!uncommented.nil?)
+      return uncommented.content
+    else
+      xml_base.xpath("//Component[@FQDD='BIOS.Setup.1-1']/comment()").each do |comment|
+        if comment.content.include?("BiosBootSeq")
+          node = Nokogiri::XML(comment.content)
+          #Other names are possible for the node that contain "BiosBootSeq", such as "OneTimeBiosBootSeq", so must ensure it is exactly "BiosBootSeq"
+          if(node.at_xpath("/Attribute")['Name'] == "BiosBootSeq")
+            return node.at_xpath("/Attribute").content
+          end
         end
       end
     end
@@ -178,7 +194,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     iscsi_partitions.each do |partition|
         iscsi_network = get_iscsi_network(partition['networkObjects'])
         if (ASM::Util.to_boolean(iscsi_network.static))
-          changes['partial'].deep_merge!(
+          changes['whole'].deep_merge!(
           { partition.nic.fqdd =>
             {
                   'VirtMacAddr' => partition['lanMacAddress'],
@@ -215,32 +231,36 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 	          'VirtMacAddr' => partition['lanMacAddress']
 	        }
 	      })
-	  end
+      end
     end
   end
 
   def get_raid_config_changes(xml_base)
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
-    if @resource[:target_boot_device] == "HD"
-        changes['whole']['RAID.Integrated.1-1'] =
-            {
-                'RAIDresetConfig' => "True",
-                'Disk.Virtual.0:RAID.Integrated.1-1' => 
-                    {
-                        'RAIDaction'=>'Create',
-                        'RAIDinitOperation'=>'Fast',
-                        'Name'=>'RAID ONE',
-                        'Size'=>'0',
-                        'StripeSize'=>'128',
-                        'SpanDepth'=>'1',
-                        'SpanLength'=>'2',
-                        'RAIDTypes'=>'RAID 1',
-                        'IncludedPhysicalDiskID'=>['Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1',
-                                                   'Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1']
-                    }
-            }
-    else
-        changes['remove']['components']['RAID.Integrated.1-1'] = {}
+    #Leave the RAID settings as is from reference if we are cloning
+    if(@resource[:config_xml].nil?)
+      if @resource[:target_boot_device] == "HD"
+          changes['whole']['RAID.Integrated.1-1'] =
+              {
+                  'RAIDresetConfig' => "True",
+                  'Disk.Virtual.0:RAID.Integrated.1-1' => 
+                      {
+                          'RAIDaction'=>'Create',
+                          'RAIDinitOperation'=>'Fast',
+                          'Name'=>'RAID ONE',
+                          'Size'=>'0',
+                          'StripeSize'=>'128',
+                          'SpanDepth'=>'1',
+                          'SpanLength'=>'2',
+                          'RAIDTypes'=>'RAID 1',
+                          'IncludedPhysicalDiskID'=>['Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1',
+                                                     'Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1']
+                      }
+              }
+      #Leave RAID config as is if boot device = none
+      elsif @resource[:target_boot_device].downcase != "none"
+          changes['remove']['components']['RAID.Integrated.1-1'] = {}
+      end
     end
     return changes
   end
@@ -361,7 +381,14 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     net_config = ASM::NetworkConfiguration.new(@network_config_data)
     endpoint = Hashie::Mash.new({:host => @ip, :user => @username, :password => @password})
     net_config.add_nics!(endpoint, :add_partitions => true)
+    fqdds_existing = xml_base.xpath("//Component[contains(@FQDD, 'NIC.')]").collect {|x| x.attribute("FQDD").value}
+    fqdds_to_set = net_config.get_all_fqdds
     config = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
+    #fqdds_existing - fqdds_to_set will leave us a list of NICs that need to be removed from the config.xml
+    #If going from npar to unpartitioned, leftover component blocks for partitions 2-4 will cause errors.
+    (fqdds_existing - fqdds_to_set).each do |fqdd|
+        config['remove']['components'][fqdd] = {}
+    end
     if net_config.get_partitions('PXE').first.nil?
       boot_seq = ['HardDisk.List.1-1'].join(', ')
     else
@@ -376,56 +403,59 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           #
           # SET UP NIC IN CASE INTERFACE IS BEING PARTITIONED, equivalent to the enable_npar parameter
           #
-          changes = config['partial'][fqdd] = {}
-          partition_no = partition.partition_no
-          changes['VLanMode'] = 'Disabled' if partition_no == 1
-          if partitioned
-            #
-            # CONFIGURE ISCSI NETWORK
-            #
-            changes['NicMode'] = 'Enabled'
-            if @resource[:target_boot_device] != 'iSCSI' && @resource[:target_boot_device] != 'FC'
-              if partition['networkObjects'] && !partition['networkObjects'].find { |obj| obj['type'].include?('ISCSI') }.nil?
-                changes['iScsiOffloadMode'] = 'Enabled'
-                #FCoEOffloadMode MUST be disabled if iScsiOffloadMode is Enabled
-                changes['FCoEOffloadMode'] = 'Disabled'
-              elsif partition['networkObjects'] && !partition['networkObjects'].find { |obj| obj['type'].include?('FCOE') }.nil?
-                changes['iScsiOffloadMode'] = 'Disabled'
-                #FCoEOffloadMode MUST be disabled if iScsiOffloadMode is Enabled
-                changes['FCoEOffloadMode'] = 'Enabled'
-                changes['NicMode'] = 'Disabled'
+          if( @resource[:target_boot_device].downcase != "none" || !partition.networkObjects.nil? )
+            changes = config['whole'][fqdd] = {}
+            partition_no = partition.partition_no
+            changes['VLanMode'] = 'Disabled' if partition_no == 1
+            if partitioned
+              #
+              # CONFIGURE ISCSI NETWORK
+              #
+              changes['NicMode'] = 'Enabled'
+              if @resource[:target_boot_device] != 'iSCSI' && @resource[:target_boot_device] != 'FC'
+                if partition['networkObjects'] && !partition['networkObjects'].find { |obj| obj['type'].include?('ISCSI') }.nil?
+                  changes['iScsiOffloadMode'] = 'Enabled'
+                  #FCoEOffloadMode MUST be disabled if iScsiOffloadMode is Enabled
+                  changes['FCoEOffloadMode'] = 'Disabled'
+                elsif partition['networkObjects'] && !partition['networkObjects'].find { |obj| obj['type'].include?('FCOE') }.nil?
+                  changes['iScsiOffloadMode'] = 'Disabled'
+                  #FCoEOffloadMode MUST be disabled if iScsiOffloadMode is Enabled
+                  changes['FCoEOffloadMode'] = 'Enabled'
+                  changes['NicMode'] = 'Disabled'
+                else
+                  changes['iScsiOffloadMode'] = 'Disabled'
+                  #Curently always setting FCoEOffloadMode to Disabled, but any logic to set it otherwise should probably go here in the future
+                  changes['FCoEOffloadMode'] = 'Disabled'
+                end
+              end
+              
+              changes['MinBandwidth'] = partition.minimum
+              changes['MaxBandwidth'] = partition.maximum
+              if(partition_no == 1)
+                changes['VirtualizationMode'] = 'NPAR'
+                changes['NicPartitioning'] = 'Enabled'
+              end
+            else
+              if partition_no == 1
+               handle_missing_attributes(changes)
               else
-                changes['iScsiOffloadMode'] = 'Disabled'
-                #Curently always setting FCoEOffloadMode to Disabled, but any logic to set it otherwise should probably go here in the future
-                changes['FCoEOffloadMode'] = 'Disabled'
+                #This is just to clean up the changes hash, but should be unnecessary
+                config['partial'].remove(fqdd)
               end
             end
-            
-            changes['MinBandwidth'] = partition.minimum
-            changes['MaxBandwidth'] = partition.maximum
-            if(partition_no == 1)
-              changes['VirtualizationMode'] = 'NPAR'
-              changes['NicPartitioning'] = 'Enabled'
+            #
+            # CONFIGURE LEGACYBOOTPROTO IN CASE NIC IS FOR PXE
+            #
+            if partition['networkObjects'] && !partition['networkObjects'].find { |obj| obj['type'] =='PXE' }.nil?
+              changes['LegacyBootProto'] = 'PXE'
             end
-          else
-            if partition_no == 1
-             handle_missing_attributes(changes)
-            else
-              #This is just to clean up the changes hash, but should be unnecessary
-              config['partial'].remove(fqdd)
-            end
-          end
-          #
-          # CONFIGURE LEGACYBOOTPROTO IN CASE NIC IS FOR PXE
-          #
-          if partition['networkObjects'] && !partition['networkObjects'].find { |obj| obj['type'] =='PXE' }.nil?
-            changes['LegacyBootProto'] = 'PXE'
           end
         end
       end
     end
     config
   end
+
    #Helper function to remove two attributes from config.xml for Intel cards only.
   def handle_missing_attributes(changes)
     changes['VirtualizationMode'] = 'NONE'
