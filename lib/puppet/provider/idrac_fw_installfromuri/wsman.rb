@@ -1,8 +1,7 @@
 require 'puppet/idrac/util'
 require 'nokogiri'
 require 'active_support'
-require 'liquid'
-require 'fileutils'
+require 'erb'
 
 Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
 
@@ -122,19 +121,18 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
     random_hash = rand(36**24).to_s(36)
     template = <<-EOF
 <p:InstallFromURI_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService">
-<p:URI>{{uri_path}}</p:URI>
+<p:URI><%= @uri_path %></p:URI>
 <p:Target xmlns:a="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:w="http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd">
 <a:Address>http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous</a:Address>
 <a:ReferenceParameters>
 <w:ResourceURI>http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_SoftwareIdentity</w:ResourceURI>
 <w:SelectorSet>
-<w:Selector Name="InstanceID">{{instance_id}}</w:Selector>
+<w:Selector Name="InstanceID"><%= @instance_id %></w:Selector>
 </w:SelectorSet> </a:ReferenceParameters> </p:Target> </p:InstallFromURI_INPUT>
     EOF
-    xml_template = Liquid::Template.parse(template)
-    xml_config = xml_template.render('uri_path' => @uri_path, 'instance_id' => @instance_id)
+    xmlout = ERB.new(template)
     File.open("/tmp/#{random_hash}.xml","w") do |f|
-      f.puts xml_config
+      f.puts xmlout.result
     end
     return "/tmp/#{random_hash}.xml"
   end
@@ -157,18 +155,17 @@ EOF
     random_hash = rand(36**24).to_s(26)
     template = <<-EOF
 <p:SetupJobQueue_INPUT xmlns:p="http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService">
-<p:JobArray>{{job_id}}</p:JobArray>
-<p:JobArray>{{reboot_id}}</p:JobArray>
+<p:JobArray><%= job_id %></p:JobArray>
+<p:JobArray><%= reboot_id %></p:JobArray>
 <p:RunMonth>6</p:RunMonth>
   <p:RunDay>18</p:RunDay>
 <p:StartTimeInterval>TIME_NOW</p:StartTimeInterval>
 </p:SetupJobQueue_INPUT>
 EOF
-    xml_template = Liquid::Template.parse(template)
-    xml_config = xml_template.render('job_id' => job_id, 'reboot_id' => reboot_id)
+    xmlout = ERB.new(template)
     file_path = "/tmp/#{random_hash}.xml"
     File.open(file_path,'w') do |f|
-      f.puts xml_config
+      f.puts xmlout.result
     end
     file_path
   end
