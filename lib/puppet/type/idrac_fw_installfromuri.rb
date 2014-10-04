@@ -7,12 +7,11 @@ Puppet::Type.newtype(:idrac_fw_installfromuri) do
     desc "InstanceID to be updated (InstanceID is the SofwareIdentity instanceID that represents the firmware that is to be updated)"
   end
 
-  newparam(:uri_path) do
-    desc "The URI to the firmware that will be applied \n(Example: nfs://IPADRESS/LOCATION/DUPFILENAME;mountpoint=MOUNTNAME)"
-  end
- 
-  newparam(:force_restart, :boolean => true) do 
-    desc "Force the restarts to happen automatically (if needed) or wait until the next restart"
+  newparam(:idrac_firmware) do
+    desc "Array of hashes containing [{instance_id, component_id, uri_path},]"
   end
 
+  newparam(:force_restart) do
+    desc "Forces the restart now"
+  end
 end

@@ -6,36 +6,78 @@ require 'erb'
 Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
 
   def exists?
-    @uri_path = resource[:uri_path]
-    @instance_id = resource[:instance_id]
     @force_restart = resource[:force_restart]
+    @firmwares = resource[:idrac_firmware]
     false
   end
-    
-  def create 
+
+  def create
     clear_out_jobqueue
     sleep 20
-    config_file_path = create_xml_config_file
-    job_id = install_from_uri(config_file_path)
-    remove_config_file(config_file_path)
-    job_status = 'new'
-    until job_status =~ /Downloaded|Completed|Failed/
-      sleep 30
-      job_status = get_job_status(job_id)
-      Puppet.debug("Job Status: #{job_status}")
+    pre = []
+    main = []
+    post = []
+    @firmwares.each do |firmware|
+    Puppet.debug(firmware)
+      if firmware["component_id"].to_i == 28897
+        pre << firmware
+      elsif firmware["component_id"].to_i == 25227
+        post << firmware
+      else
+        main << firmware
+      end
     end
-    case job_status
-    when "Completed"
-      Puppet.debug("Firmware update completed successfully")
-    when "Failed"
-      raise Puppet::Error, "Firmware update failed in the lifecycle controller.  Please refer to LifeCycle job logs"
-    when "Downloaded"
-      Puppet.debug("Firmware downloaded to idrac, scheduling apply")
+    if pre.size > 0
+      Puppet.debug("LC Update required, installing first")
+      update(pre)
+    end
+    update(main)
+    if post.size > 0
+      Puppet.debug("IDRAC update required, installing last")
+      update(post)
+    end
+  end
+      
+  def update(firmware_list)
+    job_ids = []
+    statuses = {}
+    firmware_list.each do |fw|
+      Puppet.debug(fw)
+      config_file_path = create_xml_config_file(fw["instance_id"],fw["uri_path"])
+      job_id = install_from_uri(config_file_path)
+      if fw["component_id"].to_s !~ /25806|28897/
+        job_ids << job_id
+      end
+      remove_config_file(config_file_path)
+      job_status = 'new'
+      until job_status =~ /Downloaded|Completed|Failed/
+        sleep 30
+        job_status = get_job_status(job_id)
+        statuses[job_id] = job_status
+        Puppet.debug("Job Status: #{job_status}")
+      end
+      if job_status ==  "Completed"
+        Puppet.debug("Firmware update completed successfully")
+      elsif job_status  ==  "Failed"
+        raise Puppet::Error, "Firmware update failed in the lifecycle controller.  Please refer to LifeCycle job logs"
+      elsif job_status ==  "Downloaded"
+        Puppet.debug("Firmware downloaded to idrac, scheduling apply")
+      end
+    end
+    components = []
+    firmware_list.each do |f|
+      components << f["component_id"]
+    end
+    reboot_required = true
+    if components.all? {|c| c.to_s =~ /25806|28897/}
+      reboot_required = false
+    end
+    reboot_id = nil
+    if reboot_required
       reboot_config_file_path = create_reboot_config_file
       reboot_id = create_reboot_job(reboot_config_file_path)
       remove_config_file(reboot_config_file_path)
-      reboot_status = get_job_status(reboot_id)
-      job_queue_config_file = create_job_queue_config(job_id,reboot_id)
+      job_queue_config_file = create_job_queue_config(job_ids,reboot_id)
       setup_job_queue(job_queue_config_file)
       remove_config_file(job_queue_config_file)
       reboot_status = 'new'
@@ -44,17 +86,18 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
         reboot_status = get_job_status(reboot_id)
         Puppet.debug("Reboot Status: #{reboot_status}")
       end
-      until job_status =~ /Completed|Failed/
-        sleep 30
-        job_status = get_job_status(job_id)
-        Puppet.debug("Job Status: #{job_status}")
+    end
+    until statuses.all? {|k,v| v =~ /Completed|Failed/}
+      statuses.each do |key,val|
+        job_status = get_job_status(key)
+        statuses[key] = job_status
+        Puppet.debug("Job Status #{key}: #{val}")
       end
-      case job_status
-      when "Completed"
-        Puppet.debug("Firmware update completed successfully")
-      when "Failed"
-        raise Puppet::Error, "Firmware update failed in the lifecycle controller.  Please refer to LifeCycle job logs"
-      end
+    end
+    if statuses.values.include? "Failed"
+      raise Puppet::Error, "Firmware update failed in the lifecycle controller.  Please refer to LifeCycle job logs"
+    else
+      Puppet.debug("Firmware update completed successfully")
     end
   end
 
@@ -77,7 +120,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
 
   def run_wsman(cmd)
     api_status = 'busy'
-    until api_status = 'ready'
+    until api_status == 'ready'
       api_status = get_api_status
     end
     sleeptime = 30
@@ -113,26 +156,26 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       Puppet.debug("JOB_ID: #{job_id}")
       return job_id
     else
-      raise Puppet::Error, "Problem running InstallFromURI: #{doc.xpatch('//n1:Message')}"
+      raise Puppet::Error, "Problem running InstallFromURI: #{doc.xpath('//n1:Message')}"
     end
   end
   
-  def create_xml_config_file
+  def create_xml_config_file(instance_id,path)
     random_hash = rand(36**24).to_s(36)
     template = <<-EOF
 <p:InstallFromURI_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService">
-<p:URI><%= @uri_path %></p:URI>
+<p:URI><%= path %></p:URI>
 <p:Target xmlns:a="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:w="http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd">
 <a:Address>http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous</a:Address>
 <a:ReferenceParameters>
 <w:ResourceURI>http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_SoftwareIdentity</w:ResourceURI>
 <w:SelectorSet>
-<w:Selector Name="InstanceID"><%= @instance_id %></w:Selector>
+<w:Selector Name="InstanceID"><%= instance_id %></w:Selector>
 </w:SelectorSet> </a:ReferenceParameters> </p:Target> </p:InstallFromURI_INPUT>
     EOF
     xmlout = ERB.new(template)
     File.open("/tmp/#{random_hash}.xml","w") do |f|
-      f.puts xmlout.result
+      f.puts xmlout.result(binding)
     end
     return "/tmp/#{random_hash}.xml"
   end
@@ -151,12 +194,12 @@ EOF
     file_path
   end
 
-  def create_job_queue_config(job_id,reboot_id)
+  def create_job_queue_config(job_ids,reboot_id=nil)
     random_hash = rand(36**24).to_s(26)
     template = <<-EOF
-<p:SetupJobQueue_INPUT xmlns:p="http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService">
-<p:JobArray><%= job_id %></p:JobArray>
-<p:JobArray><%= reboot_id %></p:JobArray>
+<p:SetupJobQueue_INPUT xmlns:p="http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService"><% job_ids.each do |job_id| %>
+<p:JobArray><%= job_id %></p:JobArray><% end %><% if reboot_id %>
+<p:JobArray><%= reboot_id %></p:JobArray><% end %>
 <p:RunMonth>6</p:RunMonth>
   <p:RunDay>18</p:RunDay>
 <p:StartTimeInterval>TIME_NOW</p:StartTimeInterval>
@@ -165,7 +208,7 @@ EOF
     xmlout = ERB.new(template)
     file_path = "/tmp/#{random_hash}.xml"
     File.open(file_path,'w') do |f|
-      f.puts xmlout.result
+      f.puts xmlout.result(binding)
     end
     file_path
   end
