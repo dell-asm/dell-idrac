@@ -2,8 +2,12 @@ require 'puppet/idrac/util'
 require 'nokogiri'
 require 'active_support'
 require 'erb'
+require 'tempfile'
 
 Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
+  IDRAC_ID = 25227
+  LC_ID = 28897
+  UEFI_DIAGNOSTICS_ID = 25806
 
   def exists?
     @force_restart = resource[:force_restart]
@@ -19,9 +23,9 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
     post = []
     @firmwares.each do |firmware|
     Puppet.debug(firmware)
-      if firmware["component_id"].to_i == 28897
+      if firmware["component_id"].to_i == LC_ID
         pre << firmware
-      elsif firmware["component_id"].to_i == 25227
+      elsif firmware["component_id"].to_i == IDRAC_ID
         post << firmware
       else
         main << firmware
@@ -45,7 +49,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       Puppet.debug(fw)
       config_file_path = create_xml_config_file(fw["instance_id"],fw["uri_path"])
       job_id = install_from_uri(config_file_path)
-      if fw["component_id"].to_s !~ /25806|28897/
+      if fw["component_id"].to_s !~ /#{UEFI_DIAGNOSTICS_ID}#{LC_ID}/
         job_ids << job_id
       end
       remove_config_file(config_file_path)
@@ -69,7 +73,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       components << f["component_id"]
     end
     reboot_required = true
-    if components.all? {|c| c.to_s =~ /25806|28897/}
+    if components.all? {|c| c.to_s =~ /#{UEFI_DIAGNOSTICS_ID}|#{LC_ID}/}
       reboot_required = false
     end
     reboot_id = nil
@@ -161,7 +165,6 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
   end
   
   def create_xml_config_file(instance_id,path)
-    random_hash = rand(36**24).to_s(36)
     template = <<-EOF
 <p:InstallFromURI_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService">
 <p:URI><%= path %></p:URI>
@@ -174,28 +177,23 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
 </w:SelectorSet> </a:ReferenceParameters> </p:Target> </p:InstallFromURI_INPUT>
     EOF
     xmlout = ERB.new(template)
-    File.open("/tmp/#{random_hash}.xml","w") do |f|
-      f.puts xmlout.result(binding)
-    end
-    return "/tmp/#{random_hash}.xml"
+    temp_file = Tempfile.new('xml_config')
+    temp_file.write(xmlout.result(binding)
+    temp_file.path
   end
 
   def create_reboot_config_file
-    random_hash = rand(36**24).to_s(26)
     template = <<-EOF
 <p:CreateRebootJob_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService">
   <p:RebootJobType>3</p:RebootJobType>
 </p:CreateRebootJob_INPUT>
 EOF
-    file_path = "/tmp/#{random_hash}.xml"
-    File.open(file_path,'w') do |f|
-      f.puts template
-    end
-    file_path
+    temp_file = Tempfile.new('reboot_config')
+    temp_file.write(template)
+    temp_file.path
   end
 
   def create_job_queue_config(job_ids,reboot_id=nil)
-    random_hash = rand(36**24).to_s(26)
     template = <<-EOF
 <p:SetupJobQueue_INPUT xmlns:p="http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService"><% job_ids.each do |job_id| %>
 <p:JobArray><%= job_id %></p:JobArray><% end %><% if reboot_id %>
@@ -206,11 +204,9 @@ EOF
 </p:SetupJobQueue_INPUT>
 EOF
     xmlout = ERB.new(template)
-    file_path = "/tmp/#{random_hash}.xml"
-    File.open(file_path,'w') do |f|
-      f.puts xmlout.result(binding)
-    end
-    file_path
+    temp_file = Tempfile.new('jq_config')
+    temp_file.write(xmlout.result(binding)
+    temp_file.path
   end
 
   def get_job_status(id)
