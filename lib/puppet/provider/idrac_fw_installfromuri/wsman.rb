@@ -1,6 +1,5 @@
 require 'puppet/idrac/util'
 require 'nokogiri'
-require 'active_support'
 require 'erb'
 require 'tempfile'
 
@@ -49,7 +48,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       Puppet.debug(fw)
       config_file_path = create_xml_config_file(fw["instance_id"],fw["uri_path"])
       job_id = install_from_uri(config_file_path)
-      if fw["component_id"].to_s !~ /#{UEFI_DIAGNOSTICS_ID}#{LC_ID}/
+      if fw["component_id"].to_s !~ /#{UEFI_DIAGNOSTICS_ID}|#{LC_ID}|#{IDRAC_ID}/
         job_ids << job_id
       end
       remove_config_file(config_file_path)
@@ -73,30 +72,40 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       components << f["component_id"]
     end
     reboot_required = true
-    if components.all? {|c| c.to_s =~ /#{UEFI_DIAGNOSTICS_ID}|#{LC_ID}/}
+    if components.all? {|c| c.to_s =~ /#{UEFI_DIAGNOSTICS_ID}|#{LC_ID}|#{IDRAC_ID}/}
+      Puppet.debug("Reboot not required")
       reboot_required = false
+      update_complete = 'Completed'
+    end
+    if !update_complete
+      @force_restart ? update_complete = 'Completed' : update_complete = 'Scheduled'
     end
     reboot_id = nil
     if reboot_required
-      reboot_config_file_path = create_reboot_config_file
-      reboot_id = create_reboot_job(reboot_config_file_path)
-      remove_config_file(reboot_config_file_path)
+      if @force_restart == true
+        reboot_config_file_path = create_reboot_config_file
+        reboot_id = create_reboot_job(reboot_config_file_path)
+        remove_config_file(reboot_config_file_path)
+      end
       job_queue_config_file = create_job_queue_config(job_ids,reboot_id)
       setup_job_queue(job_queue_config_file)
       remove_config_file(job_queue_config_file)
-      reboot_status = 'new'
-      until reboot_status == 'Reboot Completed'
-        sleep 30
-        reboot_status = get_job_status(reboot_id)
-        Puppet.debug("Reboot Status: #{reboot_status}")
+      if @force_restart == true
+        reboot_status = 'new'
+        until reboot_status == 'Reboot Completed'
+          sleep 30
+          reboot_status = get_job_status(reboot_id)
+          Puppet.debug("Reboot Status: #{reboot_status}")
+        end
       end
     end
-    until statuses.all? {|k,v| v =~ /Completed|Failed/}
+    until statuses.all? {|k,v| v =~ /#{update_complete}|Failed/}
       statuses.each do |key,val|
         job_status = get_job_status(key)
         statuses[key] = job_status
         Puppet.debug("Job Status #{key}: #{val}")
       end
+      sleep 30
     end
     if statuses.values.include? "Failed"
       raise Puppet::Error, "Firmware update failed in the lifecycle controller.  Please refer to LifeCycle job logs"
@@ -142,6 +151,10 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
         Puppet.debug("WSMAN connection failed, retrying after sleep")
         sleep sleeptime
         sleeptime += 30
+      elsif resp.include? 'TimedOut'
+        Puppetd.debug("WSMAN API timed out, retrying after sleep")
+        sleep sleeptime
+        sleeptime += 30
       else
         Puppet.debug("WSMAN RESPONSE:  #{resp}")
         return resp.encode('utf-8', 'binary', :invalid => :replace, :undef => :replace)
@@ -178,7 +191,8 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
     EOF
     xmlout = ERB.new(template)
     temp_file = Tempfile.new('xml_config')
-    temp_file.write(xmlout.result(binding)
+    temp_file.write(xmlout.result(binding))
+    temp_file.close
     temp_file.path
   end
 
@@ -190,6 +204,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
 EOF
     temp_file = Tempfile.new('reboot_config')
     temp_file.write(template)
+    temp_file.close
     temp_file.path
   end
 
@@ -205,7 +220,8 @@ EOF
 EOF
     xmlout = ERB.new(template)
     temp_file = Tempfile.new('jq_config')
-    temp_file.write(xmlout.result(binding)
+    temp_file.write(xmlout.result(binding))
+    temp_file.close
     temp_file.path
   end
 
@@ -249,17 +265,29 @@ EOF
   end
 
   def get_api_status
+    try = 0
     Puppet.debug("Checking API Status")
     wsman_cmd = "wsman invoke -a GetRemoteServicesAPIStatus http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -y basic -c Dummy -V"
-    resp = %x[ #{wsman_cmd} ]
-    doc = Nokogiri::XML(resp)
-    if doc.xpath('//n1:LCStatus').text == "0"
-      Puppet.debug("API Ready")
-      return "ready"
-    else
-      Puppet.debug("API Not Ready, checking again in 30 seconds")
-      sleep 30
-      return "busy"
+    begin
+      try += 1
+      resp = %x[ #{wsman_cmd} ]
+      doc = Nokogiri::XML(resp)
+      if doc.xpath('//n1:LCStatus').text == "0"
+        Puppet.debug("API Ready")
+        return "ready"
+      else
+        Puppet.debug("API Not Ready, checking again in 30 seconds")
+        sleep 30
+        return "busy"
+      end
+    rescue
+      if try > 9
+        raise Puppet::Error, "Error getting API Status"
+      else
+        Puppet.debug("API Status check error, retrying in 30 seconds")
+        sleep 30
+        retry
+      end
     end
   end
 
