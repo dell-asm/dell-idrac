@@ -188,27 +188,28 @@ end
                      'NIC.Integrated.1-1-4' => '00:0E:1E:0D:8C:36'
       }
       ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
+      ASM::WsMan.stub(:get_all_fqdds).and_return(fqdd_to_mac.keys)
       net_config = ASM::NetworkConfiguration.new(@mock_net_config_data)
       ASM::NetworkConfiguration.stub(:new).and_return(net_config)
       changes = @fixture.process_nics
 
       ['NIC.Integrated.1-1-1', 'NIC.Integrated.1-1-2', 'NIC.Integrated.1-1-3', 'NIC.Integrated.1-1-4'].all? do |s| 
-        changes['partial'].key?(s).should == true
-        partials = changes['partial']
+        changes['whole'].key?(s).should == true
+        nic_changes = changes['whole'][s]
         case s
         when "NIC.Integrated.1-1-1"
-          partials[s]['NicMode'].should == "Enabled"
-          partials[s]['VirtualizationMode'].should == "NPAR"
-          partials[s]['iScsiOffloadMode'].should == "Disabled"
+          nic_changes['NicMode'].should == "Enabled"
+          nic_changes['VirtualizationMode'].should == "NPAR"
+          nic_changes['iScsiOffloadMode'].should == "Disabled"
         when "NIC.Integrated.1-1-2"
-          partials[s]['NicMode'].should == "Enabled"
-          partials[s]['iScsiOffloadMode'].should == "Enabled"
+          nic_changes['NicMode'].should == "Enabled"
+          nic_changes['iScsiOffloadMode'].should == "Enabled"
         when "NIC.Integrated.1-1-3"
-          partials[s]['NicMode'].should == "Enabled"
-          partials[s]['iScsiOffloadMode'].should == "Disabled"
+          nic_changes['NicMode'].should == "Enabled"
+          nic_changes['iScsiOffloadMode'].should == "Disabled"
         when "NIC.Integrated.1-1-4"
-          partials[s]['NicMode'].should == "Enabled"
-          partials[s]['iScsiOffloadMode'].should == "Disabled"
+          nic_changes['NicMode'].should == "Enabled"
+          nic_changes['iScsiOffloadMode'].should == "Disabled"
         end
       end
     end
@@ -251,7 +252,7 @@ end
     context "when munging network_configuration" do
           it 'should configure nic partitions in config.xml' do
             @network_configuration = JSON.parse(File.read(@test_config_dir.path + '/network_configuration.json'))['networkConfiguration']
-            changes = {'partial' => {}, 'remove' => {'components' => {}} }
+            changes = {'partial' => {}, 'whole'=>{}, 'remove' => {'components' => {}} }
             fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
                      'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
                      'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
