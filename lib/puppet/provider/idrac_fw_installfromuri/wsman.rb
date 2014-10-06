@@ -2,7 +2,6 @@ require 'puppet/idrac/util'
 require 'nokogiri'
 require 'erb'
 require 'tempfile'
-require 'json'
 
 Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
   IDRAC_ID = 25227
@@ -11,7 +10,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
 
   def exists?
     @force_restart = resource[:force_restart]
-    @firmwares = JSON.parse(resource[:idrac_firmware])
+    @firmwares = resource[:idrac_firmware]
     false
   end
 
