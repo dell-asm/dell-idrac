@@ -2,6 +2,7 @@ require 'puppet/idrac/util'
 require 'nokogiri'
 require 'erb'
 require 'tempfile'
+require 'json'
 
 Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
   IDRAC_ID = 25227
@@ -10,7 +11,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
 
   def exists?
     @force_restart = resource[:force_restart]
-    @firmwares = resource[:idrac_firmware]
+    @firmwares = JSON.parse(resource[:idrac_firmware])
     false
   end
 
@@ -78,19 +79,17 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       update_complete = 'Completed'
     end
     if !update_complete
-      @force_restart ? update_complete = 'Completed' : update_complete = 'Scheduled'
+      @force_restart  == 'true' ? update_complete = 'Completed' : update_complete = 'Scheduled'
     end
     reboot_id = nil
     if reboot_required
-      if @force_restart == true
+      if @force_restart == 'true'
         reboot_config_file_path = create_reboot_config_file
         reboot_id = create_reboot_job(reboot_config_file_path)
-        remove_config_file(reboot_config_file_path)
       end
       job_queue_config_file = create_job_queue_config(job_ids,reboot_id)
       setup_job_queue(job_queue_config_file)
-      remove_config_file(job_queue_config_file)
-      if @force_restart == true
+      if @force_restart == 'true'
         reboot_status = 'new'
         until reboot_status == 'Reboot Completed'
           sleep 30
