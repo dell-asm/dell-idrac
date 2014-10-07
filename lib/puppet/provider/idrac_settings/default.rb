@@ -32,7 +32,7 @@ Puppet::Type.type(:idrac_settings).provide(:default, :parent => Puppet::Provider
       racadm_set('idrac', 'users', 'username', user['username'], index)
       racadm_set('idrac', 'users', 'password', get_password(user['password']), index)
       racadm_set('idrac', 'users', 'ipmilanprivilege', lan_permissions[user['lan']], index)
-      racadm_set('idrac', 'users', 'privilege', local_permissions(user['idracrole']), index)
+      racadm_set('idrac', 'users', 'privilege', local_permissions[user['idracrole']], index)
       racadm_set('idrac', 'users', 'enable', enabled_bit(user['enabled']), index)
     end
   end
@@ -122,8 +122,8 @@ Puppet::Type.type(:idrac_settings).provide(:default, :parent => Puppet::Provider
     racadm_get('system', 'location', 'chassis.name')
   end
 
-  def chassis_name
-    racadm_get('system', 'location', 'chassis.name')
+  def chassis_name=(chassis_name)
+    racadm_set('system', 'location', 'chassis.name', chassis_name)
   end
 
   def datacenter
