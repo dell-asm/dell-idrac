@@ -78,7 +78,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       update_complete = 'Completed'
     end
     if !update_complete
-      update_complete = @force_restart ? 'Completed' : update_complete = 'Scheduled'
+      update_complete = @force_restart ? 'Completed' :  'Scheduled'
     end
     reboot_id = nil
     if reboot_required
