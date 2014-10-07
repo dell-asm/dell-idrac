@@ -1,3 +1,5 @@
+require 'puppet/parameter/boolean'
+
 Puppet::Type.newtype(:idrac_fw_installfromuri) do
   desc "Implements the WSMan-DCIM_SoftwareInstallationService .InstallFromURI method"
 
@@ -11,7 +13,7 @@ Puppet::Type.newtype(:idrac_fw_installfromuri) do
     desc "Array of hashes containing [{instance_id, component_id, uri_path},]"
   end
 
-  newparam(:force_restart) do
+  newparam(:force_restart, :boolean => true, :parent => Puppet::Parameter::Boolean) do
     desc "Forces the restart now"
   end
 end
