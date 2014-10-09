@@ -238,7 +238,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   def get_raid_config_changes(xml_base)
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
     #Leave the RAID settings as is from reference if we are cloning
-    if(@resource[:config_xml].nil?)
+    if(@resource[:config_xml].nil? || @resource[:raid_config] == "raid_1_mirror")
       if @resource[:target_boot_device] == "HD"
           changes['whole']['RAID.Integrated.1-1'] =
               {
