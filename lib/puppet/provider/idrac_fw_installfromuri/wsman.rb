@@ -2,6 +2,7 @@ require 'puppet/idrac/util'
 require 'nokogiri'
 require 'erb'
 require 'tempfile'
+require 'asm/util'
 
 Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
   IDRAC_ID = 25227
@@ -10,7 +11,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
 
   def exists?
     @force_restart = resource[:force_restart]
-    @firmwares = resource[:idrac_firmware]
+    @firmwares = ASM::Util.asm_json_array(resource[:idrac_firmware])
     false
   end
 
