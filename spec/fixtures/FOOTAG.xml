@@ -11,6 +11,9 @@
 <Component FQDD="NIC.Integrated.1-2-1">
     <Attribute Name="VirtualizationMode">NONE</Attribute>
 </Component>
+<Component FQDD="RAID.Integrated.1-1">
+    <Attribute Name="VirtualizationMode">NONE</Attribute>
+</Component>
 
 <Component FQDD="RemoveMe">
 </Component>
