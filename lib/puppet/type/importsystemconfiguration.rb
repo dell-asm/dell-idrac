@@ -127,13 +127,20 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     desc "A hash of the individual BIOS Settings the user wants to set"
     munge do |settings|
       settings.keys.each do |key|
-        if(settings[key] == :undef)
+        # If settings are specified as boolean values, translate them to the
+        # format idrac expects: Enabled or Disabled.
+        val = settings[key]
+        if val == :undef
+          # This seems weird; we allow nil to stay in?
           settings.delete(key)
-        elsif settings[key] == true
-          settings[key] = "Enabled"
-        elsif settings[key] == false
-          settings[key] = "Disabled"
-        end  
+        elsif val.is_a?(String)
+          settings[key] = 'Enabled' if ['true', 'yes'].include?(val.downcase)
+          settings[key] = 'Disabled' if ['false', 'no'].include?(val.downcase)
+        elsif val.is_a?(TrueClass)
+          settings[key] = 'Enabled'
+        elsif val.is_a?(FalseClass)
+          settings[key] = 'Disabled'
+        end
       end
       settings
     end
