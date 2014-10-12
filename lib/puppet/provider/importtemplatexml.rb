@@ -235,15 +235,39 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
   end
 
+  # Returns the RAID controller FQDD to use. Skips embedded RAID. If there is
+  # more than one controller found the lexically first FQDD will be used, which
+  # effectively means we will prefer integrated raid to slot raid; there is no
+  # particular reason for that, we just have to choose consistently.
+  #
+  # If no controller is found returns the default, RAID.Integrated.1-1. This is
+  # necessary because if integrated raid is disabled initially we won't find
+  # it in the list of components.
+  #
+  # Typical values will be RAID.Integrated.1-1 or RAID.Slot.6-1
+  def raid_controller
+    @raid_controller ||= xml_base.xpath("//Component").collect do |node|
+      fqdd = node.attribute('FQDD').value
+      fqdd if fqdd.start_with?('RAID') && !fqdd.start_with?('RAID.Embedded')
+    end.compact.sort.first
+
+    unless @raid_controller
+      Puppet.warn("No RAID controller component found; attempting to configure " +
+                      "integrated RAID, but it may not exist on the system")
+      @raid_controller = 'RAID.Integrated.1-1'
+    end
+  end
+
   def get_raid_config_changes(xml_base)
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
     #Leave the RAID settings as is from reference if we are cloning
     if(@resource[:config_xml].nil? || @resource[:raid_config] == "raid_1_mirror")
+      raid_fqdd = raid_controller
       if @resource[:target_boot_device] == "HD"
-          changes['whole']['RAID.Integrated.1-1'] =
+          changes['whole'][raid_fqdd] =
               {
                   'RAIDresetConfig' => "True",
-                  'Disk.Virtual.0:RAID.Integrated.1-1' => 
+                  "Disk.Virtual.0:#{raid_fqdd}" =>
                       {
                           'RAIDaction'=>'Create',
                           'RAIDinitOperation'=>'Fast',
@@ -253,13 +277,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                           'SpanDepth'=>'1',
                           'SpanLength'=>'2',
                           'RAIDTypes'=>'RAID 1',
-                          'IncludedPhysicalDiskID'=>['Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1',
-                                                     'Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1']
+                          'IncludedPhysicalDiskID'=>["Disk.Bay.0:Enclosure.Internal.0-1:#{raid_fqdd}",
+                                                     "Disk.Bay.1:Enclosure.Internal.0-1:#{raid_fqdd}"]
                       }
               }
       #Leave RAID config as is if boot device = none
       elsif @resource[:target_boot_device].downcase != "none"
-          changes['remove']['components']['RAID.Integrated.1-1'] = {}
+          changes['remove']['components'][raid_fqdd] = {}
       end
     end
     return changes
@@ -267,12 +291,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def raid_in_sync?(xml_base, log=false)
     in_sync = true
-    raid_fqdd_xpath = '//Component[@FQDD="RAID.Integrated.1-1"]'
     if(@resource[:target_boot_device] == "HD")
-      comments = xml_base.xpath("#{raid_fqdd_xpath}/Component[@FQDD='Disk.Virtual.0:RAID.Integrated.1-1']//comment()")
+      raid_fqdd = raid_controller
+      raid_fqdd_xpath = "//Component[@FQDD=\"#{raid_fqdd}\"]"
+      comments = xml_base.xpath("#{raid_fqdd_xpath}/Component[@FQDD='Disk.Virtual.0:#{raid_fqdd}']//comment()")
       disks = comments.collect{|c| Nokogiri::XML(c.content).at_xpath("/Attribute").content if c.content.include?("IncludedPhysicalDiskID")}.compact
       raid_types = comments.collect{|c| Nokogiri::XML(c.content).at_xpath("/Attribute").content if c.content.include?("RAIDTypes")}.compact.first
-      expected = ["Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1", "Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1"]
+      expected = ["Disk.Bay.0:Enclosure.Internal.0-1:#{raid_fqdd}", "Disk.Bay.1:Enclosure.Internal.0-1:#{raid_fqdd}"]
       if((expected - disks).size != 0)
         in_sync = false
         Puppet.debug("RAID config needs to be updated.  Expected IncludedPhysicalDiskIDs to be #{expected}, but got #{disks}") if log
