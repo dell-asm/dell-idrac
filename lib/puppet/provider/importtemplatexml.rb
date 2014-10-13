@@ -256,6 +256,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                       "integrated RAID, but it may not exist on the system")
       @raid_controller = 'RAID.Integrated.1-1'
     end
+    @raid_controller
   end
 
   def get_raid_config_changes(xml_base)
