@@ -90,7 +90,7 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     end
   end
 
-  newparam(:raid_config) do 
+  newparam(:raid_config) do
     desc "Either configure_from_reference_server or raid_1_mirror"
     munge do |value|
       value.to_s
@@ -177,6 +177,7 @@ Puppet::Type.newtype(:importsystemconfiguration) do
 
   newparam(:raid_action) do
     desc "The raid action to be performed (CREATE,UPDATE,DELETE)"
+    newvalues("create", "update", "delete")
   end
 
 end

@@ -261,7 +261,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def get_raid_config_changes(xml_base)
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
-    if(@resource[:raid_action].downcase == 'delete')
+    if(@resource[:raid_action] == 'delete')
       Puppet.debug("RAID_ACTION: #{@resource[:raid_action]}")
       changes['whole']['RAID.Integrated.1-1'] =
           {
@@ -319,7 +319,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         in_sync = false
         Puppet.debug("RAID config needs to be updated.  Expected RAIDTypes to be RAID 1, but got #{raid_types}") if log
       end
-      if(in_sync && raid_types == "RAID 1" && @resource[:raid_action].downcase == 'delete')
+      if(in_sync && raid_types == "RAID 1" && @resource[:raid_action] == 'delete')
         in_sync = false
         Puppet.debug("RAID config needs to be updated.  Raid_action set to delete")
       end
