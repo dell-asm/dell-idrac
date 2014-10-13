@@ -2,8 +2,6 @@ require 'puppet/idrac/util'
 require 'nokogiri'
 require 'erb'
 require 'tempfile'
-require 'asm/util'
-
 Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
   IDRAC_ID = 25227
   LC_ID = 28897
@@ -11,7 +9,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
 
   def exists?
     @force_restart = resource[:force_restart]
-    @firmwares = ASM::Util.asm_json_array(resource[:idrac_firmware])
+    @firmwares = resource[:idrac_firmware]
     false
   end
 
@@ -21,8 +19,9 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
     pre = []
     main = []
     post = []
+    Puppet.debug(@firmwares)
     @firmwares.each do |firmware|
-    Puppet.debug(firmware)
+      Puppet.debug(firmware)
       if firmware["component_id"].to_i == LC_ID
         pre << firmware
       elsif firmware["component_id"].to_i == IDRAC_ID
@@ -41,7 +40,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       update(post)
     end
   end
-      
+
   def update(firmware_list)
     job_ids = []
     statuses = {}
@@ -175,7 +174,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       raise Puppet::Error, "Problem running InstallFromURI: #{doc.xpath('//n1:Message')}"
     end
   end
-  
+
   def create_xml_config_file(instance_id,path)
     template = <<-EOF
 <p:InstallFromURI_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService">
@@ -290,6 +289,5 @@ EOF
     end
   end
 
-    
-end
 
+end
