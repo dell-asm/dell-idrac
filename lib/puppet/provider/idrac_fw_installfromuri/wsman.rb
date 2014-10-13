@@ -9,7 +9,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
 
   def exists?
     @force_restart = resource[:force_restart]
-    @firmwares = resource[:idrac_firmware]
+    @firmwares = ASM::Util.asm_json_array(resource[:idrac_firmware])
     false
   end
 
@@ -19,7 +19,6 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
     pre = []
     main = []
     post = []
-    Puppet.debug(@firmwares)
     @firmwares.each do |firmware|
       Puppet.debug(firmware)
       if firmware["component_id"].to_i == LC_ID
