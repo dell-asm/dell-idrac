@@ -2,6 +2,8 @@ require 'puppet/idrac/util'
 require 'nokogiri'
 require 'erb'
 require 'tempfile'
+require 'asm/util'
+
 Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
   IDRAC_ID = 25227
   LC_ID = 28897
