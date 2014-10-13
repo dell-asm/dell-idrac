@@ -262,6 +262,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   def get_raid_config_changes(xml_base)
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
     if(@resource[:raid_action].downcase == 'delete')
+      Puppet.debug("RAID_ACTION: #{@resource[:raid_action]}")
       changes['whole']['RAID.Integrated.1-1'] =
           {
                'RAIDresetConfig' => "True",
@@ -272,29 +273,30 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           }
     else
     #Leave the RAID settings as is from reference if we are cloning
-    if(@resource[:config_xml].nil? || @resource[:raid_config] == "raid_1_mirror")
-      raid_fqdd = raid_controller
-      if @resource[:target_boot_device] == "HD"
-          changes['whole'][raid_fqdd] =
-              {
-                  'RAIDresetConfig' => "True",
-                  "Disk.Virtual.0:#{raid_fqdd}" =>
-                      {
-                          'RAIDaction'=>'Create',
-                          'RAIDinitOperation'=>'Fast',
-                          'Name'=>'RAID ONE',
-                          'Size'=>'0',
-                          'StripeSize'=>'128',
-                          'SpanDepth'=>'1',
-                          'SpanLength'=>'2',
-                          'RAIDTypes'=>'RAID 1',
-                          'IncludedPhysicalDiskID'=>["Disk.Bay.0:Enclosure.Internal.0-1:#{raid_fqdd}",
-                                                     "Disk.Bay.1:Enclosure.Internal.0-1:#{raid_fqdd}"]
-                      }
-              }
-      #Leave RAID config as is if boot device = none
-      elsif @resource[:target_boot_device].downcase != "none"
-          changes['remove']['components'][raid_fqdd] = {}
+      if(@resource[:config_xml].nil? || @resource[:raid_config] == "raid_1_mirror")
+        raid_fqdd = raid_controller
+        if @resource[:target_boot_device] == "HD"
+            changes['whole'][raid_fqdd] =
+                {
+                    'RAIDresetConfig' => "True",
+                    "Disk.Virtual.0:#{raid_fqdd}" =>
+                        {
+                            'RAIDaction'=>'Create',
+                            'RAIDinitOperation'=>'Fast',
+                            'Name'=>'RAID ONE',
+                            'Size'=>'0',
+                            'StripeSize'=>'128',
+                            'SpanDepth'=>'1',
+                            'SpanLength'=>'2',
+                            'RAIDTypes'=>'RAID 1',
+                            'IncludedPhysicalDiskID'=>["Disk.Bay.0:Enclosure.Internal.0-1:#{raid_fqdd}",
+                                                       "Disk.Bay.1:Enclosure.Internal.0-1:#{raid_fqdd}"]
+                        }
+                }
+        #Leave RAID config as is if boot device = none
+        elsif @resource[:target_boot_device].downcase != "none"
+            changes['remove']['components'][raid_fqdd] = {}
+        end
       end
     end
     return changes
@@ -316,6 +318,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       if(in_sync && raid_types != "RAID 1")
         in_sync = false
         Puppet.debug("RAID config needs to be updated.  Expected RAIDTypes to be RAID 1, but got #{raid_types}") if log
+      end
+      if(in_sync && raid_types == "RAID 1" && @resource[:raid_action].downcase == 'delete')
+        in_sync = false
+        Puppet.debug("RAID config needs to be updated.  Raid_action set to delete")
       end
     end
     in_sync

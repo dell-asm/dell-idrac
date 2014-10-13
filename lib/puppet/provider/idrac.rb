@@ -101,7 +101,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
 
   def check_removes(node_name, data, path, xml_base, node_type)
     in_sync = true
-    name_attr = node_type == "Component" ? "FQDD" : "Name" 
+    name_attr = node_type == "Component" ? "FQDD" : "Name"
     if(!data.nil? && data.size != 0)
       new_path = "#{path}/Component[@FQDD='#{node_name}']"
       data.each do |name, child_data|
@@ -167,19 +167,19 @@ class Puppet::Provider::Idrac <  Puppet::Provider
   def reset
     Puppet.info("Resetting Idrac...")
     Net::SSH.start( transport[:host],
-                    transport[:user], 
-                    :password => transport[:password], 
-                    :paranoid => Net::SSH::Verifiers::Null.new, 
+                    transport[:user],
+                    :password => transport[:password],
+                    :paranoid => Net::SSH::Verifiers::Null.new,
                     :global_known_hosts_file=>"/dev/null" ) do |ssh|
       ssh.exec "racadm racreset soft" do |ch, stream, data|
         Puppet.debug(data)
-        
-        #Issue warning for the message 'Could not chdir to home directory /flash/data0/home/root: No such file or directory' else raise error                
-        if data.include? "Could not chdir to home directory"          
+
+        #Issue warning for the message 'Could not chdir to home directory /flash/data0/home/root: No such file or directory' else raise error
+        if data.include? "Could not chdir to home directory"
            Puppet.warning "Warning for message - #{data}"
         elsif stream == :stderr
-           raise Puppet::Error, 'Error resetting Idrac'   
-        end               
+           raise Puppet::Error, 'Error resetting Idrac'
+        end
       end
     end
     wait_for_idrac
