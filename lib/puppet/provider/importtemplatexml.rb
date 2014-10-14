@@ -195,7 +195,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         iscsi_network = get_iscsi_network(partition['networkObjects'])
         if (ASM::Util.to_boolean(iscsi_network.static))
           changes['whole'].deep_merge!(
-          { partition.nic.fqdd =>
+          { partition.fqdd =>
             {
                   'VirtMacAddr' => partition['lanMacAddress'],
                   'VirtIscsiMacAddr' => partition['iscsiMacAddress'],
@@ -214,7 +214,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                   'LegacyBootProto' => 'iSCSI'
             }
           })
-          bios_boot_sequence.push(partition.nic.fqdd)
+          bios_boot_sequence.push(partition.fqdd)
         else
           Puppet.warn("Found non-static iSCSI network while configuring boot from SAN")
         end
@@ -227,7 +227,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     partitions.each do |partition|
       if(!partition['lanMacAddress'].nil?)
 	      changes['partial'].deep_merge!({
-	        partition.nic.fqdd => {
+	        partition.fqdd => {
 	          'VirtMacAddr' => partition['lanMacAddress']
 	        }
 	      })
