@@ -177,7 +177,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           })
           bios_boot_sequence.push(partition.nic.fqdd)
         else
-          Puppet.warn("Found non-static iSCSI network while configuring boot from SAN")
+          Puppet.warning("Found non-static iSCSI network while configuring boot from SAN")
         end
     end
     changes['partial'].deep_merge!({'BIOS.Setup.1-1' => { 'BiosBootSeq' => bios_boot_sequence.join(',') } })
@@ -213,8 +213,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end.compact.sort.first
 
     unless @raid_controller
-      Puppet.warn("No RAID controller component found; attempting to configure " +
-                      "integrated RAID, but it may not exist on the system")
+      Puppet.warning("No RAID controller component found; attempting to configure " +
+                         "integrated RAID, but it may not exist on the system")
       @raid_controller = 'RAID.Integrated.1-1'
     end
     @raid_controller
