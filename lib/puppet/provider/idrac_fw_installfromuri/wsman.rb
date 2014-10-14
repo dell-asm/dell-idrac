@@ -8,6 +8,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
   IDRAC_ID = 25227
   LC_ID = 28897
   UEFI_DIAGNOSTICS_ID = 25806
+  DRIVER_PACK = 18981
 
   def exists?
     @force_restart = resource[:force_restart]
@@ -49,7 +50,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       Puppet.debug(fw)
       config_file_path = create_xml_config_file(fw["instance_id"],fw["uri_path"])
       job_id = install_from_uri(config_file_path)
-      if fw["component_id"].to_s !~ /#{UEFI_DIAGNOSTICS_ID}|#{LC_ID}|#{IDRAC_ID}/
+      if fw["component_id"].to_s !~ /#{UEFI_DIAGNOSTICS_ID}|#{LC_ID}|#{IDRAC_ID}|#{DRIVER_PACK}/
         job_ids << job_id
       end
       remove_config_file(config_file_path)
@@ -73,7 +74,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       components << f["component_id"]
     end
     reboot_required = true
-    if components.all? {|c| c.to_s =~ /#{UEFI_DIAGNOSTICS_ID}|#{LC_ID}|#{IDRAC_ID}/}
+    if components.all? {|c| c.to_s =~ /#{UEFI_DIAGNOSTICS_ID}|#{LC_ID}|#{IDRAC_ID}|#{DRIVER_PACK}/}
       Puppet.debug("Reboot not required")
       reboot_required = false
       update_complete = 'Completed'
