@@ -33,18 +33,25 @@ Puppet::Type.type(:importsystemconfiguration).provide(
         end
       end
     end
+    # For config XML case, its observed that we have to invoke the import
+    # operation twice as a workaround.
+    if response == "Completed" and !@resource[:config_xml].nil?
+      Puppet.info('For referenced server configuration, need to perform the configuration XML twice')
+      sleep(60)
+      retry_import(skip_reset=true)
+    end
     if response != "Completed"
       raise "Import System Configuration is still running."
     end
   end
   
-  def retry_import
+  def retry_import(skip_reset=false)
     Puppet.debug("Import operation failed in the first attempt, retrying import operation")
     Puppet.debug("Resetting the iDRAC before performing any other operation")
-    reset
+    reset if !skip_reset
     Puppet.debug("Waiting for Lifecycle Controller be ready")
     lcstatus
-    reboot
+    reboot if !skip_reset
     lcstatus
     exporttemplate
     
