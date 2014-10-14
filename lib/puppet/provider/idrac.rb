@@ -9,6 +9,7 @@ require 'asm/wsman'
 require 'puppet/idrac/util'
 require 'net/ssh'
 require 'puppet/util/warnings'
+require 'fileutils'
 
 class Puppet::Provider::Idrac <  Puppet::Provider
 
@@ -213,14 +214,26 @@ class Puppet::Provider::Idrac <  Puppet::Provider
   end
 
   def exporttemplate
-    obj = Puppet::Provider::Exporttemplatexml.new(
-      transport[:host],
-      transport[:user],
-      transport[:password],
-      resource,
-      '/var/nfs'
-    )
-    obj.exporttemplatexml
+    if !@resource[:config_xml].nil?
+      Puppet.debug("Creating configuration using reference server")
+      create_config
+    else
+      obj = Puppet::Provider::Exporttemplatexml.new(
+          transport[:host],
+          transport[:user],
+          transport[:password],
+          resource,
+          '/var/nfs'
+      )
+      obj.exporttemplatexml
+    end
+  end
+
+  def create_config
+    FileUtils.mkdir_p('/var/nfs/idrac_config_xml')
+    file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_exported.xml"
+    file_path = "/var/nfs/idrac_config_xml/#{file_name}"
+    File.open(file_path, "w"){|f| f << @resource[:config_xml] }
   end
 
   def checkjobstatus(instanceid)

@@ -261,15 +261,15 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def get_raid_config_changes(xml_base)
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
-    if(@resource[:raid_action] == 'delete')
+    if(@resource[:config_xml].nil? and @resource[:raid_action] == 'delete')
       Puppet.debug("RAID_ACTION: #{@resource[:raid_action]}")
       changes['whole']['RAID.Integrated.1-1'] =
           {
-               'RAIDresetConfig' => "True",
-               'Disk.Virtual.0:RAID.Integrated.1-1' =>
-                   {
-                       'RAIDaction'=>'Delete',
-                   }
+              'RAIDresetConfig' => "True",
+              'Disk.Virtual.0:RAID.Integrated.1-1' =>
+                  {
+                      'RAIDaction'=>'Delete',
+                  }
           }
     else
     #Leave the RAID settings as is from reference if we are cloning
