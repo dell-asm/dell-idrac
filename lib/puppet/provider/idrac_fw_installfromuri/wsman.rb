@@ -50,7 +50,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       Puppet.debug(fw)
       config_file_path = create_xml_config_file(fw["instance_id"],fw["uri_path"])
       job_id = install_from_uri(config_file_path)
-      if fw["component_id"].to_s !~ /#{UEFI_DIAGNOSTICS_ID}|#{LC_ID}|#{IDRAC_ID}|#{{DRIVER_PACK}}/
+      if fw["component_id"].to_s !~ /#{UEFI_DIAGNOSTICS_ID}|#{LC_ID}|#{IDRAC_ID}|#{DRIVER_PACK}/
         job_ids << job_id
       end
       remove_config_file(config_file_path)
