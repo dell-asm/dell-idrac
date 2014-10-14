@@ -22,7 +22,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
     main = []
     post = []
     @firmwares.each do |firmware|
-    Puppet.debug(firmware)
+      Puppet.debug(firmware)
       if firmware["component_id"].to_i == LC_ID
         pre << firmware
       elsif firmware["component_id"].to_i == IDRAC_ID
@@ -41,7 +41,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       update(post)
     end
   end
-      
+
   def update(firmware_list)
     job_ids = []
     statuses = {}
@@ -175,7 +175,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       raise Puppet::Error, "Problem running InstallFromURI: #{doc.xpath('//n1:Message')}"
     end
   end
-  
+
   def create_xml_config_file(instance_id,path)
     template = <<-EOF
 <p:InstallFromURI_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService">
@@ -290,6 +290,5 @@ EOF
     end
   end
 
-    
-end
 
+end

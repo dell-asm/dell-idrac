@@ -70,14 +70,14 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     defaultto(true)
   end
 
-  newparam(:sysprofile) do 
+  newparam(:sysprofile) do
     desc "power setting as configured in idrac via sysprofile"
     munge do |value|
       value.to_s
     end
   end
 
-  newparam(:target_boot_device) do 
+  newparam(:target_boot_device) do
     desc "Either SD, HD, or SAN for SD card, Hard Drive, or SAN boot"
     munge do |value|
       value.to_s
@@ -90,7 +90,7 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     end
   end
 
-  newparam(:raid_config) do 
+  newparam(:raid_config) do
     desc "Either configure_from_reference_server or raid_1_mirror"
     munge do |value|
       value.to_s
@@ -136,7 +136,7 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     end
   end
 
-  newparam(:bios_settings) do 
+  newparam(:bios_settings) do
     desc "A hash of the individual BIOS Settings the user wants to set"
     munge do |settings|
       settings.keys.each do |key|
@@ -173,6 +173,11 @@ Puppet::Type.newtype(:importsystemconfiguration) do
 
   newparam(:force_reboot) do
     desc "Whether or not the server should be rebooted"
+  end
+
+  newparam(:raid_action) do
+    desc "The raid action to be performed (CREATE,UPDATE,DELETE)"
+    newvalues("create", "update", "delete")
   end
 
 end
