@@ -177,7 +177,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           })
           bios_boot_sequence.push(partition.nic.fqdd)
         else
-          Puppet.warn("Found non-static iSCSI network while configuring boot from SAN")
+          Puppet.warning("Found non-static iSCSI network while configuring boot from SAN")
         end
     end
     changes['partial'].deep_merge!({'BIOS.Setup.1-1' => { 'BiosBootSeq' => bios_boot_sequence.join(',') } })
@@ -196,40 +196,66 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
   end
 
+  # Returns the RAID controller FQDD to use. Skips embedded RAID. If there is
+  # more than one controller found the lexically first FQDD will be used, which
+  # effectively means we will prefer integrated raid to slot raid; there is no
+  # particular reason for that, we just have to choose consistently.
+  #
+  # If no controller is found returns the default, RAID.Integrated.1-1. This is
+  # necessary because if integrated raid is disabled initially we won't find
+  # it in the list of components.
+  #
+  # Typical values will be RAID.Integrated.1-1 or RAID.Slot.6-1
+  def raid_controller(xml_base)
+    @raid_controller ||= xml_base.xpath("//Component").collect do |node|
+      fqdd = node.attribute('FQDD').value
+      fqdd if fqdd.start_with?('RAID') && !fqdd.start_with?('RAID.Embedded')
+    end.compact.sort.first
+
+    unless @raid_controller
+      Puppet.warning("No RAID controller component found; attempting to configure " +
+                         "integrated RAID, but it may not exist on the system")
+      @raid_controller = 'RAID.Integrated.1-1'
+    end
+    @raid_controller
+  end
+
   def get_raid_config_changes(xml_base)
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
     if @resource[:target_boot_device] == "HD"
-        changes['whole']['RAID.Integrated.1-1'] =
-            {
-                'RAIDresetConfig' => "True",
-                'Disk.Virtual.0:RAID.Integrated.1-1' => 
-                    {
-                        'RAIDaction'=>'Create',
-                        'RAIDinitOperation'=>'Fast',
-                        'Name'=>'RAID ONE',
-                        'Size'=>'0',
-                        'StripeSize'=>'128',
-                        'SpanDepth'=>'1',
-                        'SpanLength'=>'2',
-                        'RAIDTypes'=>'RAID 1',
-                        'IncludedPhysicalDiskID'=>['Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1',
-                                                   'Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1']
-                    }
-            }
+      raid_fqdd = raid_controller(xml_base)
+      changes['whole'][raid_fqdd] =
+          {
+              'RAIDresetConfig' => "True",
+              "Disk.Virtual.0:#{raid_fqdd}" =>
+                  {
+                      'RAIDaction' => 'Create',
+                      'RAIDinitOperation' => 'Fast',
+                      'Name' => 'RAID ONE',
+                      'Size' => '0',
+                      'StripeSize' => '128',
+                      'SpanDepth' => '1',
+                      'SpanLength' => '2',
+                      'RAIDTypes' => 'RAID 1',
+                      'IncludedPhysicalDiskID' => ["Disk.Bay.0:Enclosure.Internal.0-1:#{raid_fqdd}",
+                                                   "Disk.Bay.1:Enclosure.Internal.0-1:#{raid_fqdd}"]
+                  }
+          }
     else
-        changes['remove']['components']['RAID.Integrated.1-1'] = {}
+      changes['remove']['components']['RAID.Integrated.1-1'] = {}
     end
     return changes
   end
 
   def raid_in_sync?(xml_base, log=false)
     in_sync = true
-    raid_fqdd_xpath = '//Component[@FQDD="RAID.Integrated.1-1"]'
     if(@resource[:target_boot_device] == "HD")
-      comments = xml_base.xpath("#{raid_fqdd_xpath}/Component[@FQDD='Disk.Virtual.0:RAID.Integrated.1-1']//comment()")
+      raid_fqdd = raid_controller(xml_base)
+      raid_fqdd_xpath = "//Component[@FQDD=\"#{raid_fqdd}\"]"
+      comments = xml_base.xpath("#{raid_fqdd_xpath}/Component[@FQDD='Disk.Virtual.0:#{raid_fqdd}']//comment()")
       disks = comments.collect{|c| Nokogiri::XML(c.content).at_xpath("/Attribute").content if c.content.include?("IncludedPhysicalDiskID")}.compact
       raid_types = comments.collect{|c| Nokogiri::XML(c.content).at_xpath("/Attribute").content if c.content.include?("RAIDTypes")}.compact.first
-      expected = ["Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1", "Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1"]
+      expected = ["Disk.Bay.0:Enclosure.Internal.0-1:#{raid_fqdd}", "Disk.Bay.1:Enclosure.Internal.0-1:#{raid_fqdd}"]
       if((expected - disks).size != 0)
         in_sync = false
         Puppet.debug("RAID config needs to be updated.  Expected IncludedPhysicalDiskIDs to be #{expected}, but got #{disks}") if log
