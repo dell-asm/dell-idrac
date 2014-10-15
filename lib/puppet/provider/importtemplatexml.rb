@@ -206,7 +206,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   # it in the list of components.
   #
   # Typical values will be RAID.Integrated.1-1 or RAID.Slot.6-1
-  def raid_controller
+  def raid_controller(xml_base)
     @raid_controller ||= xml_base.xpath("//Component").collect do |node|
       fqdd = node.attribute('FQDD').value
       fqdd if fqdd.start_with?('RAID') && !fqdd.start_with?('RAID.Embedded')
@@ -223,7 +223,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   def get_raid_config_changes(xml_base)
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
     if @resource[:target_boot_device] == "HD"
-      raid_fqdd = raid_controller
+      raid_fqdd = raid_controller(xml_base)
       changes['whole'][raid_fqdd] =
           {
               'RAIDresetConfig' => "True",
@@ -250,7 +250,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   def raid_in_sync?(xml_base, log=false)
     in_sync = true
     if(@resource[:target_boot_device] == "HD")
-      raid_fqdd = raid_controller
+      raid_fqdd = raid_controller(xml_base)
       raid_fqdd_xpath = "//Component[@FQDD=\"#{raid_fqdd}\"]"
       comments = xml_base.xpath("#{raid_fqdd_xpath}/Component[@FQDD='Disk.Virtual.0:#{raid_fqdd}']//comment()")
       disks = comments.collect{|c| Nokogiri::XML(c.content).at_xpath("/Attribute").content if c.content.include?("IncludedPhysicalDiskID")}.compact
