@@ -319,7 +319,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         in_sync = false
         Puppet.debug("RAID config needs to be updated.  Expected RAIDTypes to be RAID 1, but got #{raid_types}") if log
       end
-      if(raid_types == "RAID 1" && @resource[:raid_action] == :delete)
+      if(in_sync && raid_types == "RAID 1" && @resource[:raid_action] == :delete)
         in_sync = false
         Puppet.debug("RAID config needs to be updated.  Raid_action set to delete")
       end
