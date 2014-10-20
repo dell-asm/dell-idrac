@@ -43,6 +43,19 @@ Puppet::Type.type(:importsystemconfiguration).provide(
     if response != "Completed"
       raise "Import System Configuration is still running."
     end
+    disks_ready = false
+    Puppet.info('Checking for virtual disks to be out of any running operation...')
+    for j in 0..30
+      disks_ready = virtual_disks_ready?
+      if(disks_ready)
+        break
+      else
+        sleep 60
+      end
+    end
+    if !disks_ready
+      raise 'Virtual disk(s) currrently busy.'
+    end
   end
   
   def retry_import(skip_reset=false)
