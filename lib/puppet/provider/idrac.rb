@@ -192,7 +192,8 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     sleep timeout
     begin
       wait_for_idrac(timeout/2) if lcstatus.to_i != state
-    rescue
+    rescue Exception => e
+      # Plain exception raise from Asm::Wsman was not caught correctly
       wait_for_idrac(timeout/2)
     end
   end
