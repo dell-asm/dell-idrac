@@ -213,7 +213,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                   'FirstTgtTcpPort' => '3260',
                   'FirstTgtIscsiName' => @resource[:target_iscsi],
                   'LegacyBootProto' => 'iSCSI'
-            }
+            }.delete_if{|k,v| v.nil?}
           })
           bios_boot_sequence.push(partition.fqdd)
         else
