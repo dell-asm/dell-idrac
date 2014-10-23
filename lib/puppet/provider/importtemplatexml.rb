@@ -100,10 +100,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       #Need xml_base to check raid_config_changes, so need to do here instead of in get_config_changes
       changes.deep_merge!(get_raid_config_changes(xml_base))
     end
-    #Handle partial node changes (node should exist already, but needs data edited/added within)
-    changes['partial'].keys.each do |parent|
-      process_partials(parent, changes['partial'][parent], xml_base)
-    end
     #Handle whole nodes (node should be replaced if exists, or should be created if not)
     changes["whole"].keys.each do |name|
       path = "/SystemConfiguration/Component[@FQDD='#{name}']"
@@ -113,6 +109,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         existing.remove
       end
       create_full_node(name, changes["whole"][name], xml_base, xml_base.xpath("/SystemConfiguration").first)
+    end
+    #Handle partial node changes (node should exist already, but needs data edited/added within)
+    changes['partial'].keys.each do |parent|
+      process_partials(parent, changes['partial'][parent], xml_base)
     end
     #Handle node removal (ensure nodes listed here don't exist)
     changes["remove"]["attributes"].keys.each do |parent|
