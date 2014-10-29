@@ -132,10 +132,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
   end
 
   def run_wsman(cmd)
-    api_status = 'busy'
-    until api_status == 'ready'
-      api_status = get_api_status
-    end
+    get_api_status # This will loop until ready or fail
     sleeptime = 30
     4.times do
       resp = %x[#{cmd}]
@@ -266,27 +263,34 @@ EOF
 
   def get_api_status
     try = 0
+    not_ready = 0
+    status = "busy"
     Puppet.debug("Checking API Status")
     wsman_cmd = "wsman invoke -a GetRemoteServicesAPIStatus http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -y basic -c Dummy -V"
-    begin
+    until status == "ready"
       try += 1
-      resp = %x[ #{wsman_cmd} ]
-      doc = Nokogiri::XML(resp)
-      if doc.xpath('//n1:LCStatus').text == "0"
-        Puppet.debug("API Ready")
-        return "ready"
-      else
-        Puppet.debug("API Not Ready, checking again in 30 seconds")
-        sleep 30
-        return "busy"
-      end
-    rescue
-      if try > 9
-        raise Puppet::Error, "Error getting API Status"
-      else
-        Puppet.debug("API Status check error, retrying in 30 seconds")
-        sleep 30
-        retry
+      begin
+        resp = %x[ #{wsman_cmd} ]
+        doc = Nokogiri::XML(resp)
+        if doc.xpath('//n1:LCStatus').text == "0"
+          Puppet.debug("API Ready")
+          status = "ready"
+        elsif not_ready >= 20
+          raise Puppet::Error,  "Lifecycle Controller API never returned to ready state after 10 minute (20 retries)"
+        else
+          Puppet.debug("API Not Ready, checking again in 30 seconds")
+          sleep 30
+          not_ready += 1
+          status = "busy"
+        end
+      rescue
+        if try > 9
+          raise Puppet::Error, "Error getting API Status"
+        else
+          Puppet.debug("API Status check error, retrying in 30 seconds")
+          sleep 30
+          retry
+        end
       end
     end
   end
