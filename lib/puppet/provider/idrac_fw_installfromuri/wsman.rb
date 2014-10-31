@@ -1,10 +1,15 @@
+provider_path = Pathname.new(__FILE__).parent.parent
 require 'puppet/idrac/util'
 require 'nokogiri'
 require 'erb'
 require 'tempfile'
 require 'asm/util'
+require File.join(provider_path, 'idrac')
 
-Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
+Puppet::Type.type(:idrac_fw_installfromuri).provide(
+  :wsman,
+  :parent => Puppet::Provider::Idrac
+) do
   IDRAC_ID = 25227
   LC_ID = 28897
   UEFI_DIAGNOSTICS_ID = 25806
@@ -57,7 +62,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
       job_status = 'new'
       until job_status =~ /Downloaded|Completed|Failed/
         sleep 30
-        job_status = get_job_status(job_id)
+        job_status = checkjobstatus job_id
         statuses[job_id] = job_status
         Puppet.debug("Job Status: #{job_status}")
       end
@@ -94,16 +99,22 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
         reboot_status = 'new'
         until reboot_status == 'Reboot Completed'
           sleep 30
-          reboot_status = get_job_status(reboot_id)
+          reboot_status = checkjobstatus reboot_id
           Puppet.debug("Reboot Status: #{reboot_status}")
         end
       end
     end
+    status_repeats = 0
+    previous_statuses = []
     until statuses.all? {|k,v| v =~ /#{update_complete}|Failed/}
       statuses.each do |key,val|
-        job_status = get_job_status(key)
+        job_status = checkjobstatus key
         statuses[key] = job_status
-        Puppet.debug("Job Status #{key}: #{val}")
+        new_statuses << job_status
+        Puppet.debug("Job Status #{key}: #{job_status}")
+        status_repeats += 1 if new_statuses == previous_statuses
+        previous_statuses = new_statuses
+        raise Puppet::Error, "Status values have remained the same for 30 minutes.  Suspected hung update. Please check lifecycle logs" if status_repeats > 59
       end
       sleep 30
     end
@@ -132,10 +143,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(:wsman) do
   end
 
   def run_wsman(cmd)
-    api_status = 'busy'
-    until api_status == 'ready'
-      api_status = get_api_status
-    end
+    wait_for_lc_ready
     sleeptime = 30
     4.times do
       resp = %x[#{cmd}]
@@ -225,14 +233,6 @@ EOF
     temp_file.path
   end
 
-  def get_job_status(id)
-    wsman_cmd = "wsman get http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_LifecycleJob?InstanceID=\"#{id}\" -N root/dcim -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -j utf-8 -y basic -o -m 256 -c Dummy -V"
-    resp = run_wsman(wsman_cmd)
-    doc = Nokogiri::XML(resp)
-    status = doc.xpath('//n1:JobStatus').text
-    status
-  end
-
   def create_reboot_job(reboot_file)
     wsman_cmd = "wsman invoke -a CreateRebootJob http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService,SystemCreationClassName=DCIM_ComputerSystem,SystemName=IDRAC:ID,Name=SoftwareUpdate -h #{transport[:host]} -V -v -c Dummy -P 443 -u #{transport[:user]} -p #{transport[:password]} -J #{reboot_file} -j utf-8 -y basic"
     Puppet.debug("Creating Reboot Job")
@@ -261,33 +261,6 @@ EOF
       Puppet.debug("Job Queue created successfully")
     else
       raise Puppet::Error, "Problem scheduling the job queue.  Message: #{doc.xpath('//n1:Message').text}"
-    end
-  end
-
-  def get_api_status
-    try = 0
-    Puppet.debug("Checking API Status")
-    wsman_cmd = "wsman invoke -a GetRemoteServicesAPIStatus http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -y basic -c Dummy -V"
-    begin
-      try += 1
-      resp = %x[ #{wsman_cmd} ]
-      doc = Nokogiri::XML(resp)
-      if doc.xpath('//n1:LCStatus').text == "0"
-        Puppet.debug("API Ready")
-        return "ready"
-      else
-        Puppet.debug("API Not Ready, checking again in 30 seconds")
-        sleep 30
-        return "busy"
-      end
-    rescue
-      if try > 9
-        raise Puppet::Error, "Error getting API Status"
-      else
-        Puppet.debug("API Status check error, retrying in 30 seconds")
-        sleep 30
-        retry
-      end
     end
   end
 
