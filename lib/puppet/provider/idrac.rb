@@ -90,10 +90,10 @@ class Puppet::Provider::Idrac <  Puppet::Provider
 
   def check_for_important_attrs(xml_base, changes)
     bios_settings_path = "//Component[@FQDD='BIOS.Setup.1-1']"
-    ['InternalSdCard', 'IntegratedRaid'].each do |attr_name|
+    ['InternalSdCard'].each do |attr_name|
       node = xml_base.at_xpath("#{bios_settings_path}/Attribute[@Name='#{attr_name}']")
       value = changes['BIOS.Setup.1-1'][attr_name]
-      if(node.nil? && ['On','Enabled'].include?(value))
+      if node.nil? && ['On', 'Enabled'].include?(value)
         raise("Need to set #{attr_name} to #{value}, but that attribute does not exist on the server.")
       end
     end
