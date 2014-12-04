@@ -106,6 +106,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     end
     status_repeats = 0
     previous_statuses = []
+    new_statuses = []
     until statuses.all? {|k,v| v =~ /#{update_complete}|Failed/}
       statuses.each do |key,val|
         job_status = checkjobstatus key
