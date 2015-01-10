@@ -261,7 +261,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     response = view_disks
     response.xpath('//DCIM_VirtualDiskView').each do |disk|
       current_op = disk.at_xpath('//OperationName').content
-      if(current_op != 'None')
+      unless current_op =~ /None|Background/
         fqdd = disk.at_xpath('FQDD').content
         percent = disk.at_xpath('OperationPercentComplete').content
         Puppet.info("Virtual disk #{fqdd} is currently performing operation #{current_op} at #{percent} percent completion. Waiting...")
