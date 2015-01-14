@@ -2,7 +2,6 @@ require 'rexml/document'
 require 'asm/wsman'
 
 include REXML
-require 'pty'
 
 class Puppet::Provider::Checklcstatus < Puppet::Provider
   def initialize (ip, username, password)

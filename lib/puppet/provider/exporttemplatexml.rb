@@ -14,25 +14,21 @@ class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
   end
 
   def exporttemplatexml
-	  response =commandexe
-    Puppet.info "#{response}"
-    # get instance id
-    xmldoc = Document.new(response)
-    instancenode = XPath.first(xmldoc, '//wsman:Selector Name="InstanceID"')
-    tempinstancenode = instancenode
-    if tempinstancenode.to_s == ""
-      raise "Job ID not created"
-    end
-    instanceid=instancenode.text
-    puts "Instance id #{instanceid}"
-    move_config_xml(instanceid)
-    return instanceid
-  end
-
-  def commandexe
-    command = "wsman invoke http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -a ExportSystemConfiguration -k \"IPAddress=#{@resource['nfsipaddress']}\" -k \"ShareName=#{@nfswritepath}\" -k \"ShareType=0\" -k \"FileName=#{@file_name}\""
-	  resp = `#{command}`
-	  return resp
+    require 'asm/wsman'
+    endpoint = {:host => @ip, :user => @username, :password => @password}
+    method = 'ExportSystemConfiguration'
+    schema = 'http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName="DCIM_ComputerSystem",CreationClassName="DCIM_LCService",SystemName="DCIM:ComputerSystem",Name="DCIM:LCService"'
+    jid = ASM::WsMan.invoke(endpoint, method, schema,
+                            :logger => Puppet,
+                            :selector => '//wsman:Selector Name="InstanceID"',
+                            :props => {'IPAddress' => @resource['nfsipaddress'],
+                                       'ShareName' => @nfswritepath,
+                                       'ShareType' => 0,
+                                       'FileName' => @file_name, })
+    raise "Job ID not created" unless jid && !jid.empty?
+    puts "Instance id #{jid}"
+    move_config_xml(jid)
+    jid
   end
 
   #Just puts the xml in the idrac_config_xml folder (for use with importsystemconfiguration later), writing to /var/nfs due to nfs write permissions
