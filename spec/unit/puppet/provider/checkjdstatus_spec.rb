@@ -2,6 +2,7 @@ require 'spec_helper'
 require 'puppet/provider/checkjdstatus'
 require 'yaml'
 require 'rspec/expectations'
+require 'asm/wsman'
 
 describe Puppet::Provider::Checkjdstatus do
 	
@@ -90,12 +91,14 @@ END
 	end
 	context "when checking lc status" do
 		it "should job check status job id"  do
-		    @fixture.should_receive(:executecmd).once.and_return(@respjdstatus)
+			status = 'Completed'
+			message = 'Successfully exported system configuration XML file.'
+			ASM::WsMan.should_receive(:invoke).once.and_return([status, message])
 			status = @fixture.checkjdstatus
 			status.should == "Completed"
 		end
 		it "should fail if invalid job id passed" do
-			@fixture.should_receive(:executecmd).once.and_return(@failedresp)
+			ASM::WsMan.should_receive(:invoke).once.and_return([nil, nil])
 			expect {@fixture.checkjdstatus}.to raise_error("Job ID not created")
 		end
 	end
