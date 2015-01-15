@@ -8,7 +8,7 @@ include REXML
 
 class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
-  def initialize (ip,username,password,resource)
+  def initialize (ip,username,password,resource, exported_postfix='base')
     @ip = ip
     @username = username
     @password = password
@@ -18,11 +18,59 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @resource = resource
     @bios_settings = resource[:bios_settings]
     @network_config_data = resource[:network_config]
+    @templates_dir = File.join(Puppet::Module.find('idrac').path, 'templates')
+    @exported_postfix = exported_postfix
   end
 
   def importtemplatexml
     munge_config_xml
-    response=executeimportcmd
+    executeimportcmd
+  end
+
+  #Bugs with the ordering of attributes/components in the import causes issues.
+  #This function will go send a very basic xml that will set attributes such as IntegratedRaid, InternalSdCard, NicPartitioning, etc so they are ready and valid in our big import.
+  #TODO:  It would be nice if the import didn't happen if the server was already set up correctly.
+  def setup_idrac
+    get_config_changes
+    file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_preset.xml"
+    config_xml_path = File.join(@resource[:nfssharepath], file_name)
+    additions = @changes['whole'].merge(@changes['partial'])
+    bios_presets = {}
+    if(additions['BIOS.Setup.1-1'])
+      bios_presets = {}
+      bios_presets['IntegratedRaid'] = additions['BIOS.Setup.1-1']['IntegratedRaid']
+      bios_presets['InternalSdCard'] = additions['BIOS.Setup.1-1']['InternalSdCard']
+    end
+    nic_attributes = ['VirtualizationMode', 'NicPartitioning', 'LegacyBootProto']
+    nic_changes = additions.select do  |k,v|
+      k.include?('NIC.') && nic_attributes.any? {|attr| v[attr]}
+    end
+    nic_presets = Hash[nic_changes.collect do |nic|
+      name = nic[0]
+      attrs = {}
+      nic_attributes.each do |attr|
+        attrs[attr] = nic[1][attr] if nic[1].has_key?(attr)
+      end
+      [name, attrs]
+    end]
+    unless nic_presets.empty? && bios_presets.empty?
+      path_to_template = File.join(@templates_dir, 'preset-config.erb')
+      template_file = File.open(path_to_template)
+      template = ERB.new(template_file.read, nil, '-')
+      template_file.close
+      xml = template.result(binding)
+      pre_xml = Nokogiri::XML(xml) do |config|
+        config.default_xml.noblanks
+      end
+      File.open(config_xml_path, 'w+') { |file| file.write(pre_xml.to_xml(:indent => 2)) }
+      Puppet.info('Importing first config to setup idrac as needed for configuration updates....')
+      executeimportcmd(file_name)
+    end
+  end
+
+  def executeimportcmd(file_name=@resource['configxmlfilename'])
+    command = "wsman invoke http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -a ImportSystemConfiguration -k \"IPAddress=#{@resource['nfsipaddress']}\" -k \"ShareName=#{@resource['nfssharepath']}\" -k \"ShareType=0\" -k \"FileName=#{file_name}\" -k \"ShutdownType=1\""
+    response = `#{command}`
     Puppet.info "#{response}"
     # get instance id
     xmldoc = Document.new(response)
@@ -32,19 +80,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       raise "Job ID not created"
     end
     instanceid=instancenode.text
-    Puppet.info "Instance id #{instanceid}"
     return instanceid
   end
 
-  def executeimportcmd
-    command = "wsman invoke http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -h #{@ip} -V -v -c dummy.cert -P 443 -u #{@username} -p #{@password} -a ImportSystemConfiguration -k \"IPAddress=#{@resource['nfsipaddress']}\" -k \"ShareName=#{@resource['nfssharepath']}\" -k \"ShareType=0\" -k \"FileName=#{@resource['configxmlfilename']}\" -k \"ShutdownType=1\""
-    resp = `#{command}`
-  end
-
   def get_config_changes
-    templates_dir = File.join(Puppet::Module.find('idrac').path, 'templates')
-    file_name = File.exist?("#{templates_dir}/#{@resource[:model]}-config.erb") ? "#{@resource[:model]}-config.erb" : "default-config.erb"
-    path_to_template = File.join(templates_dir, file_name)
+    return @changes if @changes
+    file_name = File.exist?("#{@templates_dir}/#{@resource[:model]}-config.erb") ? "#{@resource[:model]}-config.erb" : "default-config.erb"
+    path_to_template = File.join(@templates_dir, file_name)
     template = File.open(path_to_template)
     erb = ERB.new(template.read)
     template.close
@@ -54,22 +96,22 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     #if idrac is booting from san, configure networks / virtual identities
     munge_network_configuration(@resource[:network_config], changes, @resource[:target_boot_device]) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
     munge_bfs_bootdevice(changes) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
-    return changes
+    @changes = changes
   end
 
-    def xml_base
+  def xml_base
     @xml_base ||= get_xml_base
   end
 
   def get_xml_base
-    exported_file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_exported.xml"
+    exported_file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_#{@exported_postfix}.xml"
     @config_xml_path = File.join(@resource[:nfssharepath], @resource[:configxmlfilename])
     #Export from server is not needed here, since the exists? method in the importsystemconfiguration provider will do an export beforehand to check values
     if(!@resource[:config_xml].nil?)
       config_xml = Nokogiri::XML(@resource[:config_xml])
       File.open(@config_xml_path, 'w+') { |file| file.write(config_xml.to_xml(:indent => 2)) }
     else
-      #Want to leave the exported copy alone so we have, mostly for debugging/reference purposes.
+      #Want to leave the base copy alone so we have, mostly for debugging/reference purposes.
       FileUtils.cp(File.join(@resource[:nfssharepath], exported_file_name), @config_xml_path)
     end
     f = File.open(@config_xml_path)
@@ -82,45 +124,45 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def munge_config_xml
-    changes = get_config_changes
+    get_config_changes
     xml_base.xpath("//Component[contains(@FQDD, 'NIC.')]").remove() unless @resource[:target_boot_device].downcase == 'none'
     xml_base['ServiceTag'] = @resource[:servicetag]
     #Current workaround for LC issue, where if BiotBootSeq is already set to what ASM needs it to be, setting it again to the same thing will cause an error.
     existing_boot_seq = find_bios_boot_seq(xml_base)
-    boot_seq_change = changes['partial']['BIOS.Setup.1-1']['BiosBootSeq']
+    boot_seq_change = @changes['partial']['BIOS.Setup.1-1']['BiosBootSeq']
     if(existing_boot_seq && boot_seq_change)
       seq_diff = boot_seq_change.delete(' ').split(',').zip(existing_boot_seq.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
-      #If raid_action is delete, the HDD will already be removed from the boot sequence 
+      #If raid_action is delete, the HDD will already be removed from the boot sequence
       if(seq_diff.size ==0 || @resource[:raid_action] == :delete)
-        changes['partial']['BIOS.Setup.1-1'].delete('BiosBootSeq')
+        @changes['partial']['BIOS.Setup.1-1'].delete('BiosBootSeq')
       end
     end
-    handle_missing_devices(xml_base, changes)
+    handle_missing_devices(xml_base, @changes)
 
     if(!raid_in_sync?(xml_base))
       #Need xml_base to check raid_config_changes, so need to do here instead of in get_config_changes
-      changes.deep_merge!(get_raid_config_changes(xml_base))
+      @changes.deep_merge!(get_raid_config_changes(xml_base))
     end
     #Handle whole nodes (node should be replaced if exists, or should be created if not)
-    changes["whole"].keys.each do |name|
+    @changes["whole"].keys.each do |name|
       path = "/SystemConfiguration/Component[@FQDD='#{name}']"
       existing = xml_base.xpath(path).first
       #if node exists there, just go ahead and remove it
       if(!existing.nil?)
         existing.remove
       end
-      create_full_node(name, changes["whole"][name], xml_base, xml_base.xpath("/SystemConfiguration").first)
+      create_full_node(name, @changes["whole"][name], xml_base, xml_base.xpath("/SystemConfiguration").first)
     end
     #Handle partial node changes (node should exist already, but needs data edited/added within)
-    changes['partial'].keys.each do |parent|
-      process_partials(parent, changes['partial'][parent], xml_base)
+    @changes['partial'].keys.each do |parent|
+      process_partials(parent, @changes['partial'][parent], xml_base)
     end
     #Handle node removal (ensure nodes listed here don't exist)
-    changes["remove"]["attributes"].keys.each do |parent|
-      process_remove_nodes(parent, changes["remove"]["attributes"][parent], xml_base, "Attribute")
+    @changes["remove"]["attributes"].keys.each do |parent|
+      process_remove_nodes(parent, @changes["remove"]["attributes"][parent], xml_base, "Attribute")
     end
-    changes["remove"]["components"].keys.each do |parent|
-      process_remove_nodes(parent, changes["remove"]["components"][parent], xml_base, "Component")
+    @changes["remove"]["components"].keys.each do |parent|
+      process_remove_nodes(parent, @changes["remove"]["components"][parent], xml_base, "Component")
     end
     ##Clean up the config file of all the commented text
     @xml_doc.xpath('//comment()').remove

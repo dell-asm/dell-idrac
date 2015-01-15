@@ -4,13 +4,13 @@ require 'puppet/provider/checkjdstatus'
 include REXML
 
 class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
-  def initialize (ip,username,password, resource, nfswritepath='/var/nfs')
+  def initialize (ip,username,password, resource, nfswritepath='/var/nfs', name_postfix='original')
     @ip = ip
     @username = username
     @password = password
     @resource = resource
     @nfswritepath = nfswritepath
-    @file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_exported.xml"
+    @file_name = File.basename(@resource[:configxmlfilename], ".xml")+ "_#{name_postfix}.xml"
   end
 
   def exporttemplatexml
@@ -21,7 +21,7 @@ class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
     jid = ASM::WsMan.invoke(endpoint, method, schema,
                             :logger => Puppet,
                             :selector => '//wsman:Selector Name="InstanceID"',
-                            :props => {'IPAddress' => @resource['nfsipaddress'],
+                            :props => {'IPAddress' => @resource[:nfsipaddress],
                                        'ShareName' => @nfswritepath,
                                        'ShareType' => 0,
                                        'FileName' => @file_name, })

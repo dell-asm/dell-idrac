@@ -56,10 +56,11 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       transport[:host],
       transport[:user],
       transport[:password],
-      resource
+      resource,
+      'original'
     )
     changes = import_obj.get_config_changes
-    exported_config = File.basename(resource[:configxmlfilename], ".xml")+"_exported.xml"
+    exported_config = File.basename(resource[:configxmlfilename], ".xml")+"_original.xml"
     config_xml_path = File.join(resource[:nfssharepath], exported_config)
     f = File.open(config_xml_path)
     xml_doc = Nokogiri::XML(f.read) do |config|
@@ -206,30 +207,45 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       transport[:host],
       transport[:user],
       transport[:password],
-      resource
+      resource,
+      'base'
     )
     obj.importtemplatexml
   end
 
-  def exporttemplate
-    if !@resource[:config_xml].nil?
+  def setup_idrac
+    obj =  Puppet::Provider::Importtemplatexml.new(
+        transport[:host],
+        transport[:user],
+        transport[:password],
+        resource,
+        'original'
+    )
+    obj.setup_idrac
+  end
+
+  def exporttemplate(postfix='original')
+    # If we're getting the "original" config, we want the export from the server we're trying to configure, mostly for debugging purposes.
+    # Otherwise, just write the config to the "base" .xml file we'll be using to make our changes to the target server.
+    if !@resource[:config_xml].nil? && postfix != 'original'
       Puppet.debug("Creating configuration using reference server")
-      create_config
+      create_config(postfix)
     else
       obj = Puppet::Provider::Exporttemplatexml.new(
           transport[:host],
           transport[:user],
           transport[:password],
           resource,
-          '/var/nfs'
+          '/var/nfs',
+          postfix
       )
       obj.exporttemplatexml
     end
   end
 
-  def create_config
+  def create_config(postfix='original')
     FileUtils.mkdir_p('/var/nfs/idrac_config_xml')
-    file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_exported.xml"
+    file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_#{postfix}.xml"
     file_path = "/var/nfs/idrac_config_xml/#{file_name}"
     File.open(file_path, "w"){|f| f << @resource[:config_xml] }
   end
