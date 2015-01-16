@@ -1,0 +1,21 @@
+<SystemConfiguration Model="" ServiceTag="<%= @resource[:servicetag] %>" TimeStamp="">
+<% if !bios_presets.empty? -%>
+  <Component FQDD="BIOS.Setup.1-1">
+<% if bios_presets['IntegratedRaid'] -%>
+    <Attribute Name="IntegratedRaid"><%= bios_presets['IntegratedRaid'] %></Attribute>
+<% end -%>
+<% if bios_presets['InternalSdCard'] -%>
+    <Attribute Name="InternalSdCard"><%= bios_presets['InternalSdCard'] %></Attribute>
+<% end -%>
+  </Component>
+<% end -%>
+<% if !nic_presets.empty? -%>
+<% nic_presets.each do |nic_name, attr_values| -%>
+  <Component FQDD="<%= nic_name %>">
+<% attr_values.each do |attr_name, attr_value| -%>
+      <Attribute Name="<%= attr_name %>"><%= attr_value %></Attribute>
+<% end -%>
+  </Component>
+<% end -%>
+<% end -%>
+</SystemConfiguration>

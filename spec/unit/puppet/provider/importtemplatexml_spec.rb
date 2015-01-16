@@ -7,63 +7,18 @@ require 'hashie'
 require 'asm/network_configuration'
 
 describe Puppet::Provider::Importtemplatexml do
-	
+
 	before(:each) do
     @test_config_dir = URI(File.join(Dir.pwd, "spec", "fixtures"))
-		@commandoutput= <<END
-		<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:n1="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService" xmlns:wsman="http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd">
-  <s:Header>
-    <wsa:To>http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous</wsa:To>
-    <wsa:Action>http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService/ImportSystemConfigurationResponse</wsa:Action>
-    <wsa:RelatesTo>uuid:c8687f4e-efcf-1fcf-8002-9f3392565000</wsa:RelatesTo>
-    <wsa:MessageID>uuid:51b947e2-efe0-1fe0-81e0-502ed9ddf95c</wsa:MessageID>
-  </s:Header>
-  <s:Body>
-    <n1:ImportSystemConfiguration_OUTPUT>
-      <n1:Job>
-        <wsa:EndpointReference>
-          <wsa:Address>http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous</wsa:Address>
-          <wsa:ReferenceParameters>
-            <wsman:ResourceURI>http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_LifecycleJob</wsman:ResourceURI>
-            <wsman:SelectorSet>
-              <wsman:Selector Name="InstanceID">JID_896466295795</wsman:Selector>
-              <wsman:Selector Name="__cimnamespace">root/dcim</wsman:Selector>
-            </wsman:SelectorSet>
-          </wsa:ReferenceParameters>
-        </wsa:EndpointReference>
-      </n1:Job>
-      <n1:ReturnValue>4096</n1:ReturnValue>
-    </n1:ImportSystemConfiguration_OUTPUT>
-  </s:Body>
-</s:Envelope>
-END
-	@failedoutput= <<END
-	<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:n1="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService">
-  <s:Header>
-    <wsa:To>http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous</wsa:To>
-    <wsa:Action>http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService/ImportSystemConfigurationResponse</wsa:Action>
-    <wsa:RelatesTo>uuid:c3acfb57-efcf-1fcf-8002-9f3392565000</wsa:RelatesTo>
-    <wsa:MessageID>uuid:4d0d8270-efe0-1fe0-81df-502ed9ddf95c</wsa:MessageID>
-  </s:Header>
-  <s:Body>
-    <n1:ImportSystemConfiguration_OUTPUT>
-      <n1:Message>Import file not found.</n1:Message>
-      <n1:MessageID>LC070</n1:MessageID>
-      <n1:ReturnValue>2</n1:ReturnValue>
-    </n1:ImportSystemConfiguration_OUTPUT>
-  </s:Body>
-</s:Envelope>
-END
-    @mock_net_config_data = 
-      Hashie::Mash.new({ 
+    Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
+    @mock_net_config_data =
+      Hashie::Mash.new({
         "servertype"=>"blade",
         "fabrics" => [
           {"name" => "Fabric A",
             "enabled" => true,
             "nictype" => "2",
-            "interfaces" => 
+            "interfaces" =>
             [{ "partitioned"=>true,
               "name" => "Port 1",
               "partitions"=>
@@ -106,7 +61,7 @@ END
                     },
                   ]}]}]}]})
 
-    
+
     @idrac_attrib = {
           :ip => '127.0.0.1',
           :username => 'root',
@@ -126,7 +81,7 @@ end
 	context " instance validation " do
 		it "should have instance object" do
 			@fixture.should be_kind_of(Puppet::Provider::Importtemplatexml)
-			
+
 		end
 		it "should get the instance variable value"  do
 			@fixture.instance_variable_get(:@ip).should eql(@idrac_attrib['ip'])
@@ -145,20 +100,21 @@ end
 	end
 	context "when exporting template" do
 		it "should get Job id for Export template xml"  do
-			@fixture.should_receive(:executeimportcmd).once.and_return(@commandoutput)
+			@fixture.should_receive(:executeimportcmd).once.and_return('JID_896466295795')
 			@fixture.stub(:munge_config_xml)
 			jobid = @fixture.importtemplatexml
 			jobid.should == "JID_896466295795"
 		end
 		it "should not get Job id if import template fail" do
-			@fixture.should_receive(:executeimportcmd).once.and_return(@failedoutput)
+			#@fixture.should_receive(:executeimportcmd).once.and_return('')
+      XPath.stub(:first).and_return('')
 			@fixture.stub(:munge_config_xml)
 			expect{ @fixture.importtemplatexml}.to raise_error("Job ID not created")
 		end
 	end
-	context "when importing template" do 
+	context "when importing template" do
     before(:each) do
-      @exported_name = File.basename(@idrac_attrib[:configxmlfilename], ".xml") + "_exported.xml"
+      @exported_name = File.basename(@idrac_attrib[:configxmlfilename], ".xml") + "_base.xml"
       #Needed to call original open method by default
       original_method = FileUtils.method(:cp)
       FileUtils.stub(:cp).with(anything()) { |*args| original_method.call(*args) }
@@ -193,7 +149,7 @@ end
       ASM::NetworkConfiguration.stub(:new).and_return(net_config)
       changes = @fixture.process_nics
 
-      ['NIC.Integrated.1-1-1', 'NIC.Integrated.1-1-2', 'NIC.Integrated.1-1-3', 'NIC.Integrated.1-1-4'].all? do |s| 
+      ['NIC.Integrated.1-1-1', 'NIC.Integrated.1-1-2', 'NIC.Integrated.1-1-3', 'NIC.Integrated.1-1-4'].all? do |s|
         changes['whole'].key?(s).should == true
         nic_changes = changes['whole'][s]
         case s
@@ -227,9 +183,9 @@ end
       ASM::NetworkConfiguration.stub(:new).and_return(net_config)
       xml = @fixture.munge_config_xml
       xml.xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
-      ['NIC.Integrated.1-1-1', 'NIC.Integrated.1-1-2', 'NIC.Integrated.1-1-3', 'NIC.Integrated.1-1-4'].all? do |s| 
+      ['NIC.Integrated.1-1-1', 'NIC.Integrated.1-1-2', 'NIC.Integrated.1-1-3', 'NIC.Integrated.1-1-4'].all? do |s|
         comp = xml.at_xpath("//Component[@FQDD='#{s}']")
-        comp.should_not == nil        
+        comp.should_not == nil
         case s
         when "NIC.Integrated.1-1-1"
           comp.at_xpath("Attribute[@Name='NicMode']").content.should == "Enabled"
@@ -248,7 +204,7 @@ end
       end
     end
 	end
-    
+
     context "when munging network_configuration" do
           it 'should configure nic partitions in config.xml' do
             @network_configuration = JSON.parse(File.read(@test_config_dir.path + '/network_configuration.json'))['networkConfiguration']
@@ -286,11 +242,11 @@ end
             changes['partial']['NIC.Integrated.1-1-1'].should_not == nil
             changes['partial']['NIC.Integrated.1-2-1'].should_not == nil
           end
-          
+
           it "when munging BFS parameters" do
             @network_configuration = JSON.parse(File.read(@test_config_dir.path + '/network_configuration.json'))['networkConfiguration']
             #ASM::NetworkConfiguration.any_instance.stub(:new).and_return(ASM::NetworkConfiguration.new(@network_configuration))
-            #ASM::NetworkConfiguration.any_instance.stub(:add_nics!).and_return(nil)   
+            #ASM::NetworkConfiguration.any_instance.stub(:add_nics!).and_return(nil)
             @test_config_dir = URI(File.join(Dir.pwd, "spec", "fixtures"))
             Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
             #Puppet::Provider::Importtemplatexml.any_instance.stub(:process_nics).and_return({"partial" => {"NIC.Integrated.1-1-1" => {"IntegratedRaid"=>"Disabled"}}})
@@ -312,7 +268,7 @@ end
             require 'asm'
             ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
             @fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'],@idrac_attrib['username'],@idrac_attrib['password'],@idrac_attrib)
-            @exported_name = File.basename(@idrac_attrib[:configxmlfilename], ".xml") + "_exported.xml"
+            @exported_name = File.basename(@idrac_attrib[:configxmlfilename], ".xml") + "_base.xml"
             #Needed to call original open method by default
             original_method = FileUtils.method(:cp)
             FileUtils.stub(:cp).with(anything()) { |*args| original_method.call(*args) }
@@ -323,7 +279,7 @@ end
                   xml = @fixture.munge_config_xml
             xml.xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
             comp = xml.at_xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
-            comp.should_not == nil 
+            comp.should_not == nil
             comp.at_xpath("Attribute[@Name='VirtualizationMode']").content.should == "NONE"
             comp.at_xpath("Attribute[@Name='VirtMacAddr']").content.should == "00:0E:AA:6B:00:05"
 	    comp.at_xpath("Attribute[@Name='VirtIscsiMacAddr']").content.should == "00:0E:AA:6B:00:01"
