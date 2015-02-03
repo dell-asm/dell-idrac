@@ -1,5 +1,6 @@
 provider_path = Pathname.new(__FILE__).parent.parent
 require 'rexml/document'
+require 'puppet/idrac/util'
 
 include REXML
 require File.join(provider_path, 'idrac')
@@ -20,7 +21,7 @@ Puppet::Type.type(:importsystemconfiguration).provide(
     disks_ready = false
     Puppet.info('Checking for virtual disks to be out of any running operation...')
     for j in 0..30
-      disks_ready = virtual_disks_ready?
+      disks_ready = Puppet::Idrac::Util.virtual_disks_ready?
       if(disks_ready)
         break
       else
@@ -45,7 +46,7 @@ Puppet::Type.type(:importsystemconfiguration).provide(
         if response  == "Failed"
           if import_try == 1
             return retry_import
-          else   
+          else
             raise "Job Failed ."
           end
         else
@@ -66,7 +67,7 @@ Puppet::Type.type(:importsystemconfiguration).provide(
       raise "Import System Configuration is still running."
     end
   end
-  
+
   def retry_import(skip_reset=false)
     Puppet.debug("Import operation failed in the first attempt, retrying import operation")
     Puppet.debug("Resetting the iDRAC before performing any other operation")
@@ -76,13 +77,13 @@ Puppet::Type.type(:importsystemconfiguration).provide(
     reboot if !skip_reset
     lcstatus
     exporttemplate('base')
-    
+
     synced = !resource[:force_reboot] && config_in_sync?
     if synced
       Puppet.debug("Configuration is already in sync. Skipping the import operation")
       return true
     end
-        
+
     instanceid = importtemplate
     Puppet.info "Instance id #{instanceid}"
     for i in 0..30

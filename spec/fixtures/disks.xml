@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:wsen="http://schemas.xmlsoap.org/ws/2004/09/enumeration" xmlns:n1="http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_PhysicalDiskView">
+<s:Body>
+  <wsen:PullResponse>
+    <wsen:EnumerationContext>912669bb-0e3a-1e3a-a945-569cf4c44578</wsen:EnumerationContext>
+    <wsen:Items>
+      <n1:DCIM_PhysicalDiskView>
+        <n1:FQDD>Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1</n1:FQDD>
+        <n1:FreeSizeInBytes>299439751168</n1:FreeSizeInBytes>
+        <n1:HotSpareStatus>0</n1:HotSpareStatus>
+        <n1:InstanceID>Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1</n1:InstanceID>
+        <n1:MediaType>0</n1:MediaType>
+      </n1:DCIM_PhysicalDiskView>
+    </wsen:Items>
+  </wsen:PullResponse>
+</s:Body>
+</s:Envelope>
+        <?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:wsen="http://schemas.xmlsoap.org/ws/2004/09/enumeration" xmlns:n1="http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_PhysicalDiskView">
+<s:Body>
+  <wsen:PullResponse>
+    <wsen:EnumerationContext>912669bb-0e3a-1e3a-a945-569cf4c44578</wsen:EnumerationContext>
+    <wsen:Items>
+      <n1:DCIM_PhysicalDiskView>
+        <n1:FQDD>Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1</n1:FQDD>
+        <n1:FreeSizeInBytes>299439751168</n1:FreeSizeInBytes>
+        <n1:HotSpareStatus>0</n1:HotSpareStatus>
+        <n1:InstanceID>Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1</n1:InstanceID>
+        <n1:MediaType>0</n1:MediaType>
+      </n1:DCIM_PhysicalDiskView>
+    </wsen:Items>
+  </wsen:PullResponse>
+</s:Body>
+</s:Envelope>
+        <?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:wsen="http://schemas.xmlsoap.org/ws/2004/09/enumeration" xmlns:n1="http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_PhysicalDiskView">
+<s:Body>
+  <wsen:PullResponse>
+    <wsen:EnumerationContext>912669bb-0e3a-1e3a-a945-569cf4c44578</wsen:EnumerationContext>
+    <wsen:Items>
+      <n1:DCIM_PhysicalDiskView>
+        <n1:FQDD>Disk.Bay.2:Enclosure.Internal.0-1:RAID.Integrated.1-1</n1:FQDD>
+        <n1:FreeSizeInBytes>299439751168</n1:FreeSizeInBytes>
+        <n1:HotSpareStatus>0</n1:HotSpareStatus>
+        <n1:InstanceID>Disk.Bay.2:Enclosure.Internal.0-1:RAID.Integrated.1-1</n1:InstanceID>
+        <n1:MediaType>0</n1:MediaType>
+      </n1:DCIM_PhysicalDiskView>
+    </wsen:Items>
+  </wsen:PullResponse>
+</s:Body>
+</s:Envelope>
+        <?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:wsen="http://schemas.xmlsoap.org/ws/2004/09/enumeration" xmlns:n1="http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_PhysicalDiskView">
+<s:Body>
+  <wsen:PullResponse>
+    <wsen:EnumerationContext>912669bb-0e3a-1e3a-a945-569cf4c44578</wsen:EnumerationContext>
+    <wsen:Items>
+      <n1:DCIM_PhysicalDiskView>
+        <n1:FQDD>Disk.Bay.3:Enclosure.Internal.0-1:RAID.Integrated.1-1</n1:FQDD>
+        <n1:FreeSizeInBytes>299439751168</n1:FreeSizeInBytes>
+        <n1:HotSpareStatus>0</n1:HotSpareStatus>
+        <n1:InstanceID>Disk.Bay.3:Enclosure.Internal.0-1:RAID.Integrated.1-1</n1:InstanceID>
+        <n1:MediaType>0</n1:MediaType>
+      </n1:DCIM_PhysicalDiskView>
+    </wsen:Items>
+  </wsen:PullResponse>
+</s:Body>
+</s:Envelope>
+        <?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:wsen="http://schemas.xmlsoap.org/ws/2004/09/enumeration" xmlns:n1="http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_PhysicalDiskView">
+<s:Body>
+  <wsen:PullResponse>
+    <wsen:EnumerationContext>912669bb-0e3a-1e3a-a945-569cf4c44578</wsen:EnumerationContext>
+    <wsen:Items>
+      <n1:DCIM_PhysicalDiskView>
+        <n1:FQDD>Disk.Bay.4:Enclosure.Internal.0-1:RAID.Integrated.1-1</n1:FQDD>
+        <n1:FreeSizeInBytes>299439751168</n1:FreeSizeInBytes>
+        <n1:HotSpareStatus>0</n1:HotSpareStatus>
+        <n1:InstanceID>Disk.Bay.4:Enclosure.Internal.0-1:RAID.Integrated.1-1</n1:InstanceID>
+        <n1:MediaType>0</n1:MediaType>
+      </n1:DCIM_PhysicalDiskView>
+    </wsen:Items>
+  </wsen:PullResponse>
+</s:Body>
+</s:Envelope>
+        <?xml version="1.0" encoding="UTF-8"?>
+<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:wsen="http://schemas.xmlsoap.org/ws/2004/09/enumeration" xmlns:n1="http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_PhysicalDiskView">
+<s:Body>
+  <wsen:PullResponse>
+    <wsen:Items>
+      <n1:DCIM_PhysicalDiskView>
+        <n1:FQDD>Disk.Bay.8:Enclosure.Internal.0-1:RAID.Integrated.1-1</n1:FQDD>
+        <n1:FreeSizeInBytes>99455336448</n1:FreeSizeInBytes>
+        <n1:HotSpareStatus>0</n1:HotSpareStatus>
+        <n1:InstanceID>Disk.Bay.8:Enclosure.Internal.0-1:RAID.Integrated.1-1</n1:InstanceID>
+        <n1:MediaType>1</n1:MediaType>
+      </n1:DCIM_PhysicalDiskView>
+    </wsen:Items>
+    <wsen:EndOfSequence/>
+  </wsen:PullResponse>
+</s:Body>
+</s:Envelope>
