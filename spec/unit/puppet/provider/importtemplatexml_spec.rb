@@ -10,6 +10,7 @@ describe Puppet::Provider::Importtemplatexml do
 
 	before(:each) do
     @test_config_dir = URI(File.join(Dir.pwd, "spec", "fixtures"))
+    @view_disk_xml = File.read(@test_config_dir.path + '/disks.xml')
     Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
     @mock_net_config_data =
       Hashie::Mash.new({
@@ -61,6 +62,61 @@ describe Puppet::Provider::Importtemplatexml do
                     },
                   ]}]}]}]})
 
+    @mock_raid_config_data =
+        {
+            "virtualDisks" => [
+                {
+                    "raidLevel" => "raid0",
+                    "physicalDisks" => [
+                        "Disk.Bay.3:Enclosure.Internal.0-1:RAID.Integrated.1-1",
+                        "Disk.Bay.2:Enclosure.Internal.0-1:RAID.Integrated.1-1"
+                    ],
+                    "controller" => "RAID.Integrated.1-1"
+                },
+                {
+                    "raidLevel" => "raid1",
+                    "physicalDisks" => [
+                        "Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1",
+                        "Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1"
+                    ],
+                    "controller" => "RAID.Integrated.1-1"
+                }
+            ],
+            "hddHotSpares" => [
+                "Disk.Bay.5:Enclosure.Internal.0-1:RAID.Integrated.1-1"
+            ],
+            "ssdHotSpares" => [
+
+            ]
+        }
+    @mock_raid_config = {
+        "virtualDisks"=> [
+            {
+                "raidLevel"=> "raid10",
+                "physicalDisks"=> [
+                    "Disk.Bay.5:Enclosure.Internal.0-1:RAID.Integrated.1-1",
+                    "Disk.Bay.4:Enclosure.Internal.0-1:RAID.Integrated.1-1",
+                    "Disk.Bay.3:Enclosure.Internal.0-1:RAID.Integrated.1-1",
+                    "Disk.Bay.2:Enclosure.Internal.0-1:RAID.Integrated.1-1"
+                ],
+                "controller"=> "RAID.Integrated.1-1"
+            },
+            {
+                "raidLevel"=> "raid1",
+                "physicalDisks"=> [
+                    "Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1",
+                    "Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1"
+                ],
+                "controller"=> "RAID.Integrated.1-1"
+            }
+        ],
+        "hddHotSpares"=> [
+            "Disk.Bay.6:Enclosure.Internal.0-1:RAID.Integrated.1-1"
+        ],
+        "ssdHotSpares"=> [
+
+        ]
+    }
 
     @idrac_attrib = {
           :ip => '127.0.0.1',
@@ -72,7 +128,8 @@ describe Puppet::Provider::Importtemplatexml do
           :target_boot_device => 'HD',
           :servicetag => 'FOOTAG',
           :nfssharepath => @test_config_dir.to_s,
-          :network_config_data => @mock_net_config_data
+          :network_config_data => @mock_net_config_data,
+          :raid_configuration =>@mock_raid_config
         }
     @fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'],@idrac_attrib['username'],@idrac_attrib['password'],@idrac_attrib)
     #@fixture.stub(:initialize).and_return("")
@@ -126,8 +183,11 @@ end
 
 		it "should munge basic config xml data" do
 			Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
+      Puppet::Idrac::Util.stub(:get_transport).and_return({:host => '1.1.1.1', :user => 'root', :password => 'calvin'})
       Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
       Puppet::Provider::Importtemplatexml.any_instance.stub(:process_nics).and_return({"partial" => {"NIC.Integrated.1-1-1" => {"IntegratedRaid"=>"Disabled"}}})
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:get_raid_config_changes).and_return({})
+      ASM::WsMan.stub(:invoke).and_return(@view_disk_xml)
       #Needed to call original open method by default
       original_method = File.method(:open)
       xml = @fixture.munge_config_xml
@@ -135,7 +195,22 @@ end
       xml.xpath("//Component[@FQDD='RemoveMe']").size.should == 0
       xml.xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute").first.content.should == "Disabled"
       xml.xpath("//Component[@FQDD='LifecycleController.Embedded.1']/Attribute").size.should_not == 0
-		end
+    end
+
+    it "should get changes based on raid configuration hash" do
+      Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
+      ASM::WsMan.stub(:invoke).and_return(@view_disk_xml)
+      Puppet::Idrac::Util.stub(:get_transport).and_return({:host => '1.1.1.1', :user => 'root', :password => 'calvin'})
+      changes = @fixture.get_raid_config_changes
+      changes['whole']['RAID.Integrated.1-1'].should_not == nil
+      virtual_disk_changes = changes['whole']['RAID.Integrated.1-1']['Disk.Virtual.0:RAID.Integrated.1-1']
+      virtual_disk_changes.should_not == nil
+      virtual_disk_changes['IncludedPhysicalDiskID'].sort.should ==
+          ["Disk.Bay.5:Enclosure.Internal.0-1:RAID.Integrated.1-1", "Disk.Bay.4:Enclosure.Internal.0-1:RAID.Integrated.1-1",
+          "Disk.Bay.3:Enclosure.Internal.0-1:RAID.Integrated.1-1", "Disk.Bay.2:Enclosure.Internal.0-1:RAID.Integrated.1-1"].sort
+      virtual_disk_changes['SpanLength'].to_s.should == '2'
+      virtual_disk_changes['SpanDepth'].to_s.should == '2'
+    end
 
     it "should get changes based on network configuration hash" do
       fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
@@ -172,6 +247,7 @@ end
 
     it "should use the network data to munge the config.xml" do
       Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
+      Puppet::Idrac::Util.stub(:get_transport).and_return({:host => '1.1.1.1', :user => 'root', :password => 'calvin'})
       Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
       fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
                      'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
@@ -181,6 +257,8 @@ end
       ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
       net_config = ASM::NetworkConfiguration.new(@mock_net_config_data)
       ASM::NetworkConfiguration.stub(:new).and_return(net_config)
+      ASM::WsMan.stub(:invoke).and_return(@view_disk_xml)
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:get_raid_config_changes).and_return({})
       xml = @fixture.munge_config_xml
       xml.xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
       ['NIC.Integrated.1-1-1', 'NIC.Integrated.1-1-2', 'NIC.Integrated.1-1-3', 'NIC.Integrated.1-1-4'].all? do |s|
@@ -282,21 +360,21 @@ end
             comp.should_not == nil
             comp.at_xpath("Attribute[@Name='VirtualizationMode']").content.should == "NONE"
             comp.at_xpath("Attribute[@Name='VirtMacAddr']").content.should == "00:0E:AA:6B:00:05"
-	    comp.at_xpath("Attribute[@Name='VirtIscsiMacAddr']").content.should == "00:0E:AA:6B:00:01"
-	    comp.at_xpath("Attribute[@Name='TcpIpViaDHCP']").content.should == "Disabled"
-	    comp.at_xpath("Attribute[@Name='IscsiViaDHCP']").content.should == "Disabled"
-	    comp.at_xpath("Attribute[@Name='ChapAuthEnable']").content.should == "Disabled"
-	    comp.at_xpath("Attribute[@Name='IscsiTgtBoot']").content.should == "Enabled"
-	    comp.at_xpath("Attribute[@Name='IscsiInitiatorIpAddr']").content.should == "172.16.119.3"
-	    comp.at_xpath("Attribute[@Name='IscsiInitiatorSubnet']").content.should == "255.255.0.0"
-	    comp.at_xpath("Attribute[@Name='IscsiInitiatorGateway']").content.should == "172.16.0.1"
-	    comp.at_xpath("Attribute[@Name='IscsiInitiatorName']").content.should == "iqn.asm:software-asm-01-0000000000:0000000002"
-	    comp.at_xpath("Attribute[@Name='ConnectFirstTgt']").content.should == "Enabled"
-	    comp.at_xpath("Attribute[@Name='FirstTgtIpAddress']").content.should == @fixture.resource[:target_ip]
-	    comp.at_xpath("Attribute[@Name='FirstTgtTcpPort']").content.should == "3260"
-	    comp.at_xpath("Attribute[@Name='FirstTgtIscsiName']").content.should == @fixture.resource[:target_iscsi]
-	    comp.at_xpath("Attribute[@Name='LegacyBootProto']").content.should == "iSCSI"
-	    comp.at_xpath("Attribute[@Name='iScsiOffloadMode']").should == nil
+            comp.at_xpath("Attribute[@Name='VirtIscsiMacAddr']").content.should == "00:0E:AA:6B:00:01"
+            comp.at_xpath("Attribute[@Name='TcpIpViaDHCP']").content.should == "Disabled"
+            comp.at_xpath("Attribute[@Name='IscsiViaDHCP']").content.should == "Disabled"
+            comp.at_xpath("Attribute[@Name='ChapAuthEnable']").content.should == "Disabled"
+            comp.at_xpath("Attribute[@Name='IscsiTgtBoot']").content.should == "Enabled"
+            comp.at_xpath("Attribute[@Name='IscsiInitiatorIpAddr']").content.should == "172.16.119.3"
+            comp.at_xpath("Attribute[@Name='IscsiInitiatorSubnet']").content.should == "255.255.0.0"
+            comp.at_xpath("Attribute[@Name='IscsiInitiatorGateway']").content.should == "172.16.0.1"
+            comp.at_xpath("Attribute[@Name='IscsiInitiatorName']").content.should == "iqn.asm:software-asm-01-0000000000:0000000002"
+            comp.at_xpath("Attribute[@Name='ConnectFirstTgt']").content.should == "Enabled"
+            comp.at_xpath("Attribute[@Name='FirstTgtIpAddress']").content.should == @fixture.resource[:target_ip]
+            comp.at_xpath("Attribute[@Name='FirstTgtTcpPort']").content.should == "3260"
+            comp.at_xpath("Attribute[@Name='FirstTgtIscsiName']").content.should == @fixture.resource[:target_iscsi]
+            comp.at_xpath("Attribute[@Name='LegacyBootProto']").content.should == "iSCSI"
+            comp.at_xpath("Attribute[@Name='iScsiOffloadMode']").should == nil
           end
 
     end

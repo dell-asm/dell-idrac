@@ -90,17 +90,8 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     end
   end
 
-  newparam(:raid_config) do
-    desc "Either configure_from_reference_server or raid_1_mirror"
-    munge do |value|
-      value.to_s
-    end
-
-    validate do |value|
-      if value.strip.length == 0
-        raise ArgumentError, "raid_config must contain a value. It cannot be null."
-      end
-    end
+  newparam(:raid_configuration) do
+    desc 'The requested virtual disk configuration'
   end
 
   newparam(:servicetag) do

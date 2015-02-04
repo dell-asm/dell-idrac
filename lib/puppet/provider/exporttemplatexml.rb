@@ -4,6 +4,7 @@ require 'puppet/provider/checkjdstatus'
 include REXML
 
 class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
+
   def initialize (ip,username,password, resource, nfswritepath='/var/nfs', name_postfix='original')
     @ip = ip
     @username = username
@@ -31,6 +32,7 @@ class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
     jid
   end
 
+  #TODO:  This needs to be changed to not use /var/nfs, and instead write to /var/nfs/idrac_config_xml
   #Just puts the xml in the idrac_config_xml folder (for use with importsystemconfiguration later), writing to /var/nfs due to nfs write permissions
   def move_config_xml(instanceid)
     obj = Puppet::Provider::Checkjdstatus.new(@ip,@username,@password,instanceid)

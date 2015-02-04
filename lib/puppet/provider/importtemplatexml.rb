@@ -3,6 +3,7 @@ require 'json'
 require 'nokogiri'
 require 'hashie'
 require 'active_support'
+require 'puppet/idrac/util'
 
 include REXML
 
@@ -38,6 +39,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     bios_presets = {}
     if(additions['BIOS.Setup.1-1'])
       bios_presets = {}
+      #TODO: Need to check if these exist first.
       bios_presets['IntegratedRaid'] = additions['BIOS.Setup.1-1']['IntegratedRaid']
       bios_presets['InternalSdCard'] = additions['BIOS.Setup.1-1']['InternalSdCard']
     end
@@ -138,10 +140,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       end
     end
     handle_missing_devices(xml_base, @changes)
-
     if(!raid_in_sync?(xml_base))
-      #Need xml_base to check raid_config_changes, so need to do here instead of in get_config_changes
-      @changes.deep_merge!(get_raid_config_changes(xml_base))
+      @changes.deep_merge!(get_raid_config_changes)
     end
     #Handle whole nodes (node should be replaced if exists, or should be created if not)
     @changes["whole"].keys.each do |name|
@@ -278,99 +278,143 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
   end
 
-  # Returns the RAID controller FQDD to use. Skips embedded RAID. If there is
-  # more than one controller found the lexically first FQDD will be used, which
-  # effectively means we will prefer integrated raid to slot raid; there is no
-  # particular reason for that, we just have to choose consistently.
-  #
-  # If no controller is found returns the default, RAID.Integrated.1-1. This is
-  # necessary because if integrated raid is disabled initially we won't find
-  # it in the list of components.
-  #
-  # Typical values will be RAID.Integrated.1-1 or RAID.Slot.6-1
-  def raid_controller
-    @raid_controller ||= xml_base.xpath("//Component").collect do |node|
-      fqdd = node.attribute('FQDD').value
-      fqdd if fqdd.start_with?('RAID') && !fqdd.start_with?('RAID.Embedded')
-    end.compact.sort.first
+  def raid_configuration
+    @raid_configuration ||=
+        begin
+          unprocessed = @resource[:raid_configuration]
+          disks_enum = Puppet::Idrac::Util.view_disks(:physical)
+          disk_types = {}
+          disks_enum.xpath('//Envelope/Body/PullResponse/Items/DCIM_PhysicalDiskView').each do |x|
+            fqdd = x.xpath('FQDD').text
+            type = x.at_xpath('MediaType').text == '0' ? :hdd : :ssd
+            disk_types[fqdd] = type
+          end
+          raid_configuration = Hash.new { |h, k| h[k] = {:virtual_disks => [], :hotspares => []} }
+          unless unprocessed['virtualDisks'].empty?
+            unprocessed['virtualDisks'].each do |config|
+              type = disk_types[config['physicalDisks'].first]
+              #Just check first disk in the list to get what type of virtual disk it is
+              raid_configuration[config['controller']][:virtual_disks] << {:disks => config['physicalDisks'], :level => config['raidLevel'], :type => type}
+            end
+            hotspares = []
+            [:ssd, :hdd].each do |type|
+              if disk_types.collect{|x| x[1] if x[1] == type}.compact.empty? && !unprocessed["#{type}HotSpares"].empty?
+                Puppet.warning("Trying to assign #{type.upcase} hotspares, but no #{type.upcase} virtual disks are being created.  Ignoring #{type}HotSpares...")
+              else
+                hotspares += unprocessed["#{type}HotSpares"]
+              end
+            end
+            hotspares.each do |disk|
+              controller = disk.split(':').last
+              raid_configuration[controller][:hotspares] << disk
+            end
+          end
+          raid_configuration
+        end
+end
 
-    unless @raid_controller
-      Puppet.warning("No RAID controller component found; attempting to configure " +
-                         "integrated RAID, but it may not exist on the system")
-      @raid_controller = 'RAID.Integrated.1-1'
-    end
-    @raid_controller
-  end
-
-  def get_raid_config_changes(xml_base)
+#TODO:  Add support for multiple controllers.
+  def get_raid_config_changes
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
-    if(@resource[:config_xml].nil? and @resource[:raid_action] == :delete)
+    if @resource[:config_xml].nil? and @resource[:raid_action] == :delete
       Puppet.debug("RAID_ACTION: #{@resource[:raid_action]}")
-      changes['whole']['RAID.Integrated.1-1'] =
-          {
-              'RAIDresetConfig' => "True",
-              'Disk.Virtual.0:RAID.Integrated.1-1' =>
-                  {
-                      'RAIDaction'=>'Delete',
-                  }
-          }
+      raid_configuration.keys.each{|controller| changes['whole'][controller] = { 'RAIDresetConfig' => "True" } }
     else
-    #Leave the RAID settings as is from reference if we are cloning
-      if(@resource[:config_xml].nil? || @resource[:raid_config] == "raid_1_mirror")
-        raid_fqdd = raid_controller
-        if @resource[:target_boot_device] == "HD"
-            changes['whole'][raid_fqdd] =
-                {
-                    'RAIDresetConfig' => "True",
-                    "Disk.Virtual.0:#{raid_fqdd}" =>
-                        {
-                            'RAIDaction'=>'Create',
-                            'RAIDinitOperation'=>'Fast',
-                            'Name'=>'RAID ONE',
-                            'Size'=>'0',
-                            'StripeSize'=>'128',
-                            'SpanDepth'=>'1',
-                            'SpanLength'=>'2',
-                            'RAIDTypes'=>'RAID 1',
-                            'IncludedPhysicalDiskID'=>["Disk.Bay.0:Enclosure.Internal.0-1:#{raid_fqdd}",
-                                                       "Disk.Bay.1:Enclosure.Internal.0-1:#{raid_fqdd}"]
-                        }
-                }
-        #Leave RAID config as is if boot device = none
-        elsif @resource[:target_boot_device].downcase != "none"
-            changes['remove']['components'][raid_fqdd] = {}
+      if @resource[:target_boot_device] == "HD"
+        raid_configuration.keys.each do |raid_fqdd|
+          changes['whole'][raid_fqdd] = { 'RAIDresetConfig' => "True" }
+          raid_configuration[raid_fqdd][:virtual_disks].each_with_index do |disk_config, index|
+            case disk_config[:level]
+              when 'raid10'
+                span_depth = disk_config[:disks].size / 2
+                span_length = '2'
+              when 'raid50'
+                span_depth = disk_config[:disks].size / 3
+                span_length = '3'
+              when 'raid60'
+                span_depth = disk_config[:disks].size / 4
+                span_length = '4'
+              else
+                span_depth = '1'
+                span_length = disk_config[:disks].size
+            end
+            changes['whole'][raid_fqdd]["Disk.Virtual.#{index}:#{raid_fqdd}"] =
+              {
+                'RAIDaction'=>'Create',
+                'RAIDinitOperation'=>'Fast',
+                'Name'=>"ASM VD#{index}",
+                'Size'=>'0',
+                'StripeSize'=>'128',
+                'SpanDepth'=>span_depth,
+                'SpanLength'=>span_length,
+                'RAIDTypes'=> disk_config[:level].sub('raid', 'RAID '),
+                'IncludedPhysicalDiskID'=> disk_config[:disks]
+              }
+          end
+          raid_configuration[raid_fqdd][:hotspares].each do |disk_fqdd|
+            bay, *enclosure_fqdd = disk_fqdd.split(':')
+            enclosure_fqdd = enclosure_fqdd.join(':')
+            enclosure_changes = changes['whole'][raid_fqdd][enclosure_fqdd]
+            controller_changes = changes['whole'][raid_fqdd]
+            controller_changes[enclosure_fqdd] = {} if controller_changes[enclosure_fqdd].nil?
+            controller_changes[enclosure_fqdd][disk_fqdd] =  { 'RAIDHotSpareStatus' => 'Global' }
+          end
         end
+      #Leave RAID config as is if boot device = none
+      elsif @resource[:target_boot_device].downcase != "none"
+          changes['remove']['components'][raid_fqdd] = {}
       end
     end
-    return changes
+    changes
   end
 
+  #TODO:  Support for multiple raid controllers
   def raid_in_sync?(xml_base, log=false)
-    in_sync = true
     if(@resource[:target_boot_device] == "HD")
-      raid_fqdd = raid_controller
-      raid_fqdd_xpath = "//Component[@FQDD=\"#{raid_fqdd}\"]"
-      comments = xml_base.xpath("#{raid_fqdd_xpath}/Component[@FQDD='Disk.Virtual.0:#{raid_fqdd}']//comment()")
-      disks = comments.collect{|c| Nokogiri::XML(c.content).at_xpath("/Attribute").content if c.content.include?("IncludedPhysicalDiskID")}.compact
-      raid_types = comments.collect{|c| Nokogiri::XML(c.content).at_xpath("/Attribute").content if c.content.include?("RAIDTypes")}.compact.first
-      expected = ["Disk.Bay.0:Enclosure.Internal.0-1:#{raid_fqdd}", "Disk.Bay.1:Enclosure.Internal.0-1:#{raid_fqdd}"]
-      if((expected - disks).size != 0)
-        in_sync = false
-        Puppet.debug("RAID config needs to be updated.  Expected IncludedPhysicalDiskIDs to be #{expected}, but got #{disks}") if log
-        if @resource[:raid_action] == :delete
-          return true
+      raid_configuration.keys.each do |raid_fqdd|
+        raid_fqdd_xpath = "//Component[@FQDD='#{raid_fqdd}']"
+        controller_xml = xml_base.xpath(raid_fqdd_xpath)
+        existing_virtual_disks = controller_xml.xpath("Component[starts-with(@FQDD, 'Disk.')]")
+        if existing_virtual_disks.empty? || existing_virtual_disks.size != raid_configuration[raid_fqdd][:virtual_disks].size
+          Puppet.debug("RAID config needs to be updated. Existing virtual disks don't match up to requested configuration for #{raid_fqdd}") if log
+          return false
+        end
+        existing_virtual_disks.each do |disk|
+          disk_name, controller = disk.attr('FQDD').split(':')
+          disk_num = disk_name.split('.').last.to_i
+          requested_config = raid_configuration[controller][:virtual_disks][disk_num]
+          if requested_config == nil
+            Puppet.debug("RAID config needs to be updated. Extra disk(s) found on the server's current RAID configuration.") if log
+            return false
+          end
+          raid_level = disk.at_xpath('Attribute[@Name="RAIDTypes"]')
+          #Sometimes, the RAIDTypes will be commented out.  Need to check for that.
+          if raid_level.nil?
+            raid_level = disk.xpath('comment()').map{|c| Nokogiri::XML(c.content).at_xpath("/Attribute").content if c.content.include?("RAIDTypes")}.compact.first
+          else
+            raid_level = raid_level.content
+          end
+          raid_level.delete!(' ').downcase!
+          if raid_level != requested_config[:level]
+            Puppet.debug("RAID config needs to be updated.  Needed #{disk_name}'s raid level to be #{requested_config[:level]}, but got #{raid_level}") if log
+            return false
+          end
+          requested_disks = requested_config[:disks]
+          #the existing physical disks are contained inside the comments of the virtual disk
+          existing_phys_disks = disk.xpath('comment()').collect{|c| Nokogiri::XML(c.content).at_xpath("/Attribute").content if c.content.include?("IncludedPhysicalDiskID")}.compact
+          if existing_phys_disks.sort != requested_disks.sort
+            Puppet.debug("RAID config needs to be updated.  Needed IncludedPhysicalDiskIDs to be #{requested_disks.sort} for #{disk_name}, but got #{existing_phys_disks.sort}") if log
+            return false
+          end
         end
       end
-      if(in_sync && raid_types != "RAID 1")
-        in_sync = false
-        Puppet.debug("RAID config needs to be updated.  Expected RAIDTypes to be RAID 1, but got #{raid_types}") if log
+      #Won't reach this point if the raid is out of sync, as we'll have returned false above.
+      if @resource[:raid_action] == :delete
+        Puppet.debug("RAID config needs to be updated.  Raid_action set to delete") if log
+        return false
       end
-      if(in_sync && raid_types == "RAID 1" && @resource[:raid_action] == :delete)
-        in_sync = false
-        Puppet.debug("RAID config needs to be updated.  Raid_action set to delete")
-      end
-    end
-    in_sync
+     end
+    true
   end
 
   def get_iscsi_network(network_objects)
