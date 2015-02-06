@@ -87,18 +87,55 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def get_config_changes
     return @changes if @changes
-    file_name = File.exist?("#{@templates_dir}/#{@resource[:model]}-config.erb") ? "#{@resource[:model]}-config.erb" : "default-config.erb"
-    path_to_template = File.join(@templates_dir, file_name)
-    template = File.open(path_to_template)
-    erb = ERB.new(template.read)
-    template.close
-    changes = JSON.parse(erb.result(binding))
+    changes = default_changes
     nic_changes = process_nics
     changes.deep_merge!(nic_changes)
     #if idrac is booting from san, configure networks / virtual identities
     munge_network_configuration(@resource[:network_config], changes, @resource[:target_boot_device]) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
     munge_bfs_bootdevice(changes) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
     @changes = changes
+  end
+
+  # Format of data for partial/whole changes:
+  #  Key is Name/FQDD of Attribute/Component.  If the value is a hash, it is assumed to be a component (and the hash contains the attributes)
+  # If the value is a string, it is assumed to be an attribute (or if it is a list, it is a list of the attributes that have the same Name, but different values in the same Component)
+  #
+  #Format of data for removing changes:
+  # changes['remove'] is the list of components to remove. The key name corresponds to a component; if the value for that key is an empty list, remove the component corresponding to the key name.  Otherwise, remove the nodes in the list under that key.
+  #For example:  {node1: [], node2: ["attr1"=>[]]}.  Component FQDD=node1 will be removed, and Attribute Name=attr1 under Component FQDD=node2 will be removed
+  #
+  #
+  def default_changes
+    changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
+    # default settings for all
+    changes['partial']['BIOS.Setup.1-1'] =
+        {
+            'ProcVirtualization' => 'Enabled',
+            'BootMode' => 'Bios'
+        }
+    changes['whole'] = { 'LifecycleController.Embedded.1' => { 'LCAttributes.1#CollectSystemInventoryOnRestart' => 'Enabled' } }
+    # target_boot_device settings
+    if @resource[:target_boot_device] == "HD"
+      changes['partial'].deep_merge!(
+          {'BIOS.Setup.1-1' =>
+               {
+                   'IntegratedRaid' => 'Enabled',
+                   'InternalSdCard'  => 'Off'
+               }
+          })
+    elsif @resource[:target_boot_device] == "SD"
+      changes['partial'].deep_merge!(
+          {'BIOS.Setup.1-1' =>
+               {
+                   'IntegratedRaid' => 'Disabled',
+                   'InternalSdCard' => 'On'
+               }
+          })
+    end
+    @bios_settings.keys.each do |key|
+      changes['partial']['BIOS.Setup.1-1'][key] = @bios_settings[key]
+    end
+    changes
   end
 
   def xml_base
@@ -311,7 +348,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           end
           raid_configuration
         end
-end
+  end
 
 #TODO:  Add support for multiple controllers.
   def get_raid_config_changes

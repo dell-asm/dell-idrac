@@ -129,7 +129,8 @@ describe Puppet::Provider::Importtemplatexml do
           :servicetag => 'FOOTAG',
           :nfssharepath => @test_config_dir.to_s,
           :network_config_data => @mock_net_config_data,
-          :raid_configuration =>@mock_raid_config
+          :raid_configuration =>@mock_raid_config,
+          :bios_settings      => {'InternalSdCard' => 'Enabled'}
         }
     @fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'],@idrac_attrib['username'],@idrac_attrib['password'],@idrac_attrib)
     #@fixture.stub(:initialize).and_return("")
@@ -187,6 +188,10 @@ end
       Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
       Puppet::Provider::Importtemplatexml.any_instance.stub(:process_nics).and_return({"partial" => {"NIC.Integrated.1-1-1" => {"IntegratedRaid"=>"Disabled"}}})
       Puppet::Provider::Importtemplatexml.any_instance.stub(:get_raid_config_changes).and_return({})
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:default_changes).and_return(
+          {'partial'=>{'BIOS.Setup.1-1'=> {'ProcVirtualization' => 'Disabled'}},
+           'whole'=>{'LifecycleController.Embedded.1' => {'ProcVirtualization' => 'Enabled'}},
+           'remove'=> {'attributes'=>{'BIOS.Setup.1-1' => ["Remove"]}, 'components'=>{'RemoveMe' => []}}})
       ASM::WsMan.stub(:invoke).and_return(@view_disk_xml)
       #Needed to call original open method by default
       original_method = File.method(:open)
