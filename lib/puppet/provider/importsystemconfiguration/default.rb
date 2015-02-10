@@ -18,6 +18,15 @@ Puppet::Type.type(:importsystemconfiguration).provide(
     exporttemplate('base')
     instance_id = importtemplate
     wait_for_import(instance_id)
+
+    # For config XML case, its observed that we have to invoke the import
+    # operation twice as a workaround for fcoe not being toggled when the partition has iscsi offload enabled.
+    # TODO:  Move flipping the fcoeEnabled attribute into the setup_idrac flow
+    if !@resource[:config_xml].nil?
+      Puppet.info('For referenced server configuration, need to perform the configuration XML twice')
+      sleep(60)
+      retry_import(true)
+    end
     disks_ready = false
     Puppet.info('Checking for virtual disks to be out of any running operation...')
     for j in 0..30
@@ -33,7 +42,7 @@ Puppet::Type.type(:importsystemconfiguration).provide(
     end
   end
 
-  def wait_for_import(instance_id)
+  def wait_for_import(instance_id, is_retry=false)
     import_try = 1
     Puppet.info "Instance id #{instance_id}"
     for i in 0..30
@@ -44,7 +53,7 @@ Puppet::Type.type(:importsystemconfiguration).provide(
         break
       else
         if response  == "Failed"
-          if import_try == 1
+          if import_try == 1 && !is_retry
             return retry_import
           else
             raise "Job Failed ."
@@ -54,14 +63,6 @@ Puppet::Type.type(:importsystemconfiguration).provide(
           sleep 60
         end
       end
-    end
-    # For config XML case, its observed that we have to invoke the import
-    # operation twice as a workaround.
-    # This may no longer be necessary with the initial "setup" import workflow.
-    if response == "Completed" and !@resource[:config_xml].nil?
-      Puppet.info('For referenced server configuration, need to perform the configuration XML twice')
-      sleep(60)
-      retry_import(skip_reset=true)
     end
     if response != "Completed"
       raise "Import System Configuration is still running."
@@ -83,27 +84,8 @@ Puppet::Type.type(:importsystemconfiguration).provide(
       Puppet.debug("Configuration is already in sync. Skipping the import operation")
       return true
     end
-
     instanceid = importtemplate
-    Puppet.info "Instance id #{instanceid}"
-    for i in 0..30
-      response = checkjobstatus instanceid
-      Puppet.info "JD status : #{response}"
-      if response  == "Completed"
-        Puppet.info "Import System Configuration is completed."
-        break
-      else
-        if response  == "Failed"
-          raise "Job Failed ."
-        else
-          Puppet.info "Job is running, wait for 1 minute"
-          sleep 60
-        end
-      end
-    end
-    if response != "Completed"
-      raise "Import System Configuration is still running."
-    end
+    wait_for_import(instanceid, true)
   end
 
   def sleep_time
