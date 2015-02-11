@@ -31,6 +31,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   #Bugs with the ordering of attributes/components in the import causes issues.
   #This function will go send a very basic xml that will set attributes such as IntegratedRaid, InternalSdCard, NicPartitioning, etc so they are ready and valid in our big import.
   #TODO:  It would be nice if the import didn't happen if the server was already set up correctly.
+  #TODO:  Set Fcoe/IscsiOffload here as well, to workaround issues with setting those (currently just import twice as a workaround)
   def setup_idrac
     get_config_changes
     file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_preset.xml"
@@ -133,7 +134,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           })
     end
     @bios_settings.keys.each do |key|
-      changes['partial']['BIOS.Setup.1-1'][key] = @bios_settings[key]
+      unless @bios_settings[key].nil? || @bios_settings[key].empty?
+        changes['partial']['BIOS.Setup.1-1'][key] = @bios_settings[key]
+      end
     end
     changes
   end
@@ -203,7 +206,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
     ##Clean up the config file of all the commented text
     @xml_doc.xpath('//comment()').remove
-    remove_unique_settings
+    remove_invalid_settings
     # Disable SD card and RAID controller for boot from SAN
     File.open(@config_xml_path, 'w+') { |file| file.write(@xml_doc.root.to_xml(:indent => 2)) }
     xml_base
@@ -211,12 +214,17 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   #Certain attributes might cause issues trying to set between servers, so this function will be used to remove those from the xml
   #Mostly IP/networking settings
-  def remove_unique_settings
-    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'OS-BMC.')]").remove()
-    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPBlocking.')]").remove()
-    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPv4Static.')]").remove()
-    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPv6Static.')]").remove()
-    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'vFlashPartition.')]").remove()
+  def remove_invalid_settings
+    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'OS-BMC.')]").remove
+    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPBlocking.')]").remove
+    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPv4Static.')]").remove
+    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPv6Static.')]").remove
+    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'vFlashPartition.')]").remove
+    #Sometimes from cloned server, HddSeq might be empty, which is not valid to import.
+    hdd_seq = xml_base.at_xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute[@Name='HddSeq']")
+    if !hdd_seq.nil?
+      hdd_seq.remove if hdd_seq.text.empty?
+    end
   end
 
   #Helper function which will let us ignore device values that don't exist if we can (ex: Ignoring that the server doesn't have an SD card if we're setting SD to off anyway)
@@ -555,15 +563,19 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     config = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
     #fqdds_existing - fqdds_to_set will leave us a list of NICs that need to be removed from the config.xml
     #If going from npar to unpartitioned, leftover component blocks for partitions 2-4 will cause errors.
+    #TODO:  This can probably be phased out with the setup_idrac workflow, which should give a base xml to work with that has the correct number of partitions.
     (fqdds_existing - fqdds_to_set).each do |fqdd|
         config['remove']['components'][fqdd] = {}
     end
-    if net_config.get_partitions('PXE').first.nil?
-      boot_seq = ['HardDisk.List.1-1'].join(', ')
-    else
-      boot_seq = [net_config.get_partitions('PXE').first.fqdd, 'HardDisk.List.1-1'].join(', ')
+    #Don't mess with the boot order if the target_boot_device = none
+    if @resource[:target_boot_device].downcase != "none"
+      if net_config.get_partitions('PXE').first.nil?
+        boot_seq = ['HardDisk.List.1-1'].join(', ')
+      else
+        boot_seq = [net_config.get_partitions('PXE').first.fqdd, 'HardDisk.List.1-1'].join(', ')
+      end
+      config['partial']['BIOS.Setup.1-1'] = {'BiosBootSeq'=>boot_seq}
     end
-    config['partial']['BIOS.Setup.1-1'] = {'BiosBootSeq'=>boot_seq}
     net_config.cards.each do |card|
       card.interfaces.each do |interface|
         partitioned = interface['partitioned']
