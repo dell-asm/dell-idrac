@@ -148,6 +148,7 @@ Puppet::Type.newtype(:importsystemconfiguration) do
       end
       settings
     end
+    defaultto({})
   end
 
   newparam(:network_config) do
