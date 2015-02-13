@@ -40,9 +40,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     bios_presets = {}
     if(additions['BIOS.Setup.1-1'])
       bios_presets = {}
-      #TODO: Need to check if these exist first.
-      bios_presets['IntegratedRaid'] = additions['BIOS.Setup.1-1']['IntegratedRaid']
-      bios_presets['InternalSdCard'] = additions['BIOS.Setup.1-1']['InternalSdCard']
+      raid_exists = !xml_base.at_xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute[@Name='IntegratedRaid']").nil?
+      bios_presets['IntegratedRaid'] = additions['BIOS.Setup.1-1']['IntegratedRaid'] if raid_exists
+      sd_exists = !xml_base.at_xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute[@Name='InternalSdCard']").nil?
+      bios_presets['InternalSdCard'] = additions['BIOS.Setup.1-1']['InternalSdCard'] if sd_exists
     end
     nic_attributes = ['VirtualizationMode', 'NicPartitioning', 'LegacyBootProto']
     nic_changes = additions.select do  |k,v|
@@ -93,7 +94,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     changes.deep_merge!(nic_changes)
     #if idrac is booting from san, configure networks / virtual identities
     munge_network_configuration(@resource[:network_config], changes, @resource[:target_boot_device]) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
-    munge_bfs_bootdevice(changes) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
+    if @resource[:ensure] != :teardown && (@resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC')
+      munge_bfs_bootdevice(changes)
+    end
     @changes = changes
   end
 
@@ -116,7 +119,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         }
     changes['whole'] = { 'LifecycleController.Embedded.1' => { 'LCAttributes.1#CollectSystemInventoryOnRestart' => 'Enabled' } }
     # target_boot_device settings
-    if @resource[:target_boot_device] == "HD"
+    #Always want to turn on IntegratedRaid with a delete, so ASM can continue to inventory RAID info later.
+    if @resource[:ensure] == :teardown
+      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'IntegratedRaid' => 'Enabled'})
+    elsif @resource[:target_boot_device] == "HD"
       changes['partial'].deep_merge!(
           {'BIOS.Setup.1-1' =>
                {
@@ -174,8 +180,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     boot_seq_change = @changes['partial']['BIOS.Setup.1-1']['BiosBootSeq']
     if(existing_boot_seq && boot_seq_change)
       seq_diff = boot_seq_change.delete(' ').split(',').zip(existing_boot_seq.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
-      #If raid_action is delete, the HDD will already be removed from the boot sequence
-      if(seq_diff.size ==0 || @resource[:raid_action] == :delete)
+      #If tearing down, the HDD will already be removed from the boot sequence
+      if(seq_diff.size ==0 || @resource[:ensure] == :teardown)
         @changes['partial']['BIOS.Setup.1-1'].delete('BiosBootSeq')
       end
     end
@@ -272,6 +278,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     nc.add_nics!(endpoint, :add_partitions => true)
     munge_iscsi_partitions(nc, changes) if target_boot == 'iSCSI'
     changes['partial'].deep_merge!({'BIOS.Setup.1-1' => { 'BiosBootSeq' => 'HardDisk.List.1-1' } }) if target_boot == 'FC'
+    if @resource[:ensure] == :teardown
+      Puppet.debug("Resetting virtual mac addresses to permanent mac addresses.")
+      nc.reset_virt_mac_addr(endpoint)
+    end
     munge_virt_mac_addr(nc, changes)
     changes
   end
@@ -285,8 +295,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           changes['whole'].deep_merge!(
           { partition.fqdd =>
             {
-                  'VirtMacAddr' => partition['lanMacAddress'],
-                  'VirtIscsiMacAddr' => partition['iscsiMacAddress'],
+                  'VirtMacAddr' => @resource[:ensure] == :teardown ? '00:00:00:00:00:00' : partition['lanMacAddress'],
+                  'VirtIscsiMacAddr' => @resource[:ensure] == :teardown ? '00:00:00:00:00:00' : partition['iscsiMacAddress'],
                   'TcpIpViaDHCP' => 'Disabled',
                   'IscsiViaDHCP' => 'Disabled',
                   'ChapAuthEnable' => 'Disabled',
@@ -296,9 +306,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                   'IscsiInitiatorGateway' => iscsi_network['staticNetworkConfiguration']['gateway'],
                   'IscsiInitiatorName' => partition['iscsiIQN'],
                   'ConnectFirstTgt' => 'Enabled',
-                  'FirstTgtIpAddress' => @resource[:target_ip],
+                  'FirstTgtIpAddress' => @resource[:ensure] == :teardown ? '0.0.0.0' : @resource[:target_ip],
                   'FirstTgtTcpPort' => '3260',
-                  'FirstTgtIscsiName' => @resource[:target_iscsi],
+                  'FirstTgtIscsiName' => @resource[:ensure] == :teardown ? '' : @resource[:target_iscsi],
                   'LegacyBootProto' => 'iSCSI'
             }.delete_if{|k,v| v.nil?}
           })
@@ -313,13 +323,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   def munge_virt_mac_addr(nc, changes)
     partitions = nc.get_all_partitions
     partitions.each do |partition|
-      if(!partition['lanMacAddress'].nil?)
-	      changes['partial'].deep_merge!({
-	        partition.fqdd => {
-	          'VirtMacAddr' => partition['lanMacAddress']
-	        }
-	      })
-      end
+      macs = {}
+      macs['VirtMacAddr'] = partition['lanMacAddress'] if partition['lanMacAddress']
+      macs['VirtIscsiMacAddr'] = partition['iscsiMacAddress'] if partition['iscsiMacAddress']
+      changes['partial'].deep_merge!({partition.fqdd => macs})
     end
   end
 
@@ -361,8 +368,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 #TODO:  Add support for multiple controllers.
   def get_raid_config_changes
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
-    if @resource[:config_xml].nil? and @resource[:raid_action] == :delete
-      Puppet.debug("RAID_ACTION: #{@resource[:raid_action]}")
+    if @resource[:config_xml].nil? && @resource[:ensure] == :teardown
+      Puppet.debug("Setting RAID configuration to be cleared as part of teardown.")
       raid_configuration.keys.each{|controller| changes['whole'][controller] = { 'RAIDresetConfig' => "True" } }
     else
       if @resource[:target_boot_device] == "HD"
@@ -454,8 +461,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         end
       end
       #Won't reach this point if the raid is out of sync, as we'll have returned false above.
-      if @resource[:raid_action] == :delete
-        Puppet.debug("RAID config needs to be updated.  Raid_action set to delete") if log
+      if @resource[:ensure] == :teardown
+        Puppet.debug("RAID config needs to be cleared for teardown.") if log
         return false
       end
      end

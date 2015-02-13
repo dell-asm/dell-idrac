@@ -9,6 +9,9 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     newvalue(:present) do
       provider.create
     end
+    newvalue(:teardown) do
+      provider.teardown
+    end
     defaultto(:present)
   end
 
@@ -70,13 +73,6 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     defaultto(true)
   end
 
-  newparam(:sysprofile) do
-    desc "power setting as configured in idrac via sysprofile"
-    munge do |value|
-      value.to_s
-    end
-  end
-
   newparam(:target_boot_device) do
     desc "Either SD, HD, or SAN for SD card, Hard Drive, or SAN boot"
     munge do |value|
@@ -111,12 +107,6 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     desc "The Dell server model, e.g. m420, m620, m820, r620, r720."
     munge do |value|
       value.to_s
-    end
-
-    validate do |value|
-      if value.strip.length == 0
-        raise ArgumentError, "model must contain a value. It cannot be null."
-      end
     end
   end
 
@@ -166,10 +156,4 @@ Puppet::Type.newtype(:importsystemconfiguration) do
   newparam(:force_reboot) do
     desc "Whether or not the server should be rebooted"
   end
-
-  newparam(:raid_action) do
-    desc "The raid action to be performed (CREATE,UPDATE,DELETE)"
-    newvalues("create", "update", "delete")
-  end
-
 end

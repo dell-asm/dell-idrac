@@ -22,7 +22,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       reset
       exporttemplate
     end
-    synced = !resource[:force_reboot] && config_in_sync?
+    synced = resource[:ensure] != :teardown && !resource[:force_reboot] && config_in_sync?
     Puppet.info("Server is already configured.  Skipping import...") if synced
     synced
   end
@@ -132,7 +132,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
         elsif(existing_val != value)
           if(key == "BiosBootSeq")
             compare = value.delete(' ').split(',').zip(existing_val.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
-            if(compare.size != 0 && @resource[:raid_action] != :delete)
+            if(compare.size != 0 && @resource[:ensure] != :teardown)
               Puppet.debug("Value of BiosBootSeq does not match up. Existing Seq: #{existing_val}, trying to set to  #{value}")
               in_sync = false
               break
