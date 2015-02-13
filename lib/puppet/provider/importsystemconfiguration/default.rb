@@ -13,8 +13,15 @@ Puppet::Type.type(:importsystemconfiguration).provide(
 
   def create
     instance_id = setup_idrac
-    wait_for_import(instance_id)
-    #Need to export again so we have a template with updated values from the setup step before.
+    wait_for_import(instance_id) if instance_id
+    import_config
+  end
+
+  def teardown
+    import_config
+  end
+
+  def import_config
     exporttemplate('base')
     instance_id = importtemplate
     wait_for_import(instance_id)
@@ -38,7 +45,7 @@ Puppet::Type.type(:importsystemconfiguration).provide(
       end
     end
     if !disks_ready
-      raise 'Virtual disk(s) currrently busy.'
+      raise 'Virtual disk(s) currently busy.'
     end
   end
 
