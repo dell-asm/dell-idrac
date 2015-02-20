@@ -374,7 +374,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     else
       if @resource[:target_boot_device] == "HD"
         raid_configuration.keys.each do |raid_fqdd|
-          changes['whole'][raid_fqdd] = { 'RAIDresetConfig' => "True" }
+          changes['whole'][raid_fqdd] = { 'RAIDresetConfig' => "True", 'RAIDforeignConfig' => 'Clear'}
           raid_configuration[raid_fqdd][:virtual_disks].each_with_index do |disk_config, index|
             case disk_config[:level]
               when 'raid10'
