@@ -617,6 +617,14 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                 end
               end
 
+              # Reset virtual mac addresses by default
+              if changes['NicMode'] == 'Enabled'
+                changes['VirtMacAddr'] = '00:00:00:00:00:00'
+              end
+              if changes['iScsiOffloadMode'] == 'Enabled'
+                changes['VirtIscsiMacAddr'] = '00:00:00:00:00:00'
+              end
+
               changes['MinBandwidth'] = partition.minimum
               changes['MaxBandwidth'] = partition.maximum
               if(partition_no == 1)
