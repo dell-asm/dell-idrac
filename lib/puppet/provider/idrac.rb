@@ -29,11 +29,11 @@ class Puppet::Provider::Idrac <  Puppet::Provider
 
   #This function will exit when the LC status is 0, or a puppet error will be raised if the LC status never is 0 (never stops being busy)
   def wait_for_lc_ready(attempts=0, max_attempts=30)
-    if(attempts > max_attempts)
+    if attempts > max_attempts
       raise Puppet::Error, "Life cycle controller is busy"
     else
       status = lcstatus.to_i
-      if(status == 0)
+      if status == 0
         return
       else
         Puppet.debug "LC status is busy: status code #{status}. Waiting..."

@@ -38,7 +38,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     config_xml_path = File.join(@resource[:nfssharepath], file_name)
     additions = @changes['whole'].merge(@changes['partial'])
     bios_presets = {}
-    if(additions['BIOS.Setup.1-1'])
+    if additions['BIOS.Setup.1-1']
       bios_presets = {}
       raid_exists = !xml_base.at_xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute[@Name='IntegratedRaid']").nil?
       bios_presets['IntegratedRaid'] = additions['BIOS.Setup.1-1']['IntegratedRaid'] if raid_exists
@@ -155,7 +155,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     exported_file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_#{@exported_postfix}.xml"
     @config_xml_path = File.join(@resource[:nfssharepath], @resource[:configxmlfilename])
     #Export from server is not needed here, since the exists? method in the importsystemconfiguration provider will do an export beforehand to check values
-    if(!@resource[:config_xml].nil?)
+    if !@resource[:config_xml].nil?
       config_xml = Nokogiri::XML(@resource[:config_xml])
       File.open(@config_xml_path, 'w+') { |file| file.write(config_xml.to_xml(:indent => 2)) }
     else
@@ -178,15 +178,15 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     #Current workaround for LC issue, where if BiotBootSeq is already set to what ASM needs it to be, setting it again to the same thing will cause an error.
     existing_boot_seq = find_bios_boot_seq(xml_base)
     boot_seq_change = @changes['partial']['BIOS.Setup.1-1']['BiosBootSeq']
-    if(existing_boot_seq && boot_seq_change)
+    if existing_boot_seq && boot_seq_change
       seq_diff = boot_seq_change.delete(' ').split(',').zip(existing_boot_seq.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
       #If tearing down, the HDD will already be removed from the boot sequence
-      if(seq_diff.size ==0 || @resource[:ensure] == :teardown)
+      if seq_diff.size ==0 || @resource[:ensure] == :teardown
         @changes['partial']['BIOS.Setup.1-1'].delete('BiosBootSeq')
       end
     end
     handle_missing_devices(xml_base, @changes)
-    if(!raid_in_sync?(xml_base))
+    if !raid_in_sync?(xml_base)
       @changes.deep_merge!(get_raid_config_changes)
     end
     #Handle whole nodes (node should be replaced if exists, or should be created if not)
@@ -194,7 +194,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       path = "/SystemConfiguration/Component[@FQDD='#{name}']"
       existing = xml_base.xpath(path).first
       #if node exists there, just go ahead and remove it
-      if(!existing.nil?)
+      if !existing.nil?
         existing.remove
       end
       create_full_node(name, @changes["whole"][name], xml_base, xml_base.xpath("/SystemConfiguration").first)
@@ -218,8 +218,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     xml_base
   end
 
-  #Certain attributes might cause issues trying to set between servers, so this function will be used to remove those from the xml
-  #Mostly IP/networking settings
+  # Certain attributes that we're not explicitly setting could cause issues trying to set between servers.  They need to be purged.
   def remove_invalid_settings
     xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'OS-BMC.')]").remove
     xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPBlocking.')]").remove
@@ -231,15 +230,37 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     if !hdd_seq.nil?
       hdd_seq.remove if hdd_seq.text.empty?
     end
+    remove_missing_bios_settings
+  end
+
+  # This method compares the changes to BIOS.Setup.1-1 with what bios settings exist on the target server.
+  # We do not attempt to set if we cannot find the bios setting in the server's exported config.
+  def remove_missing_bios_settings
+    # _original.xml will have the target server's configuration, instead of the reference server's configuration
+    original_xml_name  = File.basename(@resource[:configxmlfilename], ".xml")+"_original.xml"
+    xml_path = File.join(@resource[:nfssharepath], original_xml_name)
+    target_server_xml = File.open(xml_path)
+    target_xml = Nokogiri::XML(target_server_xml.read) do |config|
+      config.default_xml.noblanks
+    end
+    target_server_xml.close
+    bios_settings = @xml_doc.xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute")
+    bios_settings.each do |attr_node|
+      name = attr_node.attr("Name")
+      if target_xml.at_xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute[@Name='#{name}']").nil?
+        Puppet.info("Trying to set bios setting #{name}, but it does not exist on target server.  The attribute will not be set.")
+        attr_node.remove
+      end
+    end
   end
 
   #Helper function which will let us ignore device values that don't exist if we can (ex: Ignoring that the server doesn't have an SD card if we're setting SD to off anyway)
   def handle_missing_devices(xml_base, changes)
     ['InternalSdCard', 'IntegratedRaid'].each do |dev_attr|
       #Check if Attribute name exists in the xml, and if it doesn't, check if we're trying to set to disabled.  If so, delete from the list of changes.
-      if(xml_base.at_xpath("//Attribute[@Name='#{dev_attr}']").nil?)
+      if xml_base.at_xpath("//Attribute[@Name='#{dev_attr}']").nil?
         value = changes['partial']['BIOS.Setup.1-1'][dev_attr]
-        if(['Off', 'Disabled'].include?(value))
+        if ['Off', 'Disabled'].include?(value)
           Puppet.debug("Trying to set #{dev_attr} to #{value}, but the relevant device does not exist on the server. The attribute will be ignored.")
           changes['partial']['BIOS.Setup.1-1'].delete(dev_attr)
         end
@@ -250,14 +271,14 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   #Helper function which just searches through the xml comments for BiosBootSeq value, since it will be commented out
   def find_bios_boot_seq(xml_base)
     uncommented = xml_base.at_xpath("//Attribute[@Name='BiosBootSeq']")
-    if(!uncommented.nil?)
+    if !uncommented.nil?
       return uncommented.content
     else
       xml_base.xpath("//Component[@FQDD='BIOS.Setup.1-1']/comment()").each do |comment|
         if comment.content.include?("BiosBootSeq")
           node = Nokogiri::XML(comment.content)
           #Other names are possible for the node that contain "BiosBootSeq", such as "OneTimeBiosBootSeq", so must ensure it is exactly "BiosBootSeq"
-          if(node.at_xpath("/Attribute")['Name'] == "BiosBootSeq")
+          if node.at_xpath("/Attribute")['Name'] == "BiosBootSeq"
             return node.at_xpath("/Attribute").content
           end
         end
@@ -422,7 +443,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   #TODO:  Support for multiple raid controllers
   def raid_in_sync?(xml_base, log=false)
-    if(@resource[:target_boot_device] == "HD")
+    if @resource[:target_boot_device] == "HD"
       raid_configuration.keys.each do |raid_fqdd|
         raid_fqdd_xpath = "//Component[@FQDD='#{raid_fqdd}']"
         controller_xml = xml_base.xpath(raid_fqdd_xpath)
@@ -478,7 +499,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   def process_remove_nodes(node_name, data, xml_base, type, path="/SystemConfiguration")
     name_attr = type == "Component" ? "FQDD" : "Name"
     #If data is a list, it is a list of items under the node to delete
-    if(!data.nil? && data.size != 0)
+    if !data.nil? && data.size != 0
       new_path = "#{path}/Component[@FQDD='#{node_name}']"
       data.each do |name, child_data|
         process_remove_nodes(name, child_data, xml_base, type, new_path)
@@ -486,7 +507,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     else
       node_path = "#{path}/#{type}[@#{name_attr}='#{node_name}']"
       existing = xml_base.xpath(node_path).first
-      if(!existing.nil?)
+      if !existing.nil?
         existing.remove
       end
     end
@@ -494,7 +515,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def create_full_node(node_name, content, xml_base, parent)
     # IF content data is a hash, then it is a component node, otherwise it is just an attribute node
-    if(content.is_a?(Hash))
+    if content.is_a?(Hash)
       new_component = Nokogiri::XML::Node.new "Component", xml_base
       new_component.parent = parent
       new_component["FQDD"] = node_name
@@ -502,7 +523,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         create_full_node(child_name, content[child_name], xml_base, new_component)
       end
     else
-      if(content.is_a?(Array))
+      if content.is_a?(Array)
         content.each_with_index do |value|
           new_node = Nokogiri::XML::Node.new "Attribute", xml_base
           new_node.parent = parent
@@ -521,10 +542,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   #Used to process partial changes to xml
   def process_partials(node_name, data, xml_base, path="/SystemConfiguration")
     #If the data is a hash, it is a component, recurse through to process
-    if(data.is_a?(Hash))
+    if data.is_a?(Hash)
       new_path = "#{path}/Component[@FQDD='#{node_name}']"
       existing = xml_base.xpath(new_path).first
-      if(existing.nil?)
+      if existing.nil?
         new_node = Nokogiri::XML::Node.new "Component", xml_base
         new_node.parent = xml_base.xpath(path).first
         new_node["FQDD"] = node_name
@@ -533,10 +554,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         process_partials(child, data[child], xml_base, new_path)
       end
     #If the data is an Array, it is a list of attributes with the same Name but different values
-    elsif(data.is_a?(Array))
+    elsif data.is_a?(Array)
       data.each_with_index do |content, index|
         existing = xml_base.xpath("#{path}[#{index+1}]").first.content = content
-        if(existing)
+        if existing
           existing.content = data[index]
         else
           new_node = Nokogiri::XML::Node.new "Attribute", xml_base
@@ -549,7 +570,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     else
       attr_path = "#{path}/Attribute[@Name='#{node_name}']"
       existing = xml_base.xpath(attr_path).first
-      if(existing)
+      if existing
         existing.content = data
       else
         new_node = Nokogiri::XML::Node.new "Attribute", xml_base
@@ -591,7 +612,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           #
           # SET UP NIC IN CASE INTERFACE IS BEING PARTITIONED, equivalent to the enable_npar parameter
           #
-          if( @resource[:target_boot_device].downcase != "none" || !partition.networkObjects.nil? )
+          if  @resource[:target_boot_device].downcase != "none" || !partition.networkObjects.nil?
             changes = config['whole'][fqdd] = {}
             partition_no = partition.partition_no
             changes['VLanMode'] = 'Disabled' if partition_no == 1
@@ -619,7 +640,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
               changes['MinBandwidth'] = partition.minimum
               changes['MaxBandwidth'] = partition.maximum
-              if(partition_no == 1)
+              if partition_no == 1
                 changes['VirtualizationMode'] = 'NPAR'
                 changes['NicPartitioning'] = 'Enabled'
               end
@@ -644,13 +665,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     config
   end
 
-   #Helper function to remove two attributes from config.xml for Intel cards only.
+   #Helper function to remove two attributes from nic configuration. Should be for Intel cards only.
   def handle_missing_attributes(changes)
     changes['VirtualizationMode'] = 'NONE'
     changes['NicPartitioning'] = 'Disabled'
     ['VirtualizationMode','NicPartitioning'].each do |dev_attr|
       #Check if Attribute name exists in the xml, and if it doesn't, check if we're trying to set to disabled.  If so, delete from the list of changes.
-      if(xml_base.at_xpath("//Attribute[@Name='#{dev_attr}']").nil?)
+      if xml_base.at_xpath("//Attribute[@Name='#{dev_attr}']").nil?
         Puppet.debug("Trying to set #{dev_attr}  but the relevant device does not exist on the server. The attribute will be ignored.")
          changes.delete(dev_attr)
       end
