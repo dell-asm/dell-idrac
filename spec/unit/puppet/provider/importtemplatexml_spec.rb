@@ -188,6 +188,7 @@ end
       Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
       Puppet::Provider::Importtemplatexml.any_instance.stub(:process_nics).and_return({"partial" => {"NIC.Integrated.1-1-1" => {"IntegratedRaid"=>"Disabled"}}})
       Puppet::Provider::Importtemplatexml.any_instance.stub(:get_raid_config_changes).and_return({})
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:remove_invalid_settings).and_return({})
       Puppet::Provider::Importtemplatexml.any_instance.stub(:default_changes).and_return(
           {'partial'=>{'BIOS.Setup.1-1'=> {'ProcVirtualization' => 'Disabled'}},
            'whole'=>{'LifecycleController.Embedded.1' => {'ProcVirtualization' => 'Enabled'}},
@@ -264,6 +265,7 @@ end
       ASM::NetworkConfiguration.stub(:new).and_return(net_config)
       ASM::WsMan.stub(:invoke).and_return(@view_disk_xml)
       Puppet::Provider::Importtemplatexml.any_instance.stub(:get_raid_config_changes).and_return({})
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:remove_invalid_settings).and_return({})
       xml = @fixture.munge_config_xml
       xml.xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
       ['NIC.Integrated.1-1-1', 'NIC.Integrated.1-1-2', 'NIC.Integrated.1-1-3', 'NIC.Integrated.1-1-4'].all? do |s|
@@ -285,6 +287,25 @@ end
           comp.at_xpath("Attribute[@Name='iScsiOffloadMode']").content.should == "Disabled"
         end
       end
+    end
+
+    it "should remove any bios attributes that don't exist on the server" do
+      Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
+      Puppet::Idrac::Util.stub(:get_transport).and_return({:host => '1.1.1.1', :user => 'root', :password => 'calvin'})
+      Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
+      fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
+                     'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
+                     'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
+                     'NIC.Integrated.1-1-4' => '00:0E:1E:0D:8C:36'
+      }
+      ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
+      net_config = ASM::NetworkConfiguration.new(@mock_net_config_data)
+      ASM::NetworkConfiguration.stub(:new).and_return(net_config)
+      ASM::WsMan.stub(:invoke).and_return(@view_disk_xml)
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:get_raid_config_changes).and_return({})
+      #The xml that @fixture will read (FOOTAG_original) will have the InvalidAttribute attribute. It should not exist after munging.
+      xml = @fixture.munge_config_xml
+      xml.at_xpath("//Component[@FQDD='BIOS.Setup.1-1']//Attribute[@Name='InvalidAttribute']").should == nil
     end
 	end
 
@@ -356,10 +377,11 @@ end
             original_method = FileUtils.method(:cp)
             FileUtils.stub(:cp).with(anything()) { |*args| original_method.call(*args) }
             FileUtils.stub(:cp).with(File.join(@test_config_dir.path, @exported_name), File.join(@idrac_attrib[:nfssharepath], @idrac_attrib[:configxmlfilename])).and_return('')
+            Puppet::Provider::Importtemplatexml.any_instance.stub(:remove_invalid_settings).and_return({})
             original_method = File.method(:open)
             File.stub(:open).with(anything()) { |*args| original_method.call(*args) }
             File.stub(:open).with(File.join(@test_config_dir.path, @idrac_attrib[:configxmlfilename]), "w+").and_return('')
-                  xml = @fixture.munge_config_xml
+            xml = @fixture.munge_config_xml
             xml.xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
             comp = xml.at_xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
             comp.should_not == nil

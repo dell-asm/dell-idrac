@@ -4,6 +4,11 @@
 <Component FQDD="BIOS.Setup.1-1">
     <Attribute Name="ProcVirtualization">Enabled</Attribute>
     <Attribute Name="Remove"/>
+    <Attribute Name="BootMode">Bios</Attribute>
+    <Attribute Name="IntegratedRaid">Enabled</Attribute>
+    <Attribute Name="InternalSdCard">Enabled</Attribute>
+    <Attribute Name="BiosBootSeq">NIC.Integrated.1-1-3, HardDisk.List.1-1</Attribute>
+    <Attribute Name="InvalidAttribute">Enabled</Attribute>
 </Component>
 <Component FQDD="NIC.Integrated.1-1-1">
     <Attribute Name="VirtualizationMode">NONE</Attribute>
