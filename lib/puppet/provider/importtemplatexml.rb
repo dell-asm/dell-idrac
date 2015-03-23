@@ -233,21 +233,30 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     remove_missing_bios_settings
   end
 
+  def original_xml
+    @original_xml ||=
+      begin
+        original_xml_name  = File.basename(@resource[:configxmlfilename], ".xml")+"_original.xml"
+        xml_path = File.join(@resource[:nfssharepath], original_xml_name)
+        original_xml_file = File.open(xml_path)
+        original_xml = Nokogiri::XML(original_xml_file.read) do |config|
+          config.default_xml.noblanks
+        end
+        original_xml_file.close
+        original_xml
+      end
+  end
+
   # This method compares the changes to BIOS.Setup.1-1 with what bios settings exist on the target server.
   # We do not attempt to set if we cannot find the bios setting in the server's exported config.
   def remove_missing_bios_settings
-    # _original.xml will have the target server's configuration, instead of the reference server's configuration
-    original_xml_name  = File.basename(@resource[:configxmlfilename], ".xml")+"_original.xml"
-    xml_path = File.join(@resource[:nfssharepath], original_xml_name)
-    target_server_xml = File.open(xml_path)
-    target_xml = Nokogiri::XML(target_server_xml.read) do |config|
-      config.default_xml.noblanks
-    end
-    target_server_xml.close
     bios_settings = @xml_doc.xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute")
     bios_settings.each do |attr_node|
       name = attr_node.attr("Name")
-      if target_xml.at_xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute[@Name='#{name}']").nil?
+      # BiosBootSeq is usually commented out from the export, so if we don't search comments for that case, we will remove it.
+      search_comments = name == 'BiosBootSeq'
+      attr_value = find_attribute_value(original_xml, 'BIOS.Setup.1-1', name, search_comments)
+      if attr_value.nil?
         Puppet.info("Trying to set bios setting #{name}, but it does not exist on target server.  The attribute will not be set.")
         attr_node.remove
       end
@@ -312,7 +321,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     bios_boot_sequence = []
     iscsi_partitions.each do |partition|
         iscsi_network = get_iscsi_network(partition['networkObjects'])
-        if (ASM::Util.to_boolean(iscsi_network.static))
+        if ASM::Util.to_boolean(iscsi_network.static)
           changes['whole'].deep_merge!(
           { partition.fqdd =>
             {
@@ -427,7 +436,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           raid_configuration[raid_fqdd][:hotspares].each do |disk_fqdd|
             bay, *enclosure_fqdd = disk_fqdd.split(':')
             enclosure_fqdd = enclosure_fqdd.join(':')
-            enclosure_changes = changes['whole'][raid_fqdd][enclosure_fqdd]
             controller_changes = changes['whole'][raid_fqdd]
             controller_changes[enclosure_fqdd] = {} if controller_changes[enclosure_fqdd].nil?
             controller_changes[enclosure_fqdd][disk_fqdd] =  { 'RAIDHotSpareStatus' => 'Global' }
@@ -684,5 +692,21 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
          changes.delete(dev_attr)
       end
     end
+  end
+
+  def find_attribute_value(xml, component, attribute, search_comments=false)
+    attr_node = xml.at_xpath("//Component[@FQDD='#{component}']//Attribute[@Name='#{attribute}']")
+    if attr_node.nil? && search_comments
+      xml.xpath("//Component[@FQDD='#{component}']/comment()").each do |comment|
+        if comment.content.include?(attribute)
+          node = Nokogiri::XML(comment.content)
+          if node.at_xpath("/Attribute")['Name'] == attribute
+            attr_node = node.at_xpath("/Attribute")
+            break
+          end
+        end
+      end
+    end
+    attr_node.nil? ? nil : attr_node.content
   end
 end
