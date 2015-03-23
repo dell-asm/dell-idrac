@@ -60,11 +60,21 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
       end
       remove_config_file(config_file_path)
       job_status = 'new'
+      started = Time.now
       until job_status =~ /Downloaded|Completed|Failed/
         sleep 30
-        job_status = checkjobstatus job_id
+        begin
+          job_status = checkjobstatus job_id
+        rescue ASM::WsMan::StandardError => e
+          job_status = 'TemporaryFailure'
+          Puppet.warning("Look up job status for #{job_id} failed: #{e}")
+        end
         statuses[job_id] = job_status
         Puppet.debug("Job Status: #{job_status}")
+        if Time.now - started > 1800
+          Puppet.warning("Timed out waiting for firmware job #{job_id} to complete")
+          job_status = 'Failed'
+        end
       end
       if job_status ==  "Completed"
         Puppet.debug("Firmware update completed successfully")
