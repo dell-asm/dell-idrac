@@ -10,10 +10,18 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
   :wsman,
   :parent => Puppet::Provider::Idrac
 ) do
+  # Special component ids
   IDRAC_ID = 25227
   LC_ID = 28897
   UEFI_DIAGNOSTICS_ID = 25806
   DRIVER_PACK = 18981
+
+  # Component ids that do not require a reboot
+  NO_REBOOT_COMPONENT_IDS = [IDRAC_ID, LC_ID, UEFI_DIAGNOSTICS_ID, DRIVER_PACK]
+
+  # Max time to wait for a job to complete
+  MAX_WAIT_SECONDS = 1800
+
 
   def exists?
     @force_restart = resource[:force_restart]
@@ -45,47 +53,62 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     if post.size > 0
       Puppet.debug("IDRAC update required, installing last")
       update(post)
+
+      # idrac restarts after the firmware is installed. Sleep for a minute to
+      # ensure that is underway before we check for LC ready below.
+      sleep(60)
     end
+
+    # Ensure LC is up and in good state before exiting
+    wait_for_lc_ready
   end
 
   def update(firmware_list)
-    job_ids = []
     statuses = {}
+
+    # Initiate all firmware update jobs
     firmware_list.each do |fw|
       Puppet.debug(fw)
       config_file_path = create_xml_config_file(fw["instance_id"],fw["uri_path"])
       job_id = install_from_uri(config_file_path)
-      if fw["component_id"].to_s !~ /#{UEFI_DIAGNOSTICS_ID}|#{LC_ID}|#{IDRAC_ID}|#{DRIVER_PACK}/
-        job_ids << job_id
-      end
+      raise(Puppet::Error, "Failed to initiate firmware job for #{fw}") unless job_id
       remove_config_file(config_file_path)
-      job_status = 'new'
-      until job_status =~ /Downloaded|Completed|Failed/
+      raise(Puppet::Error, "Duplicate job id #{job_id} for firmware #{fw}: #{statuses[job_id]}") if statuses[job_id]
+      statuses[job_id] = { :job_id => job_id, :status => 'new', :firmware => fw, :start_time => Time.now }
+      until statuses[job_id][:status] =~ /Downloaded|Completed|Failed/
         sleep 30
-        job_status = checkjobstatus job_id
-        statuses[job_id] = job_status
-        Puppet.debug("Job Status: #{job_status}")
+        begin
+          statuses[job_id][:status] = checkjobstatus job_id
+        rescue ASM::WsMan::StandardError => e
+          statuses[job_id][:status] = 'TemporaryFailure'
+          Puppet.warning("Look up job status for #{job_id} failed: #{e}")
+        end
+        Puppet.debug("Job Status: #{statuses[job_id][:status]}")
+        if Time.now - statuses[job_id][:start_time] > MAX_WAIT_SECONDS
+          Puppet.warning("Timed out waiting for firmware job #{job_id} to complete")
+          statuses[job_id][:status] = 'Failed'
+        end
       end
-      if job_status ==  "Completed"
+      if statuses[job_id][:status] ==  "Completed"
         Puppet.debug("Firmware update completed successfully")
-      elsif job_status  ==  "Failed"
+      elsif statuses[job_id][:status]  ==  "Failed"
         raise Puppet::Error, "Firmware update failed in the lifecycle controller.  Please refer to LifeCycle job logs"
-      elsif job_status ==  "Downloaded"
+      elsif statuses[job_id][:status] ==  "Downloaded"
         Puppet.debug("Firmware downloaded to idrac, scheduling apply")
       end
     end
-    components = []
-    firmware_list.each do |f|
-      components << f["component_id"]
-    end
-    reboot_required = true
-    if components.all? {|c| c.to_s =~ /#{UEFI_DIAGNOSTICS_ID}|#{LC_ID}|#{IDRAC_ID}|#{DRIVER_PACK}/}
+
+    # Reboot if necessary
+    reboot_job_ids = statuses.values.map do |v|
+      v[:job_id] unless NO_REBOOT_COMPONENT_IDS.include?(v[:firmware]['component_id'].to_i)
+    end.compact
+    if reboot_job_ids.empty?
       Puppet.debug("Reboot not required")
       reboot_required = false
       update_complete = 'Completed'
-    end
-    if !update_complete
-      update_complete = @force_restart ? 'Completed' :  'Scheduled'
+    else
+      reboot_required = true
+      update_complete = @force_restart ? 'Completed' : 'Scheduled'
     end
     reboot_id = nil
     if reboot_required
@@ -93,7 +116,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
         reboot_config_file_path = create_reboot_config_file
         reboot_id = create_reboot_job(reboot_config_file_path)
       end
-      job_queue_config_file = create_job_queue_config(job_ids,reboot_id)
+      job_queue_config_file = create_job_queue_config(reboot_job_ids,reboot_id)
       setup_job_queue(job_queue_config_file)
       if @force_restart
         reboot_status = 'new'
@@ -104,25 +127,27 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
         end
       end
     end
-    status_repeats = 0
-    previous_statuses = []
-    new_statuses = []
-    until statuses.all? {|k,v| v =~ /#{update_complete}|Failed/}
-      statuses.each do |key,val|
-        job_status = checkjobstatus key
-        statuses[key] = job_status
-        new_statuses << job_status
-        Puppet.debug("Job Status #{key}: #{job_status}")
-        status_repeats += 1 if new_statuses == previous_statuses
-        previous_statuses = new_statuses
-        raise Puppet::Error, "Status values have remained the same for 30 minutes.  Suspected hung update. Please check lifecycle logs" if status_repeats > 59
+
+    # Poll for all jobs to complete or time out
+    until statuses.values.all? { |v| v[:status] =~ /#{update_complete}|Failed|InternalTimeout/ }
+      statuses.each do |key, val|
+        if Time.now - val[:start_time] > MAX_WAIT_SECONDS
+          val[:status] = 'InternalTimeout'
+        else
+          val[:status] = checkjobstatus key
+          Puppet.debug("Job Status #{key}: #{val[:status]}")
+        end
       end
       sleep 30
     end
-    if statuses.values.include? "Failed"
-      raise Puppet::Error, "Firmware update failed in the lifecycle controller.  Please refer to LifeCycle job logs"
-    else
+
+    # Raise an error if any firmware jobs failed
+    failures = statuses.values.find_all { |v| v[:status] =~ /Failed|InternalTimeout/ }
+    if failures.empty?
       Puppet.debug("Firmware update completed successfully")
+    else
+      Puppet.info("Failed firmware jobs: #{failures}")
+      raise Puppet::Error, "Firmware update failed in the lifecycle controller.  Please refer to LifeCycle job logs"
     end
   end
 
