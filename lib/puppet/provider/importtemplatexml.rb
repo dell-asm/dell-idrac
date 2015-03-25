@@ -432,13 +432,20 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                 'RAIDTypes'=> disk_config[:level].sub('raid', 'RAID '),
                 'IncludedPhysicalDiskID'=> disk_config[:disks]
               }
+            disk_config[:disks].each do |disk_fqdd|
+              controller_changes = changes['whole'][raid_fqdd]
+              bay, *enclosure_fqdd = disk_fqdd.split(':')
+              enclosure_fqdd = enclosure_fqdd.join(':')
+              controller_changes[enclosure_fqdd] = {} if controller_changes[enclosure_fqdd].nil?
+              controller_changes[enclosure_fqdd].merge!({disk_fqdd=>{'RAIDPDState' => 'Ready'}})
+            end
           end
           raid_configuration[raid_fqdd][:hotspares].each do |disk_fqdd|
             bay, *enclosure_fqdd = disk_fqdd.split(':')
             enclosure_fqdd = enclosure_fqdd.join(':')
             controller_changes = changes['whole'][raid_fqdd]
             controller_changes[enclosure_fqdd] = {} if controller_changes[enclosure_fqdd].nil?
-            controller_changes[enclosure_fqdd][disk_fqdd] =  { 'RAIDHotSpareStatus' => 'Global' }
+            controller_changes[enclosure_fqdd].merge!({disk_fqdd => {'RAIDHotSpareStatus' => 'Global', 'RAIDPDState' => 'Ready'}})
           end
         end
       #Leave RAID config as is if boot device = none
