@@ -79,7 +79,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
         sleep 30
         begin
           statuses[job_id][:status] = checkjobstatus job_id
-        rescue ASM::WsMan::StandardError => e
+        rescue ASM::WsMan::Error => e
           statuses[job_id][:status] = 'TemporaryFailure'
           Puppet.warning("Look up job status for #{job_id} failed: #{e}")
         end
