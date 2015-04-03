@@ -4,6 +4,7 @@ require 'nokogiri'
 require 'erb'
 require 'tempfile'
 require 'asm/util'
+
 require File.join(provider_path, 'idrac')
 
 Puppet::Type.type(:idrac_fw_installfromuri).provide(
@@ -113,8 +114,8 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     reboot_id = nil
     if reboot_required
       if @force_restart
-        reboot_config_file_path = create_reboot_config_file
-        reboot_id = create_reboot_job(reboot_config_file_path)
+        require 'asm/wsman'
+        reboot_id = ASM::WsMan.reboot(transport, Puppet)
       end
       job_queue_config_file = create_job_queue_config(reboot_job_ids,reboot_id)
       setup_job_queue(job_queue_config_file)
@@ -230,18 +231,6 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     temp_file.path
   end
 
-  def create_reboot_config_file
-    template = <<-EOF
-<p:CreateRebootJob_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService">
-  <p:RebootJobType>3</p:RebootJobType>
-</p:CreateRebootJob_INPUT>
-EOF
-    temp_file = Tempfile.new('reboot_config')
-    temp_file.write(template)
-    temp_file.close
-    temp_file.path
-  end
-
   def create_job_queue_config(job_ids,reboot_id=nil)
     template = <<-EOF
 <p:SetupJobQueue_INPUT xmlns:p="http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService"><% job_ids.each do |job_id| %>
@@ -257,21 +246,6 @@ EOF
     temp_file.write(xmlout.result(binding))
     temp_file.close
     temp_file.path
-  end
-
-  def create_reboot_job(reboot_file)
-    wsman_cmd = "wsman invoke -a CreateRebootJob http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService,SystemCreationClassName=DCIM_ComputerSystem,SystemName=IDRAC:ID,Name=SoftwareUpdate -h #{transport[:host]} -V -v -c Dummy -P 443 -u #{transport[:user]} -p #{transport[:password]} -J #{reboot_file} -j utf-8 -y basic"
-    Puppet.debug("Creating Reboot Job")
-    resp = run_wsman(wsman_cmd)
-    doc = Nokogiri::XML(resp)
-    if doc.xpath('//n1:ReturnValue').text == '4096'
-      reboot_id = doc.xpath('//wsman:Selector').first.text
-      Puppet.debug("Reboot Job scheduled successfully")
-      Puppet.debug("Reboot Job ID: #{reboot_id}")
-      return reboot_id
-    else
-      raise Puppet::Error, "Problem scheduling reboot.  Problem message: #{doc.xpath('//n1:Message').text}"
-    end
   end
 
   def remove_config_file(config_file_path)
