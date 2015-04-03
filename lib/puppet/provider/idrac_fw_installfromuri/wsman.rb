@@ -69,10 +69,9 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     # Initiate all firmware update jobs
     firmware_list.each do |fw|
       Puppet.debug(fw)
-      config_file_path = create_xml_config_file(fw["instance_id"],fw["uri_path"])
-      job_id = install_from_uri(config_file_path)
+      config_file = create_xml_config_file(fw["instance_id"],fw["uri_path"])
+      job_id = install_from_uri(config_file.path)
       raise(Puppet::Error, "Failed to initiate firmware job for #{fw}") unless job_id
-      remove_config_file(config_file_path)
       raise(Puppet::Error, "Duplicate job id #{job_id} for firmware #{fw}: #{statuses[job_id]}") if statuses[job_id]
       statuses[job_id] = { :job_id => job_id, :status => 'new', :firmware => fw, :start_time => Time.now }
       until statuses[job_id][:status] =~ /Downloaded|Completed|Failed/
@@ -113,11 +112,11 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     reboot_id = nil
     if reboot_required
       if @force_restart
-        reboot_config_file_path = create_reboot_config_file
-        reboot_id = create_reboot_job(reboot_config_file_path)
+        reboot_config_file = create_reboot_config_file
+        reboot_id = create_reboot_job(reboot_config_file.path)
       end
       job_queue_config_file = create_job_queue_config(reboot_job_ids,reboot_id)
-      setup_job_queue(job_queue_config_file)
+      setup_job_queue(job_queue_config_file.path)
       if @force_restart
         reboot_status = 'new'
         until reboot_status == 'Reboot Completed'
@@ -227,19 +226,19 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     temp_file = Tempfile.new('xml_config')
     temp_file.write(xmlout.result(binding))
     temp_file.close
-    temp_file.path
+    temp_file
   end
 
   def create_reboot_config_file
     template = <<-EOF
 <p:CreateRebootJob_INPUT xmlns:p="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService">
-  <p:RebootJobType>3</p:RebootJobType>
+  <p:RebootJobType>1</p:RebootJobType>
 </p:CreateRebootJob_INPUT>
 EOF
     temp_file = Tempfile.new('reboot_config')
     temp_file.write(template)
     temp_file.close
-    temp_file.path
+    temp_file
   end
 
   def create_job_queue_config(job_ids,reboot_id=nil)
@@ -256,7 +255,7 @@ EOF
     temp_file = Tempfile.new('jq_config')
     temp_file.write(xmlout.result(binding))
     temp_file.close
-    temp_file.path
+    temp_file
   end
 
   def create_reboot_job(reboot_file)
@@ -272,10 +271,6 @@ EOF
     else
       raise Puppet::Error, "Problem scheduling reboot.  Problem message: #{doc.xpath('//n1:Message').text}"
     end
-  end
-
-  def remove_config_file(config_file_path)
-    FileUtils.rm(config_file_path)
   end
 
   def setup_job_queue(job_queue_config_file)
