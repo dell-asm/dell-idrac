@@ -141,7 +141,12 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
     @bios_settings.keys.each do |key|
       unless @bios_settings[key].nil? || @bios_settings[key].empty?
-        changes['partial']['BIOS.Setup.1-1'][key] = @bios_settings[key]
+        if @bios_settings[key] == 'none'
+          changes['remove']['attributes']['BIOS.Setup.1-1'] ||= []
+          changes['remove']['attributes']['BIOS.Setup.1-1'] << key
+        else
+          changes['partial']['BIOS.Setup.1-1'][key] = @bios_settings[key]
+        end
       end
     end
     changes
@@ -253,9 +258,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     bios_settings = @xml_doc.xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute")
     bios_settings.each do |attr_node|
       name = attr_node.attr("Name")
-      # BiosBootSeq is usually commented out from the export, so if we don't search comments for that case, we will remove it.
-      search_comments = name == 'BiosBootSeq'
-      attr_value = find_attribute_value(original_xml, 'BIOS.Setup.1-1', name, search_comments)
+      attr_value = find_attribute_value(original_xml, 'BIOS.Setup.1-1', name, true)
       if attr_value.nil?
         Puppet.info("Trying to set bios setting #{name}, but it does not exist on target server.  The attribute will not be set.")
         attr_node.remove
