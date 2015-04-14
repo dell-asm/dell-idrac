@@ -138,6 +138,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                    'InternalSdCard' => 'On'
                }
           })
+    elsif @resource[:target_boot_device].downcase.start_with?('none')
+      changes['remove']['attributes']['BIOS.Setup.1-1'] ||= []
+      changes['remove']['attributes']['BIOS.Setup.1-1'] << 'BiosBootSeq'
     end
     @bios_settings.keys.each do |key|
       unless @bios_settings[key].nil? || @bios_settings[key].empty?
