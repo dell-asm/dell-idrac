@@ -173,7 +173,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def munge_config_xml
     get_config_changes
-    xml_base.xpath("//Component[contains(@FQDD, 'NIC.')]").remove() unless @resource[:target_boot_device].downcase == 'none'
+    xml_base.xpath("//Component[contains(@FQDD, 'NIC.')]").remove() unless @resource[:target_boot_device].downcase.start_with?('none')
     xml_base['ServiceTag'] = @resource[:servicetag]
     #Current workaround for LC issue, where if BiotBootSeq is already set to what ASM needs it to be, setting it again to the same thing will cause an error.
     existing_boot_seq = find_bios_boot_seq(xml_base)
@@ -402,7 +402,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       Puppet.debug("Setting RAID configuration to be cleared as part of teardown.")
       raid_configuration.keys.each{|controller| changes['whole'][controller] = { 'RAIDresetConfig' => "True" } }
     else
-      if @resource[:target_boot_device] == "HD"
+      if ['none_with_raid', 'hd'].include?(@resource[:target_boot_device].downcase)
         raid_configuration.keys.each do |raid_fqdd|
           changes['whole'][raid_fqdd] = { 'RAIDresetConfig' => "True", 'RAIDforeignConfig' => 'Clear'}
           raid_configuration[raid_fqdd][:virtual_disks].each_with_index do |disk_config, index|
@@ -458,7 +458,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   #TODO:  Support for multiple raid controllers
   def raid_in_sync?(xml_base, log=false)
-    if @resource[:target_boot_device] == "HD"
+    if ['none_with_raid', 'hd'].include?(@resource[:target_boot_device].downcase)
       raid_configuration.keys.each do |raid_fqdd|
         raid_fqdd_xpath = "//Component[@FQDD='#{raid_fqdd}']"
         controller_xml = xml_base.xpath(raid_fqdd_xpath)
@@ -611,7 +611,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         config['remove']['components'][fqdd] = {}
     end
     #Don't mess with the boot order if the target_boot_device = none
-    if @resource[:target_boot_device].downcase != "none"
+    unless @resource[:target_boot_device].downcase.start_with?('none')
       if net_config.get_partitions('PXE').first.nil?
         boot_seq = ['HardDisk.List.1-1'].join(', ')
       else
@@ -627,7 +627,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           #
           # SET UP NIC IN CASE INTERFACE IS BEING PARTITIONED, equivalent to the enable_npar parameter
           #
-          if  @resource[:target_boot_device].downcase != "none" || !partition.networkObjects.nil?
+          if !@resource[:target_boot_device].downcase.start_with?('none') || !partition.networkObjects.nil?
             changes = config['whole'][fqdd] = {}
             partition_no = partition.partition_no
             changes['VLanMode'] = 'Disabled' if partition_no == 1
