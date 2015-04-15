@@ -61,6 +61,7 @@ Puppet::Type.type(:importsystemconfiguration).provide(
       else
         if response  == "Failed"
           if import_try == 1 && !is_retry
+            Puppet.info("Import operation failed in the first attempt, retrying import operation")
             return retry_import
           else
             raise "Job Failed ."
@@ -77,18 +78,17 @@ Puppet::Type.type(:importsystemconfiguration).provide(
   end
 
   def retry_import(skip_reset=false)
-    Puppet.debug("Import operation failed in the first attempt, retrying import operation")
-    Puppet.debug("Resetting the iDRAC before performing any other operation")
-    reset if !skip_reset
-    Puppet.debug("Waiting for Lifecycle Controller be ready")
+    Puppet.info("Resetting the iDRAC before performing any other operation") unless skip_reset
+    reset unless skip_reset
+    Puppet.info("Waiting for Lifecycle Controller be ready")
     lcstatus
-    reboot if !skip_reset
+    reboot unless skip_reset
     lcstatus
     exporttemplate('base')
 
     synced = !resource[:force_reboot] && config_in_sync?
     if synced
-      Puppet.debug("Configuration is already in sync. Skipping the import operation")
+      Puppet.info("Configuration is already in sync. Skipping the import operation")
       return true
     end
     instanceid = importtemplate
