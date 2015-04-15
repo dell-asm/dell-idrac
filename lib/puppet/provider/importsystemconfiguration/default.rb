@@ -1,6 +1,7 @@
 provider_path = Pathname.new(__FILE__).parent.parent
 require 'rexml/document'
 require 'puppet/idrac/util'
+require 'asm/wsman'
 
 include REXML
 require File.join(provider_path, 'idrac')
@@ -29,7 +30,7 @@ Puppet::Type.type(:importsystemconfiguration).provide(
     # For config XML case, its observed that we have to invoke the import
     # operation twice as a workaround for fcoe not being toggled when the partition has iscsi offload enabled.
     # TODO:  Move flipping the fcoeEnabled attribute into the setup_idrac flow
-    if !@resource[:config_xml].nil?
+    unless @resource[:config_xml].nil?
       Puppet.info('For referenced server configuration, need to perform the configuration XML twice')
       sleep(60)
       retry_import(true)
@@ -78,12 +79,15 @@ Puppet::Type.type(:importsystemconfiguration).provide(
   end
 
   def retry_import(skip_reset=false)
-    Puppet.info("Resetting the iDRAC before performing any other operation") unless skip_reset
-    reset unless skip_reset
-    Puppet.info("Waiting for Lifecycle Controller be ready")
-    lcstatus
-    reboot unless skip_reset
-    lcstatus
+    unless skip_reset
+      Puppet.info("Resetting the iDRAC before performing any other operation")
+      reset
+      Puppet.info("Waiting for Lifecycle Controller be ready")
+      lcstatus
+      reboot
+      lcstatus
+      clear_job_queue
+    end
     exporttemplate('base')
 
     synced = !resource[:force_reboot] && config_in_sync?
@@ -93,6 +97,31 @@ Puppet::Type.type(:importsystemconfiguration).provide(
     end
     instanceid = importtemplate
     wait_for_import(instanceid, true)
+  end
+
+  #TODO:  Similar code to idrac_fw_update.  Could be moved to somewhere both places can use.
+  def clear_job_queue
+    Puppet.debug("Clearing Job Queue")
+    tries = 1
+    begin
+      endpoint={:host => transport[:host], :user => transport[:user], :password => transport[:password]}
+      schema = "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\",SystemName=\"Idrac\",Name=\"JobService\",SystemCreationClassName=\"DCIM_ComputerSystem\""
+      options = {:props=>{'JobID'=> 'JID_CLEARALL'}}
+      resp = ASM::WsMan.invoke(endpoint, 'DeleteJobQueue', schema, options)
+      doc = Nokogiri::XML(resp)
+      Puppet.debug("Response from DeleteJobQueue: #{doc}")
+      if doc.xpath('//n1:MessageID').text == 'SUP020'
+        Puppet.debug("Job Queue cleared successfully")
+      else
+        raise Puppet::Error, "Error clearing job queue.  Message: #{doc.xpath('//n1:Message')}"
+      end
+    rescue Puppet::Error => e
+      raise e if tries > 4
+      tries += 1
+      Puppet.info("Could not reset job queue.  Retrying in 30 seconds...")
+      sleep 30
+      retry
+    end
   end
 
   def sleep_time
