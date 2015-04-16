@@ -84,9 +84,9 @@ Puppet::Type.type(:importsystemconfiguration).provide(
       reset
       Puppet.info("Waiting for Lifecycle Controller be ready")
       lcstatus
+      clear_job_queue
       reboot
       lcstatus
-      clear_job_queue
     end
     exporttemplate('base')
 
@@ -110,7 +110,7 @@ Puppet::Type.type(:importsystemconfiguration).provide(
       resp = ASM::WsMan.invoke(endpoint, 'DeleteJobQueue', schema, options)
       doc = Nokogiri::XML(resp)
       Puppet.debug("Response from DeleteJobQueue: #{doc}")
-      if doc.xpath('//n1:MessageID').text == 'SUP020'
+      if doc.xpath('//n1:ReturnValue').text == '0'
         Puppet.debug("Job Queue cleared successfully")
       else
         raise Puppet::Error, "Error clearing job queue.  Message: #{doc.xpath('//n1:Message')}"
@@ -122,9 +122,25 @@ Puppet::Type.type(:importsystemconfiguration).provide(
       sleep 30
       retry
     end
+    wait_for_jobs_clear
   end
 
-  def sleep_time
-    5
+  def wait_for_jobs_clear
+    Puppet.info("Waiting for job queue to be empty...")
+    endpoint={:host => transport[:host], :user => transport[:user], :password => transport[:password]}
+    schema = "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService"
+    10.times do
+      resp = ASM::WsMan.invoke(endpoint, 'enumerate', schema)
+      doc = Nokogiri::XML("<results>#{resp}</results>")
+      doc.remove_namespaces!
+      Puppet.debug("Response from DCIM_JobService:\n#{doc}")
+      if doc.xpath('//CurrentNumberOfJobs').text == '0'
+        Puppet.info("Job Queue is empty.")
+        return
+      else
+        sleep 15
+      end
+    end
+    Puppet.warning("Job queue still shows jobs exist.  This could cause issues during import of system config.")
   end
 end
