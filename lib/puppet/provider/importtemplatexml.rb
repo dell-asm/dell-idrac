@@ -87,6 +87,19 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     return instanceid
   end
 
+  def find_target_bios_setting(attr_name)
+    @bios_enumeration ||=
+      begin
+        cmd = "wsman enumerate http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_BIOSEnumeration -h #{@ip} -P 443 -u #{@username} -p #{@password} -c dummy.cert -y basic -V -v"
+        response = `#{cmd}`
+        bios_xml = Nokogiri::XML("<result>#{response}</result>")
+        bios_xml.remove_namespaces!
+      end
+    enum = @bios_enumeration.at_xpath("//DCIM_BIOSEnumeration[AttributeName='#{attr_name}']")
+    return nil if enum.nil?
+    Hash.from_xml(enum.to_xml)['DCIM_BIOSEnumeration']
+  end
+
   def get_config_changes
     return @changes if @changes
     changes = default_changes
@@ -138,10 +151,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                    'InternalSdCard' => 'On'
                }
           })
+    elsif @resource[:target_boot_device].downcase.start_with?('none')
+      changes['remove']['attributes']['BIOS.Setup.1-1'] ||= []
+      changes['remove']['attributes']['BIOS.Setup.1-1'] << 'BiosBootSeq'
     end
     @bios_settings.keys.each do |key|
       unless @bios_settings[key].nil? || @bios_settings[key].empty?
-        if @bios_settings[key] == 'none'
+        if @bios_settings[key] == 'n/a'
           changes['remove']['attributes']['BIOS.Setup.1-1'] ||= []
           changes['remove']['attributes']['BIOS.Setup.1-1'] << key
         else
@@ -178,7 +194,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def munge_config_xml
     get_config_changes
-    xml_base.xpath("//Component[contains(@FQDD, 'NIC.')]").remove() unless @resource[:target_boot_device].downcase == 'none'
+    xml_base.xpath("//Component[contains(@FQDD, 'NIC.')]").remove() unless @resource[:target_boot_device].downcase.start_with?('none')
     xml_base['ServiceTag'] = @resource[:servicetag]
     #Current workaround for LC issue, where if BiotBootSeq is already set to what ASM needs it to be, setting it again to the same thing will cause an error.
     existing_boot_seq = find_bios_boot_seq(xml_base)
@@ -258,10 +274,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     bios_settings = @xml_doc.xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute")
     bios_settings.each do |attr_node|
       name = attr_node.attr("Name")
-      attr_value = find_attribute_value(original_xml, 'BIOS.Setup.1-1', name, true)
-      if attr_value.nil?
-        Puppet.info("Trying to set bios setting #{name}, but it does not exist on target server.  The attribute will not be set.")
-        attr_node.remove
+      # BiosBootSeq and HddSeq don't show up in the BIOSEnumeration call, so make sure we don't strip them out accidentally
+      unless ['BiosBootSeq', 'HddSeq'].include?(name)
+        attr_value = find_target_bios_setting(name)
+        if attr_value.nil?
+          Puppet.info("Trying to set bios setting #{name}, but it does not exist on target server.  The attribute will not be set.")
+          attr_node.remove
+        end
       end
     end
   end
@@ -405,7 +424,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       Puppet.debug("Setting RAID configuration to be cleared as part of teardown.")
       raid_configuration.keys.each{|controller| changes['whole'][controller] = { 'RAIDresetConfig' => "True" } }
     else
-      if @resource[:target_boot_device] == "HD"
+      if ['none_with_raid', 'hd'].include?(@resource[:target_boot_device].downcase)
         raid_configuration.keys.each do |raid_fqdd|
           changes['whole'][raid_fqdd] = { 'RAIDresetConfig' => "True", 'RAIDforeignConfig' => 'Clear'}
           raid_configuration[raid_fqdd][:virtual_disks].each_with_index do |disk_config, index|
@@ -461,7 +480,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   #TODO:  Support for multiple raid controllers
   def raid_in_sync?(xml_base, log=false)
-    if @resource[:target_boot_device] == "HD"
+    if ['none_with_raid', 'hd'].include?(@resource[:target_boot_device].downcase)
       raid_configuration.keys.each do |raid_fqdd|
         raid_fqdd_xpath = "//Component[@FQDD='#{raid_fqdd}']"
         controller_xml = xml_base.xpath(raid_fqdd_xpath)
@@ -614,7 +633,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         config['remove']['components'][fqdd] = {}
     end
     #Don't mess with the boot order if the target_boot_device = none
-    if @resource[:target_boot_device].downcase != "none"
+    unless @resource[:target_boot_device].downcase.start_with?('none')
       if net_config.get_partitions('PXE').first.nil?
         boot_seq = ['HardDisk.List.1-1'].join(', ')
       else
@@ -630,7 +649,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           #
           # SET UP NIC IN CASE INTERFACE IS BEING PARTITIONED, equivalent to the enable_npar parameter
           #
-          if  @resource[:target_boot_device].downcase != "none" || !partition.networkObjects.nil?
+          if !@resource[:target_boot_device].downcase.start_with?('none') || !partition.networkObjects.nil?
             changes = config['whole'][fqdd] = {}
             partition_no = partition.partition_no
             changes['VLanMode'] = 'Disabled' if partition_no == 1
@@ -704,6 +723,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
   end
 
+  #TODO: Use this function whereever we're doing a search for certain attributes, such as in handle_missing_attributes
   def find_attribute_value(xml, component, attribute, search_comments=false)
     attr_node = xml.at_xpath("//Component[@FQDD='#{component}']//Attribute[@Name='#{attribute}']")
     if attr_node.nil? && search_comments
