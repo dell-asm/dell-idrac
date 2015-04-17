@@ -194,7 +194,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def munge_config_xml
     get_config_changes
-    xml_base.xpath("//Component[contains(@FQDD, 'NIC.')]").remove() unless @resource[:target_boot_device].downcase.start_with?('none')
+    xml_base.xpath("//Component[contains(@FQDD, 'NIC.') or contains(@FQDD, 'FC.')]").remove unless @resource[:target_boot_device].downcase.start_with?('none')
     xml_base['ServiceTag'] = @resource[:servicetag]
     #Current workaround for LC issue, where if BiotBootSeq is already set to what ASM needs it to be, setting it again to the same thing will cause an error.
     existing_boot_seq = find_bios_boot_seq(xml_base)
@@ -523,7 +523,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         Puppet.debug("RAID config needs to be cleared for teardown.") if log
         return false
       end
-     end
+    end
     true
   end
 
@@ -623,7 +623,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     net_config = ASM::NetworkConfiguration.new(@network_config_data)
     endpoint = Hashie::Mash.new({:host => @ip, :user => @username, :password => @password})
     net_config.add_nics!(endpoint, :add_partitions => true)
-    fqdds_existing = xml_base.xpath("//Component[contains(@FQDD, 'NIC.')]").collect {|x| x.attribute("FQDD").value}
+    fqdds_existing = xml_base.xpath("//Component[contains(@FQDD, 'NIC.') or contains(@FQDD, 'FC.')]").collect {|x| x.attribute("FQDD").value}
     fqdds_to_set = net_config.get_all_fqdds
     config = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
     #fqdds_existing - fqdds_to_set will leave us a list of NICs that need to be removed from the config.xml
