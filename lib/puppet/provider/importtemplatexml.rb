@@ -3,6 +3,7 @@ require 'json'
 require 'nokogiri'
 require 'hashie'
 require 'active_support'
+require 'active_support/core_ext'
 require 'puppet/idrac/util'
 
 include REXML
@@ -172,35 +173,34 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def xml_base
-    @xml_base ||= get_xml_base
+    @xml_base ||= get_xml
   end
 
-  def get_xml_base
-    exported_file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_#{@exported_postfix}.xml"
+  def get_xml(postfix=@exported_postfix)
+    exported_file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_#{postfix}.xml"
     @config_xml_path = File.join(@resource[:nfssharepath], @resource[:configxmlfilename])
-    #Export from server is not needed here, since the exists? method in the importsystemconfiguration provider will do an export beforehand to check values
-    if !@resource[:config_xml].nil?
-      config_xml = Nokogiri::XML(@resource[:config_xml])
-      File.open(@config_xml_path, 'w+') { |file| file.write(config_xml.to_xml(:indent => 2)) }
-    else
-      #Want to leave the base copy alone so we have, mostly for debugging/reference purposes.
-      FileUtils.cp(File.join(@resource[:nfssharepath], exported_file_name), @config_xml_path)
-    end
-    f = File.open(@config_xml_path)
-    @xml_doc = Nokogiri::XML(f.read) do |config|
+    f = File.open(File.join(@resource[:nfssharepath], exported_file_name))
+    xml_doc = Nokogiri::XML(f.read) do |config|
       config.default_xml.noblanks
     end
-    finalxml = @xml_doc.xpath('/SystemConfiguration').first
     f.close
-    finalxml
+    xml_doc.xpath('/SystemConfiguration').first
   end
 
   def munge_config_xml
     get_config_changes
-    xml_base.xpath("//Component[contains(@FQDD, 'NIC.') or contains(@FQDD, 'FC.')]").remove unless @resource[:target_boot_device].downcase.start_with?('none')
-    xml_base['ServiceTag'] = @resource[:servicetag]
-    #Current workaround for LC issue, where if BiotBootSeq is already set to what ASM needs it to be, setting it again to the same thing will cause an error.
-    existing_boot_seq = find_bios_boot_seq(xml_base)
+    # target_current_xml is for reference to check the target server's current configuration
+    target_current_xml = xml_base
+    # xml_to_write is the base xml to make changes to.  It will just be the target's xml unless we are doing clone from reference/upload from config profile.
+    if resource[:config_xml].nil?
+      xml_to_write = target_current_xml
+    else
+      xml_to_write = get_xml('reference')
+    end
+    xml_to_write.xpath("//Component[contains(@FQDD, 'NIC.') or contains(@FQDD, 'FC.')]").remove unless @resource[:target_boot_device].downcase.start_with?('none')
+    xml_to_write['ServiceTag'] = @resource[:servicetag]
+    # Current workaround for LC issue, where if BiotBootSeq is already set to what ASM needs it to be, setting it again to the same thing will cause an error.
+    existing_boot_seq = find_bios_boot_seq(target_current_xml)
     boot_seq_change = @changes['partial']['BIOS.Setup.1-1']['BiosBootSeq']
     if existing_boot_seq && boot_seq_change
       seq_diff = boot_seq_change.delete(' ').split(',').zip(existing_boot_seq.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
@@ -209,52 +209,52 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         @changes['partial']['BIOS.Setup.1-1'].delete('BiosBootSeq')
       end
     end
-    handle_missing_devices(xml_base, @changes)
-    if !raid_in_sync?(xml_base)
+    handle_missing_devices(target_current_xml, @changes)
+    unless raid_in_sync?(target_current_xml, true)
       @changes.deep_merge!(get_raid_config_changes)
     end
     #Handle whole nodes (node should be replaced if exists, or should be created if not)
     @changes["whole"].keys.each do |name|
       path = "/SystemConfiguration/Component[@FQDD='#{name}']"
-      existing = xml_base.xpath(path).first
+      existing = xml_to_write.xpath(path).first
       #if node exists there, just go ahead and remove it
       if !existing.nil?
         existing.remove
       end
-      create_full_node(name, @changes["whole"][name], xml_base, xml_base.xpath("/SystemConfiguration").first)
+      create_full_node(name, @changes["whole"][name], xml_to_write, xml_to_write.xpath("/SystemConfiguration").first)
     end
     #Handle partial node changes (node should exist already, but needs data edited/added within)
     @changes['partial'].keys.each do |parent|
-      process_partials(parent, @changes['partial'][parent], xml_base)
+      process_partials(parent, @changes['partial'][parent], xml_to_write)
     end
     #Handle node removal (ensure nodes listed here don't exist)
     @changes["remove"]["attributes"].keys.each do |parent|
-      process_remove_nodes(parent, @changes["remove"]["attributes"][parent], xml_base, "Attribute")
+      process_remove_nodes(parent, @changes["remove"]["attributes"][parent], xml_to_write, "Attribute")
     end
     @changes["remove"]["components"].keys.each do |parent|
-      process_remove_nodes(parent, @changes["remove"]["components"][parent], xml_base, "Component")
+      process_remove_nodes(parent, @changes["remove"]["components"][parent], xml_to_write, "Component")
     end
     ##Clean up the config file of all the commented text
-    @xml_doc.xpath('//comment()').remove
-    remove_invalid_settings
+    xml_to_write.xpath('//comment()').remove
+    remove_invalid_settings(xml_to_write)
     # Disable SD card and RAID controller for boot from SAN
-    File.open(@config_xml_path, 'w+') { |file| file.write(@xml_doc.root.to_xml(:indent => 2)) }
-    xml_base
+    File.open(@config_xml_path, 'w+') { |file| file.write(xml_to_write.to_xml(:indent => 2)) }
+    xml_to_write
   end
 
   # Certain attributes that we're not explicitly setting could cause issues trying to set between servers.  They need to be purged.
-  def remove_invalid_settings
-    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'OS-BMC.')]").remove
-    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPBlocking.')]").remove
-    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPv4Static.')]").remove
-    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPv6Static.')]").remove
-    xml_base.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'vFlashPartition.')]").remove
+  def remove_invalid_settings(xml_to_edit)
+    xml_to_edit.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'OS-BMC.')]").remove
+    xml_to_edit.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPBlocking.')]").remove
+    xml_to_edit.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPv4Static.')]").remove
+    xml_to_edit.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPv6Static.')]").remove
+    xml_to_edit.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'vFlashPartition.')]").remove
     #Sometimes from cloned server, HddSeq might be empty, which is not valid to import.
-    hdd_seq = xml_base.at_xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute[@Name='HddSeq']")
+    hdd_seq = xml_to_edit.at_xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute[@Name='HddSeq']")
     if !hdd_seq.nil?
       hdd_seq.remove if hdd_seq.text.empty?
     end
-    remove_missing_bios_settings
+    remove_missing_bios_settings(xml_to_edit)
   end
 
   def original_xml
@@ -273,8 +273,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   # This method compares the changes to BIOS.Setup.1-1 with what bios settings exist on the target server.
   # We do not attempt to set if we cannot find the bios setting in the server's exported config.
-  def remove_missing_bios_settings
-    bios_settings = @xml_doc.xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute")
+  def remove_missing_bios_settings(xml_to_edit)
+    bios_settings = xml_to_edit.xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute")
     bios_settings.each do |attr_node|
       name = attr_node.attr("Name")
       # BiosBootSeq and HddSeq don't show up in the BIOSEnumeration call, so make sure we don't strip them out accidentally
@@ -527,6 +527,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         return false
       end
     end
+    Puppet.info("RAID configuration does not need to be updated.")
     true
   end
 
