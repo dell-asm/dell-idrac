@@ -66,6 +66,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       pre_xml = Nokogiri::XML(xml) do |config|
         config.default_xml.noblanks
       end
+      # Nogogiri will insert a <?xml version="1.0"?> top level element, which can cause failures with idrac.
+      # just get the xml starting at SystemConfiguration parent node, since that should be all that's in the file.
+      pre_xml = pre_xml.at_xpath('/SystemConfiguration')
       File.open(config_xml_path, 'w+') { |file| file.write(pre_xml.to_xml(:indent => 2)) }
       Puppet.info('Importing first config to setup idrac as needed for configuration updates....')
       executeimportcmd(file_name)
