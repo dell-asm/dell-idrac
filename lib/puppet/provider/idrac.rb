@@ -226,11 +226,11 @@ class Puppet::Provider::Idrac <  Puppet::Provider
 
   def exporttemplate(postfix='original')
     # If we're getting the "original" config, we want the export from the server we're trying to configure, mostly for debugging purposes.
-    # Otherwise, just write the config to the "base" .xml file we'll be using to make our changes to the target server.
-    if !@resource[:config_xml].nil? && postfix != 'original'
-      Puppet.debug("Creating configuration using reference server")
-      create_config(postfix)
-    else
+    # Otherwise, write the reference config to <service tag>_reference.xml.  We still want the target server to be the base that we perform checks against.
+    unless @resource[:config_xml].nil? || postfix == 'original'
+      create_config("reference")
+      Puppet.debug("Created configuration using reference server")
+    end
       #TODO:  remove /var/nfs and prefer to use resource[:nfssharepath]
       obj = Puppet::Provider::Exporttemplatexml.new(
           transport[:host],
@@ -241,7 +241,6 @@ class Puppet::Provider::Idrac <  Puppet::Provider
           postfix
       )
       obj.exporttemplatexml
-    end
   end
 
   #TODO:  Should use resource[:nfssharepath]
@@ -249,7 +248,10 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     FileUtils.mkdir_p('/var/nfs/idrac_config_xml')
     file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_#{postfix}.xml"
     file_path = "/var/nfs/idrac_config_xml/#{file_name}"
-    File.open(file_path, "w"){|f| f << @resource[:config_xml] }
+    xml_to_write = Nokogiri::XML(@resource[:config_xml]) do |config|
+      config.default_xml.noblanks
+    end.at_xpath("/SystemConfiguration")
+    File.open(file_path, "w"){|f| f << xml_to_write.to_xml(:indent => 2) }
   end
 
   def checkjobstatus(instanceid)
