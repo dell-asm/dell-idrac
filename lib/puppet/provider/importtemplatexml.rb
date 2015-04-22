@@ -249,11 +249,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     xml_to_edit.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPv4Static.')]").remove
     xml_to_edit.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'IPv6Static.')]").remove
     xml_to_edit.xpath("//Component[@FQDD='iDRAC.Embedded.1']/Attribute[contains(@Name, 'vFlashPartition.')]").remove
-    #Sometimes from cloned server, HddSeq might be empty, which is not valid to import.
+    # HddSeq seems to cause a lot of issues by letting it stay.  We only support one hard disk type being on
     hdd_seq = xml_to_edit.at_xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute[@Name='HddSeq']")
-    if !hdd_seq.nil?
-      hdd_seq.remove if hdd_seq.text.empty?
-    end
+    hdd_seq.remove unless hdd_seq.nil?
     remove_missing_bios_settings(xml_to_edit)
   end
 
