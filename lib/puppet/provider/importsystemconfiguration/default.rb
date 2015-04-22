@@ -26,15 +26,6 @@ Puppet::Type.type(:importsystemconfiguration).provide(
     exporttemplate('base')
     instance_id = importtemplate
     wait_for_import(instance_id)
-
-    # For config XML case, its observed that we have to invoke the import
-    # operation twice as a workaround for fcoe not being toggled when the partition has iscsi offload enabled.
-    # TODO:  Move flipping the fcoeEnabled attribute into the setup_idrac flow
-    unless @resource[:config_xml].nil?
-      Puppet.info('For referenced server configuration, need to perform the configuration XML twice')
-      sleep(60)
-      retry_import(true)
-    end
     disks_ready = false
     Puppet.info('Checking for virtual disks to be out of any running operation...')
     for j in 0..30
