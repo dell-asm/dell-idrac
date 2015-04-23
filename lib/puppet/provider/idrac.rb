@@ -12,7 +12,6 @@ require 'puppet/util/warnings'
 require 'fileutils'
 
 class Puppet::Provider::Idrac <  Puppet::Provider
-
   def exists?
     wait_for_lc_ready
     begin
@@ -28,19 +27,19 @@ class Puppet::Provider::Idrac <  Puppet::Provider
   end
 
   #This function will exit when the LC status is 0, or a puppet error will be raised if the LC status never is 0 (never stops being busy)
-  def wait_for_lc_ready(attempts=0, max_attempts=30)
-    if attempts > max_attempts
-      raise Puppet::Error, "Life cycle controller is busy"
-    else
+  def wait_for_lc_ready
+    lc_ready = false
+    30.times do
       status = lcstatus.to_i
       if status == 0
-        return
+        lc_ready = true
+        break
       else
         Puppet.debug "LC status is busy: status code #{status}. Waiting..."
         sleep sleep_time
-        wait_for_lc_ready(attempts+1, max_attempts)
       end
     end
+    raise(Puppet::Error, "Life cycle controller is busy") unless lc_ready
   end
 
   # how much time to sleep during wait_for_lc_ready method
@@ -73,10 +72,10 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     edits.each do |fqdd, children|
       component_path = "//Component[@FQDD='#{fqdd}']"
       in_sync &= check_changes(children, component_path, xml_base)
-      break if !in_sync
+      break unless in_sync
     end
     changes['remove']['attributes'].each do |fqdd, children|
-      break if !in_sync
+      break unless in_sync
       component_path = "//Component[@FQDD='#{fqdd}']"
       in_sync &= check_removes(fqdd, children, "/SystemConfiguration", xml_base, "Attribute")
     end
@@ -158,7 +157,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     xml_base.xpath("//comment()").each do |comment|
       if comment.content.include?(name)
         node = Nokogiri::XML(comment.content)
-        if(node.at_xpath("/Attribute")['Name'] == name)
+        if node.at_xpath("/Attribute")['Name'] == name
           return node.at_xpath("/Attribute").content
         end
       end
@@ -199,10 +198,11 @@ class Puppet::Provider::Idrac <  Puppet::Provider
   end
 
   def transport
-    @transport ||= Puppet::Idrac::Util.get_transport()
+    @transport ||= Puppet::Idrac::Util.get_transport
   end
 
   def importtemplate
+    Puppet::Idrac::Util.wait_for_running_jobs
     obj = Puppet::Provider::Importtemplatexml.new(
       transport[:host],
       transport[:user],
@@ -214,6 +214,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
   end
 
   def setup_idrac
+    Puppet::Idrac::Util.wait_for_running_jobs
     obj = Puppet::Provider::Importtemplatexml.new(
         transport[:host],
         transport[:user],
@@ -225,6 +226,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
   end
 
   def exporttemplate(postfix='original')
+    Puppet::Idrac::Util.wait_for_running_jobs
     # If we're getting the "original" config, we want the export from the server we're trying to configure, mostly for debugging purposes.
     # Otherwise, write the reference config to <service tag>_reference.xml.  We still want the target server to be the base that we perform checks against.
     unless @resource[:config_xml].nil? || postfix == 'original'

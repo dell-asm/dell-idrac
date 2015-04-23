@@ -36,6 +36,29 @@ module Puppet
         end
         true
       end
+
+      def self.wait_for_running_jobs
+        require 'asm/wsman'
+        transport = get_transport
+        Puppet.info("Checking for running jobs")
+        10.times do
+          endpoint={:host=>transport[:host], :user=>transport[:user], :password=>transport[:password]}
+          schema ="http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_LifeCycleJob"
+          out = ASM::WsMan.invoke(endpoint, 'enumerate', schema)
+          xml = Nokogiri::XML("<results>#{out}</results>")
+          xml.remove_namespaces!
+          running_jobs = xml.xpath("//DCIM_LifeCycleJob").find_all{|x| x.at_xpath("JobStatus[text()='Running']")}.collect{|x| x.at_xpath("InstanceID").text}
+          if running_jobs.empty?
+            Puppet.info("No running jobs.  Continuing execution...")
+            return
+          else
+            Puppet.debug("Job(s) still running: #{running_jobs}.")
+            Puppet.info("Waiting for currently running jobs to complete...")
+            sleep 30
+          end
+        end
+        raise("Timed out waiting for running jobs to complete.")
+      end
     end
   end
 end
