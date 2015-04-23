@@ -97,11 +97,9 @@ Puppet::Type.type(:importsystemconfiguration).provide(
     begin
       endpoint={:host => transport[:host], :user => transport[:user], :password => transport[:password]}
       schema = "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\",SystemName=\"Idrac\",Name=\"JobService\",SystemCreationClassName=\"DCIM_ComputerSystem\""
-      options = {:props=>{'JobID'=> 'JID_CLEARALL'}}
+      options = {:props=>{'JobID'=> 'JID_CLEARALL'}, :selector => '//n1:ReturnValue', :logger => Puppet}
       resp = ASM::WsMan.invoke(endpoint, 'DeleteJobQueue', schema, options)
-      doc = Nokogiri::XML(resp)
-      Puppet.debug("Response from DeleteJobQueue: #{doc}")
-      if doc.xpath('//n1:ReturnValue').text == '0'
+      if resp == '0'
         Puppet.debug("Job Queue cleared successfully")
       else
         raise Puppet::Error, "Error clearing job queue.  Message: #{doc.xpath('//n1:Message')}"
