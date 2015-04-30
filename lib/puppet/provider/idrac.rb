@@ -15,13 +15,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
 
   def exists?
     wait_for_lc_ready
-    begin
-      exporttemplate
-    rescue
-      Puppet.debug 'Export template failed.'
-      reset
-      exporttemplate
-    end
+    exporttemplate
     synced = resource[:ensure] != :teardown && !resource[:force_reboot] && config_in_sync?
     Puppet.info("Server is already configured.  Skipping import...") if synced
     synced
@@ -231,16 +225,27 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       create_config("reference")
       Puppet.debug("Created configuration using reference server")
     end
-      #TODO:  remove /var/nfs and prefer to use resource[:nfssharepath]
-      obj = Puppet::Provider::Exporttemplatexml.new(
-          transport[:host],
-          transport[:user],
-          transport[:password],
-          resource,
-          '/var/nfs',
-          postfix
-      )
-      obj.exporttemplatexml
+    begin
+      execute_export_config(postfix)
+    rescue Exception=>e
+      Puppet.debug "Export template failed with exception: #{e}"
+      reset
+      execute_export_config(postfix)
+    end
+  end
+
+  def execute_export_config(postfix='original')
+    Puppet::Idrac::Util.wait_for_running_jobs
+    #TODO:  remove /var/nfs and prefer to use resource[:nfssharepath]
+    obj = Puppet::Provider::Exporttemplatexml.new(
+        transport[:host],
+        transport[:user],
+        transport[:password],
+        resource,
+        '/var/nfs',
+        postfix
+    )
+    obj.exporttemplatexml
   end
 
   #TODO:  Should use resource[:nfssharepath]
