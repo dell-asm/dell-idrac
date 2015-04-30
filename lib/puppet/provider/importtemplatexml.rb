@@ -346,8 +346,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           changes['whole'].deep_merge!(
           { partition.fqdd =>
             {
-                  'VirtMacAddr' => @resource[:ensure] == :teardown ? '00:00:00:00:00:00' : partition['lanMacAddress'],
-                  'VirtIscsiMacAddr' => @resource[:ensure] == :teardown ? '00:00:00:00:00:00' : partition['iscsiMacAddress'],
                   'TcpIpViaDHCP' => 'Disabled',
                   'IscsiViaDHCP' => 'Disabled',
                   'ChapAuthEnable' => 'Disabled',
@@ -374,10 +372,19 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   def munge_virt_mac_addr(nc, changes)
     partitions = nc.get_all_partitions
     partitions.each do |partition|
+      virtMacAddr = ''
+      virtIscsiMacAddr = ''
       macs = {}
-      macs['VirtMacAddr'] = partition['lanMacAddress'] if partition['lanMacAddress']
-      macs['VirtIscsiMacAddr'] = partition['iscsiMacAddress'] if partition['iscsiMacAddress']
-      changes['partial'].deep_merge!({partition.fqdd => macs})
+      if @resource[:ensure] == :teardown
+        virtMacAddr = '00:00:00:00:00:00'
+        virtIscsiMacAddr = '00:00:00:00:00:00'
+      else
+        virtMacAddr = partition['lanMacAddress'] unless partition['lanMacAddress'].nil?
+        virtIscsiMacAddr = partition['iscsiMacAddress'] unless partition['iscsiMacAddress'].nil?
+      end
+      macs['VirtMacAddr'] = virtMacAddr unless virtMacAddr.empty?
+      macs['VirtIscsiMacAddr'] = virtIscsiMacAddr unless virtIscsiMacAddr.empty?
+      changes['partial'].deep_merge!({partition.fqdd => macs}) unless macs.empty?
     end
   end
 
