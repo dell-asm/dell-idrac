@@ -654,7 +654,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           if !@resource[:target_boot_device].downcase.start_with?('none') || !partition.networkObjects.nil?
             changes = config['whole'][fqdd] = {}
             partition_no = partition.partition_no
-            changes['VLanMode'] = 'Disabled' if partition_no == 1
+            #Intel cards don't have VLanMode, so we check if it exists before trying to set.
+            if partition_no == 1 && xml_base.at_xpath("//Component[@FQDD='#{fqdd}']/Attribute[@Name='VLanMode']")
+              changes['VLanMode'] = 'Disabled'
+            end
             if partitioned
               #
               # CONFIGURE ISCSI NETWORK
