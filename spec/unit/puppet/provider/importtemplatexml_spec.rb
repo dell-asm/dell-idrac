@@ -164,10 +164,9 @@ end
 			jobid.should == "JID_896466295795"
 		end
 		it "should not get Job id if import template fail" do
-			#@fixture.should_receive(:executeimportcmd).once.and_return('')
-      XPath.stub(:first).and_return('')
+      ASM::WsMan.should_receive(:invoke).once.and_return(nil)
 			@fixture.stub(:munge_config_xml)
-			expect{ @fixture.importtemplatexml}.to raise_error("Job ID not created")
+			expect{ @fixture.importtemplatexml}.to raise_error("ImportSystemConfiguration Job could not be created:  Response is invalid")
 		end
 	end
 	context "when importing template" do
