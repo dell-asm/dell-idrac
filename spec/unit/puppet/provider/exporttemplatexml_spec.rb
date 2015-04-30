@@ -44,7 +44,7 @@ describe Puppet::Provider::Exporttemplatexml do
 	end
 	context "when exporting template" do
 		it "should get Job id for Export template xml"  do
-      ASM::WsMan.should_receive(:invoke).once.and_return('JID_896386820311')
+      ASM::WsMan.should_receive(:invoke).once.and_return('<Selector Name="InstanceID">JID_896386820311</Selector>')
 
       Puppet::Provider::Checkjdstatus.any_instance.stub(:checkjdstatus) do
 				xml_doc = Nokogiri::XML::Builder.new do |xml|
@@ -61,7 +61,7 @@ describe Puppet::Provider::Exporttemplatexml do
 		end
 		it "should not get Job it if export template fail" do
 			ASM::WsMan.should_receive(:invoke).once.and_return(nil)
-			 expect{ @fixture.exporttemplatexml}.to raise_error("Job ID not created")
+			 expect{ @fixture.exporttemplatexml}.to raise_error("ExportSystemConfiguration Job could not be created:  Response is invalid")
 
 		end
 

@@ -59,6 +59,41 @@ module Puppet
         end
         raise("Timed out waiting for running jobs to complete.")
       end
+
+
+      def self.wsman_system_config_action(type, props={})
+        require 'asm/wsman'
+        schema ='http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName="DCIM_ComputerSystem",CreationClassName="DCIM_LCService",SystemName="DCIM:ComputerSystem",Name="DCIM:LCService"'
+        options = {:props=>props, :logger => Puppet}
+        job_id = ''
+        action = "#{type.capitalize}SystemConfiguration"
+        10.times do
+          out = ASM::WsMan.invoke(get_transport, action, schema, options)
+          response = Nokogiri::XML(out)
+          response.remove_namespaces!
+          job_id = response.at_xpath("//Selector[@Name='InstanceID']")
+          if job_id.nil?
+            message_id = response.at_xpath("//#{action}_OUTPUT/MessageID")
+            #LC062 indicates a failure due to other job already running, so we want to wait and retry.exi
+            if message_id && message_id == 'LC062'
+              Puppet.info("Job was already running on idrac.  Waiting 1 minute to retry #{action}...")
+              sleep 60
+            else
+              message = response.at_xpath("//#{action}_OUTPUT/Message")
+              output = message ? message : "Response is invalid"
+              raise "#{action} Job could not be created:  #{output}"
+            end
+          else
+            job_id = job_id.text
+            Puppet.info("#{action} job started with JobID #{job_id}")
+            break
+          end
+        end
+        if job_id == ""
+          raise "#{action} Job could not be created"
+        end
+        job_id
+      end
     end
   end
 end
