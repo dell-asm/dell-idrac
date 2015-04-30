@@ -197,7 +197,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     else
       xml_to_write = get_xml('reference')
     end
-    xml_to_write.xpath("//Component[contains(@FQDD, 'NIC.') or contains(@FQDD, 'FC.')]").remove unless @resource[:target_boot_device].downcase.start_with?('none')
+    xml_to_write.xpath("//Component[contains(@FQDD, 'NIC.') or contains(@FQDD, 'FC.')]").remove unless @changes['whole'].find_all{|k,v| k =~ /^(NIC|FC)\./}.empty?
     xml_to_write['ServiceTag'] = @resource[:servicetag]
     # Current workaround for LC issue, where if BiotBootSeq is already set to what ASM needs it to be, setting it again to the same thing will cause an error.
     existing_boot_seq = find_bios_boot_seq(target_current_xml)
