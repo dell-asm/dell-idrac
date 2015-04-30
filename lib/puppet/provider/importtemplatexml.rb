@@ -127,16 +127,24 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   #
   #
   def default_changes
-    changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
-    # default settings for all
-    changes['partial']['BIOS.Setup.1-1'] =
-        {
-            'ProcVirtualization' => 'Enabled',
-            'BootMode' => 'Bios'
-        }
-    changes['whole'] = { 'LifecycleController.Embedded.1' => { 'LCAttributes.1#CollectSystemInventoryOnRestart' => 'Enabled' } }
+    changes = {'partial'=>{'BIOS.Setup.1-1'=>{}}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
+    changes['whole']['LifecycleController.Embedded.1'] = { 'LCAttributes.1#CollectSystemInventoryOnRestart' => 'Enabled' }
+    @bios_settings.keys.each do |key|
+      unless @bios_settings[key].nil? || @bios_settings[key].empty?
+        if @bios_settings[key] == 'n/a'
+          changes['remove']['attributes']['BIOS.Setup.1-1'] ||= []
+          changes['remove']['attributes']['BIOS.Setup.1-1'] << key
+        else
+          changes['partial']['BIOS.Setup.1-1'][key] = @bios_settings[key]
+        end
+      end
+    end
+    unless @resource[:target_boot_device].start_with?('none')
+      changes['partial']['BIOS.Setup.1-1']['ProcVirtualization'] = 'Enabled'
+      changes['partial']['BIOS.Setup.1-1']['BootMode'] = 'Bios'
+    end
     # target_boot_device settings
-    #Always want to turn on IntegratedRaid with a delete, so ASM can continue to inventory RAID info later.
+    # Always want to turn on IntegratedRaid with teardown, so ASM can continue to inventory RAID info later.
     if @resource[:ensure] == :teardown
       changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'IntegratedRaid' => 'Enabled'})
     elsif @resource[:target_boot_device] == "HD"
@@ -158,16 +166,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     elsif @resource[:target_boot_device].downcase.start_with?('none')
       changes['remove']['attributes']['BIOS.Setup.1-1'] ||= []
       changes['remove']['attributes']['BIOS.Setup.1-1'] << 'BiosBootSeq'
-    end
-    @bios_settings.keys.each do |key|
-      unless @bios_settings[key].nil? || @bios_settings[key].empty?
-        if @bios_settings[key] == 'n/a'
-          changes['remove']['attributes']['BIOS.Setup.1-1'] ||= []
-          changes['remove']['attributes']['BIOS.Setup.1-1'] << key
-        else
-          changes['partial']['BIOS.Setup.1-1'][key] = @bios_settings[key]
-        end
-      end
     end
     changes
   end
