@@ -1,5 +1,6 @@
 require 'rexml/document'
 require 'puppet/provider/checkjdstatus'
+require 'puppet/idrac/util'
 
 include REXML
 
@@ -15,21 +16,14 @@ class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
   end
 
   def exporttemplatexml
-    require 'asm/wsman'
-    endpoint = {:host => @ip, :user => @username, :password => @password}
-    method = 'ExportSystemConfiguration'
-    schema = 'http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName="DCIM_ComputerSystem",CreationClassName="DCIM_LCService",SystemName="DCIM:ComputerSystem",Name="DCIM:LCService"'
-    jid = ASM::WsMan.invoke(endpoint, method, schema,
-                            :logger => Puppet,
-                            :selector => '//wsman:Selector Name="InstanceID"',
-                            :props => {'IPAddress' => @resource[:nfsipaddress],
-                                       'ShareName' => @nfswritepath,
-                                       'ShareType' => 0,
-                                       'FileName' => @file_name, })
-    raise "Job ID not created" unless jid && !jid.empty?
-    puts "Instance id #{jid}"
-    move_config_xml(jid)
-    jid
+    props = {'IPAddress' => @resource[:nfsipaddress],
+             'ShareName' => @nfswritepath,
+             'ShareType' => 0,
+             'FileName' => @file_name, }
+    job_id = Puppet::Idrac::Util.wsman_system_config_action(:export, props)
+    Puppet.debug("ExportSystemConfiguration job id: #{job_id}")
+    move_config_xml(job_id)
+    job_id
   end
 
   #TODO:  This needs to be changed to not use /var/nfs, and instead write to /var/nfs/idrac_config_xml
