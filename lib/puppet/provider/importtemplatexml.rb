@@ -210,9 +210,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       end
     end
     handle_missing_devices(target_current_xml, @changes)
-    unless raid_in_sync?(target_current_xml, true)
-      @changes.deep_merge!(get_raid_config_changes)
-    end
+    @changes.deep_merge!(get_raid_config_changes(target_current_xml))
     #Handle whole nodes (node should be replaced if exists, or should be created if not)
     @changes["whole"].keys.each do |name|
       path = "/SystemConfiguration/Component[@FQDD='#{name}']"
@@ -419,61 +417,63 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
 #TODO:  Add support for multiple controllers.
-  def get_raid_config_changes
+  def get_raid_config_changes(target_current_xml)
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
     if @resource[:config_xml].nil? && @resource[:ensure] == :teardown
       Puppet.debug("Setting RAID configuration to be cleared as part of teardown.")
       raid_configuration.keys.each{|controller| changes['whole'][controller] = { 'RAIDresetConfig' => "True" } }
     else
       if ['none_with_raid', 'hd'].include?(@resource[:target_boot_device].downcase)
-        raid_configuration.keys.each do |raid_fqdd|
-          changes['whole'][raid_fqdd] = { 'RAIDresetConfig' => "True", 'RAIDforeignConfig' => 'Clear'}
-          raid_configuration[raid_fqdd][:virtual_disks].each_with_index do |disk_config, index|
-            case disk_config[:level]
-              when 'raid10'
-                span_depth = disk_config[:disks].size / 2
-                span_length = '2'
-              when 'raid50'
-                span_depth = disk_config[:disks].size / 3
-                span_length = '3'
-              when 'raid60'
-                span_depth = disk_config[:disks].size / 4
-                span_length = '4'
-              else
-                span_depth = '1'
-                span_length = disk_config[:disks].size
+        unless raid_in_sync?(target_current_xml, true)
+          raid_configuration.keys.each do |raid_fqdd|
+            changes['whole'][raid_fqdd] = { 'RAIDresetConfig' => "True", 'RAIDforeignConfig' => 'Clear'}
+            raid_configuration[raid_fqdd][:virtual_disks].each_with_index do |disk_config, index|
+              case disk_config[:level]
+                when 'raid10'
+                  span_depth = disk_config[:disks].size / 2
+                  span_length = '2'
+                when 'raid50'
+                  span_depth = disk_config[:disks].size / 3
+                  span_length = '3'
+                when 'raid60'
+                  span_depth = disk_config[:disks].size / 4
+                  span_length = '4'
+                else
+                  span_depth = '1'
+                  span_length = disk_config[:disks].size
+              end
+              changes['whole'][raid_fqdd]["Disk.Virtual.#{index}:#{raid_fqdd}"] =
+                {
+                  'RAIDaction'=>'Create',
+                  'RAIDinitOperation'=>'Fast',
+                  'Name'=>"ASM VD#{index}",
+                  'Size'=>'0',
+                  'StripeSize'=>'128',
+                  'SpanDepth'=>span_depth,
+                  'SpanLength'=>span_length,
+                  'RAIDTypes'=> disk_config[:level].sub('raid', 'RAID '),
+                  'IncludedPhysicalDiskID'=> disk_config[:disks]
+                }
+              disk_config[:disks].each do |disk_fqdd|
+                controller_changes = changes['whole'][raid_fqdd]
+                bay, *enclosure_fqdd = disk_fqdd.split(':')
+                enclosure_fqdd = enclosure_fqdd.join(':')
+                controller_changes[enclosure_fqdd] = {} if controller_changes[enclosure_fqdd].nil?
+                controller_changes[enclosure_fqdd].merge!({disk_fqdd=>{'RAIDPDState' => 'Ready'}})
+              end
             end
-            changes['whole'][raid_fqdd]["Disk.Virtual.#{index}:#{raid_fqdd}"] =
-              {
-                'RAIDaction'=>'Create',
-                'RAIDinitOperation'=>'Fast',
-                'Name'=>"ASM VD#{index}",
-                'Size'=>'0',
-                'StripeSize'=>'128',
-                'SpanDepth'=>span_depth,
-                'SpanLength'=>span_length,
-                'RAIDTypes'=> disk_config[:level].sub('raid', 'RAID '),
-                'IncludedPhysicalDiskID'=> disk_config[:disks]
-              }
-            disk_config[:disks].each do |disk_fqdd|
-              controller_changes = changes['whole'][raid_fqdd]
+            raid_configuration[raid_fqdd][:hotspares].each do |disk_fqdd|
               bay, *enclosure_fqdd = disk_fqdd.split(':')
               enclosure_fqdd = enclosure_fqdd.join(':')
+              controller_changes = changes['whole'][raid_fqdd]
               controller_changes[enclosure_fqdd] = {} if controller_changes[enclosure_fqdd].nil?
-              controller_changes[enclosure_fqdd].merge!({disk_fqdd=>{'RAIDPDState' => 'Ready'}})
+              controller_changes[enclosure_fqdd].merge!({disk_fqdd => {'RAIDHotSpareStatus' => 'Global', 'RAIDPDState' => 'Ready'}})
             end
           end
-          raid_configuration[raid_fqdd][:hotspares].each do |disk_fqdd|
-            bay, *enclosure_fqdd = disk_fqdd.split(':')
-            enclosure_fqdd = enclosure_fqdd.join(':')
-            controller_changes = changes['whole'][raid_fqdd]
-            controller_changes[enclosure_fqdd] = {} if controller_changes[enclosure_fqdd].nil?
-            controller_changes[enclosure_fqdd].merge!({disk_fqdd => {'RAIDHotSpareStatus' => 'Global', 'RAIDPDState' => 'Ready'}})
-          end
         end
-      #Leave RAID config as is if boot device = none
-      elsif @resource[:target_boot_device].downcase != "none"
-          changes['remove']['components'][raid_fqdd] = {}
+      else
+        raid_fqdds = target_current_xml.xpath("/SystemConfiguration/Component[contains(@FQDD, 'RAID.')]").collect{|node| node.attr('FQDD')}
+        raid_fqdds.each{|raid_fqdd| changes['remove']['components'][raid_fqdd] = {} }
       end
     end
     changes
