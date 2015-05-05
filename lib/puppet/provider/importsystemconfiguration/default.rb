@@ -13,81 +13,97 @@ Puppet::Type.type(:importsystemconfiguration).provide(
   desc "Dell idrac provider for import system configuration."
 
   def create
-    instance_id = setup_idrac
-    wait_for_import(instance_id) if instance_id
-    import_config
+    setup_idrac
+    exporttemplate('base')
+    setup_nic_offloads
+    import_main_config
   end
 
   def teardown
-    import_config
+    import_main_config
   end
 
-  def import_config
-    exporttemplate('base')
-    instance_id = importtemplate
-    wait_for_import(instance_id)
+  def import_main_config
+    importtemplate
     disks_ready = false
     Puppet.info('Checking for virtual disks to be out of any running operation...')
     for j in 0..30
       disks_ready = Puppet::Idrac::Util.virtual_disks_ready?
-      if(disks_ready)
+      if disks_ready
         break
       else
         sleep 60
       end
     end
-    if !disks_ready
+    unless disks_ready
       raise 'Virtual disk(s) currently busy.'
     end
   end
 
-  def wait_for_import(instance_id, is_retry=false)
-    import_try = 1
-    Puppet.info "Instance id #{instance_id}"
-    for i in 0..30
-      response = checkjobstatus instance_id
-      Puppet.info "JD status : #{response}"
-      if response  == "Completed"
-        Puppet.info "Import System Configuration is completed."
-        break
-      else
-        if response  == "Failed"
-          if import_try == 1 && !is_retry
-            Puppet.info("Import operation failed in the first attempt, retrying import operation")
-            return retry_import
-          else
-            raise "Job Failed ."
-          end
-        else
-          Puppet.info "Job is running, wait for 1 minute"
-          sleep 60
-        end
-      end
-    end
-    if response != "Completed"
-      raise "Import System Configuration is still running."
+  def setup_idrac
+    execute_import('original') do
+      obj = Puppet::Provider::Importtemplatexml.new(
+          transport[:host],
+          transport[:user],
+          transport[:password],
+          resource,
+          'original')
+      obj.setup_idrac
     end
   end
 
-  def retry_import(skip_reset=false)
-    unless skip_reset
-      Puppet.info("Resetting the iDRAC before performing any other operation")
-      reset
-      Puppet.info("Waiting for Lifecycle Controller be ready")
-      lcstatus
-      clear_job_queue
-      reboot
-      lcstatus
+  def setup_nic_offloads
+    execute_import('base') do
+      obj = Puppet::Provider::Importtemplatexml.new(
+          transport[:host],
+          transport[:user],
+          transport[:password],
+          resource,
+          'base')
+      obj.setup_nic_offloads
     end
-    exporttemplate('base')
+  end
 
-    synced = !resource[:force_reboot] && config_in_sync?
-    if synced
-      Puppet.info("Configuration is already in sync. Skipping the import operation")
-      return true
+  def importtemplate
+    execute_import('base') do
+      obj = Puppet::Provider::Importtemplatexml.new(
+          transport[:host],
+          transport[:user],
+          transport[:password],
+          resource,
+          'base')
+      obj.importtemplatexml
     end
-    instanceid = importtemplate
-    wait_for_import(instanceid, true)
+  end
+
+  def execute_import(export_postfix='base')
+    Puppet::Idrac::Util.wait_for_running_jobs
+    attempts = 1
+    begin
+      yield
+    rescue Puppet::Idrac::Util::ConfigError => e
+      if attempts == 1
+        Puppet.info("Resetting the iDRAC before performing any other operation")
+        reset
+        Puppet.info("Waiting for Lifecycle Controller to be ready")
+        lcstatus
+        clear_job_queue
+        reboot
+        lcstatus
+        exporttemplate(export_postfix)
+        synced = !resource[:force_reboot] && config_in_sync?(export_postfix)
+        if synced
+          Puppet.info("Configuration is already in sync. Skipping the retry on ImportSystemConfiguration")
+          return
+        end
+        attempts += 1
+        retry
+      else
+        raise "ImportSystemConfiguration job failed"
+      end
+    rescue Exception => e
+      raise e
+    end
   end
 
   #TODO:  Similar code to idrac_fw_update.  Could be moved to somewhere both places can use.
