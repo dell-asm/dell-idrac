@@ -2,6 +2,7 @@ require 'rexml/document'
 
 include REXML
 
+# TODO: This class doesn't really need to exist.  Could be shoved into a common method instead, maybe in Puppet::Idrac::Util
 class Puppet::Provider::Checkjdstatus <  Puppet::Provider
   def initialize (ip,username,password,instanceid)
     @ip = ip
