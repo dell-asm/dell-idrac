@@ -75,12 +75,12 @@ module Puppet
           if job_id.nil?
             message_id = response.at_xpath("//#{action}_OUTPUT/MessageID")
             #LC062 indicates a failure due to other job already running, so we want to wait and retry.exi
-            if message_id && message_id == 'LC062'
+            if message_id && message_id.text == 'LC062'
               Puppet.info("Job was already running on idrac.  Waiting 1 minute to retry #{action}...")
               sleep 60
             else
               message = response.at_xpath("//#{action}_OUTPUT/Message")
-              output = message ? message : "Response is invalid"
+              output = message ? message.text : "Response is invalid"
               raise "#{action} Job could not be created:  #{output}"
             end
           else
