@@ -158,7 +158,7 @@ end
 	end
 	context "when exporting template" do
 		it "should get Job id for Export template xml"  do
-			@fixture.should_receive(:executeimportcmd).once.and_return('JID_896466295795')
+			@fixture.should_receive(:execute_import).once.and_return('JID_896466295795')
 			@fixture.stub(:munge_config_xml)
 			jobid = @fixture.importtemplatexml
 			jobid.should == "JID_896466295795"
