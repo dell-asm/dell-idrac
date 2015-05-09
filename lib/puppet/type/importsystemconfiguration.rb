@@ -110,13 +110,6 @@ Puppet::Type.newtype(:importsystemconfiguration) do
     end
   end
 
-  newparam(:config_xml) do
-    desc "The config.xml blob to use instead of exporting the server configuration"
-    munge do |value|
-      value.to_s
-    end
-  end
-
   newparam(:bios_settings) do
     desc "A hash of the individual BIOS Settings the user wants to set"
     munge do |settings|
