@@ -220,13 +220,6 @@ class Puppet::Provider::Idrac <  Puppet::Provider
   end
 
   def exporttemplate(postfix='original')
-    Puppet::Idrac::Util.wait_for_running_jobs
-    # If we're getting the "original" config, we want the export from the server we're trying to configure, mostly for debugging purposes.
-    # Otherwise, write the reference config to <service tag>_reference.xml.  We still want the target server to be the base that we perform checks against.
-    unless @resource[:config_xml].nil? || postfix == 'original'
-      create_config("reference")
-      Puppet.debug("Created configuration using reference server")
-    end
     begin
       execute_export_config(postfix)
     rescue Exception=>e
@@ -248,17 +241,6 @@ class Puppet::Provider::Idrac <  Puppet::Provider
         postfix
     )
     obj.exporttemplatexml
-  end
-
-  #TODO:  Should use resource[:nfssharepath]
-  def create_config(postfix='original')
-    FileUtils.mkdir_p('/var/nfs/idrac_config_xml')
-    file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_#{postfix}.xml"
-    file_path = "/var/nfs/idrac_config_xml/#{file_name}"
-    xml_to_write = Nokogiri::XML(@resource[:config_xml]) do |config|
-      config.default_xml.noblanks
-    end.at_xpath("/SystemConfiguration")
-    File.open(file_path, "w"){|f| f << xml_to_write.to_xml(:indent => 2) }
   end
 
   def checkjobstatus(instanceid)
