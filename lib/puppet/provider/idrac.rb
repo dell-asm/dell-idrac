@@ -43,17 +43,17 @@ class Puppet::Provider::Idrac <  Puppet::Provider
   end
 
   #this could probably be more "integrated" with importtemplatexml's munge_config_xml with some reasonable changes to that function
-  def config_in_sync?
+  def config_in_sync?(export_postfix='original')
     in_sync = true
     import_obj = Puppet::Provider::Importtemplatexml.new(
       transport[:host],
       transport[:user],
       transport[:password],
       resource,
-      'original'
+      export_postfix
     )
     changes = import_obj.get_config_changes
-    exported_config = File.basename(resource[:configxmlfilename], ".xml")+"_original.xml"
+    exported_config = File.basename(resource[:configxmlfilename], ".xml")+"_#{export_postfix}.xml"
     config_xml_path = File.join(resource[:nfssharepath], exported_config)
     f = File.open(config_xml_path)
     xml_doc = Nokogiri::XML(f.read) do |config|
@@ -193,30 +193,6 @@ class Puppet::Provider::Idrac <  Puppet::Provider
 
   def transport
     @transport ||= Puppet::Idrac::Util.get_transport
-  end
-
-  def importtemplate
-    Puppet::Idrac::Util.wait_for_running_jobs
-    obj = Puppet::Provider::Importtemplatexml.new(
-      transport[:host],
-      transport[:user],
-      transport[:password],
-      resource,
-      'base'
-    )
-    obj.importtemplatexml
-  end
-
-  def setup_idrac
-    Puppet::Idrac::Util.wait_for_running_jobs
-    obj = Puppet::Provider::Importtemplatexml.new(
-        transport[:host],
-        transport[:user],
-        transport[:password],
-        resource,
-        'original'
-    )
-    obj.setup_idrac
   end
 
   def exporttemplate(postfix='original')
