@@ -96,7 +96,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
               offload_attrs['iScsiOffloadMode'] = 'Disabled' if attrs['iScsiOffloadMode'] && find_attribute_value(xml_base, fqdd , 'iScsiOffloadMode', false) == 'Enabled'
               [fqdd, offload_attrs] unless offload_attrs.empty?
             end
-        ].compact
+        ]
         unless nic_presets.empty?
           Puppet.info('Importing second config to setup idrac as needed for FCoEOffloadMode/iScsiOffloadMode....')
           import_setup_config('offload', nic_presets, {})
