@@ -276,12 +276,21 @@ EOF
   def setup_job_queue(job_queue_config_file)
     wsman_cmd = "wsman invoke -a SetupJobQueue http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\",SystemName=\"Idrac\",Name=\"JobService\",SystemCreationClassName=\"DCIM_ComputerSystem\" -N root/dcim -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -j utf-8 -y basic -o -m 256 -c Dummy -V -J #{job_queue_config_file}"
     Puppet.debug("Setting up Job Queue")
-    resp = run_wsman(wsman_cmd)
-    doc = Nokogiri::XML(resp)
-    if doc.xpath('//n1:MessageID').text == 'SUP025'
-      Puppet.debug("Job Queue created successfully")
-    else
-      raise Puppet::Error, "Problem scheduling the job queue.  Message: #{doc.xpath('//n1:Message').text}"
+    4.times do |t|
+      resp = run_wsman(wsman_cmd)
+      doc = Nokogiri::XML(resp)
+      if doc.xpath('//n1:MessageID').text == 'SUP025'
+        Puppet.debug("Job Queue created successfully")
+        break
+      else
+        message = doc.xpath('//n1:Message').text
+        if message.include? 'Job cannot be scheduled' && t < 3
+          Puppet.debug("Error scheduling Job Queue.  ..retrying")
+          sleep 10
+        else
+          raise Puppet::Error, "Problem scheduling the job queue.  Message: #{doc.xpath('//n1:Message').text}"
+        end
+      end
     end
   end
 
