@@ -16,7 +16,8 @@ class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
   end
 
   def exporttemplatexml
-    props = {'IPAddress' => @resource[:nfsipaddress],
+    require 'asm/util'
+    props = {'IPAddress' => @resource[:nfsipaddress] || ASM::Util.get_preferred_ip(@ip),
              'ShareName' => @nfswritepath,
              'ShareType' => 0,
              'FileName' => @file_name, }

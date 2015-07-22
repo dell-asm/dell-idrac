@@ -15,8 +15,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @username = username
     @password = password
     @configxmlfilename = resource[:configxmlfilename]
-    @nfsipaddress = resource[:nfsipaddress]
-    @nfssharepath = resource[:nfssharepath]
     @resource = resource
     @bios_settings = resource[:bios_settings]
     @network_config_data = resource[:network_config]
@@ -144,7 +142,12 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def execute_import(file_name=@resource['configxmlfilename'])
-    props = {'IPAddress'=> @resource['nfsipaddress'], 'ShareName'=> @resource['nfssharepath'], 'ShareType'=> '0', 'FileName'=> file_name, 'ShutdownType'=> '1'}
+    require 'asm/util'
+    props = {'IPAddress' => @resource[:nfsipaddress] || ASM::Util.get_preferred_ip(@ip),
+             'ShareName' => @resource['nfssharepath'],
+             'ShareType' => '0',
+             'FileName' => file_name,
+             'ShutdownType' => '1'}
     job_id = Puppet::Idrac::Util.wsman_system_config_action(:import, props)
     wait_for_import(job_id)
   end
