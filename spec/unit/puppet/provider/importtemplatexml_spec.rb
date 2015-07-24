@@ -115,7 +115,8 @@ describe Puppet::Provider::Importtemplatexml do
         ],
         "ssdHotSpares"=> [
 
-        ]
+        ],
+        "externalVirtualDisks"=> [], "externalHddHotSpares"=>[], "externalSsdHotSpares"=>[]
     }
 
     @idrac_attrib = {
