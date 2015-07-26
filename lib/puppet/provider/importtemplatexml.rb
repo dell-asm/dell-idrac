@@ -315,16 +315,17 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def remove_invalid_settings(xml_to_edit)
-    # HddSeq seems to cause a lot of issues by letting it stay.  We only support one hard disk type being on
+    # HddSeq seems to cause a lot of issues by letting it stay.
+    # We only allow it to stay if we're specifically trying to set it for booting from hard drive
     hdd_seq = find_attribute_value(xml_to_edit, 'BIOS.Setup.1-1', 'HddSeq', false)
-    hdd_seq.remove unless hdd_seq.nil?
+    hdd_seq.remove unless hdd_seq.nil? || @changes['partial']['BIOS.Setup.1-1']['HddSeq']
     # Compare the changes to BIOS.Setup.1-1 with the bios settings that exist on the target server.
     # We do not attempt to set if we cannot find the bios setting in the server's BIOS enumeration
     bios_settings = xml_to_edit.xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute")
     bios_settings.each do |attr_node|
       name = attr_node.attr("Name")
       # BiosBootSeq doesn't show up in the BIOSEnumeration call, so make sure we don't strip them out accidentally
-      unless name == 'BiosBootSeq'
+      unless %w(BiosBootSeq HddSeq).include?(name)
         attr_value = find_target_bios_setting(name)
         if attr_value.nil?
           Puppet.info("Trying to set bios setting #{name}, but it does not exist on target server.  The attribute will not be set.")
@@ -464,30 +465,32 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
             disk_types[fqdd] = type
           end
           raid_configuration = Hash.new { |h, k| h[k] = {:virtual_disks => [], :hotspares => []} }
-          unless unprocessed['virtualDisks'].empty?
-            unprocessed['virtualDisks'].each do |config|
+          unless unprocessed['virtualDisks'].empty? && unprocessed['externalVirtualDisks'].empty?
+            (unprocessed['virtualDisks'] + unprocessed['externalVirtualDisks']).each do |config|
               type = disk_types[config['physicalDisks'].first]
               #Just check first disk in the list to get what type of virtual disk it is
               raid_configuration[config['controller']][:virtual_disks] << {:disks => config['physicalDisks'], :level => config['raidLevel'], :type => type}
             end
             hotspares = []
-            [:ssd, :hdd].each do |type|
-              if disk_types.collect{|x| x[1] if x[1] == type}.compact.empty? && !unprocessed["#{type}HotSpares"].empty?
-                Puppet.warning("Trying to assign #{type.upcase} hotspares, but no #{type.upcase} virtual disks are being created.  Ignoring #{type}HotSpares...")
-              else
-                hotspares += unprocessed["#{type}HotSpares"]
+            [:internal, :external].each do |raid_type|
+              [:ssd, :hdd].each do |disk_type|
+                key = raid_type == :internal ? "#{disk_type}HotSpares" : "external#{disk_type.capitalize}HotSpares"
+                if disk_types.collect{|x| x[1] if x[1] == disk_type}.compact.empty? && !unprocessed[key].empty?
+                  Puppet.warning("Trying to assign #{disk_type.upcase} hotspares, but no #{disk_type.upcase} virtual disks are being created.  Ignoring #{disk_type}HotSpares...")
+                else
+                  hotspares += unprocessed[key]
+                end
               end
-            end
-            hotspares.each do |disk|
-              controller = disk.split(':').last
-              raid_configuration[controller][:hotspares] << disk
+              hotspares.each do |disk|
+                controller = disk.split(':').last
+                raid_configuration[controller][:hotspares] << disk
+              end
             end
           end
           raid_configuration
         end
   end
 
-#TODO:  Add support for multiple controllers.
   def get_raid_config_changes(target_current_xml)
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
     if @resource[:ensure] == :teardown && !@resource[:raid_configuration].nil?
@@ -495,7 +498,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       raid_configuration.keys.each{|controller| changes['whole'][controller] = { 'RAIDresetConfig' => "True" } }
     else
       if ['none_with_raid', 'hd'].include?(@resource[:target_boot_device].downcase)
+        changes['partial'] = {'BIOS.Setup.1-1'=> {'HddSeq' => raid_configuration.keys.first}}
         unless raid_in_sync?(target_current_xml, true)
+          #Getting the first key should get the first internal disk controller, or the first external if no internal on the server
           raid_configuration.keys.each do |raid_fqdd|
             changes['whole'][raid_fqdd] = { 'RAIDresetConfig' => "True", 'RAIDforeignConfig' => 'Clear'}
             raid_configuration[raid_fqdd][:virtual_disks].each_with_index do |disk_config, index|
@@ -550,7 +555,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     changes
   end
 
-  #TODO:  Support for multiple raid controllers
   def raid_in_sync?(xml_base, log=false)
     if ['none_with_raid', 'hd'].include?(@resource[:target_boot_device].downcase)
       raid_configuration.keys.each do |raid_fqdd|
