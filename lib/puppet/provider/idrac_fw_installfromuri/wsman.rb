@@ -70,7 +70,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     firmware_list.each do |fw|
       Puppet.debug(fw)
       config_file = create_xml_config_file(fw["instance_id"],fw["uri_path"])
-      job_id = install_from_uri(config_file.path)
+      job_id = install_from_uri(config_file)
       raise(Puppet::Error, "Failed to initiate firmware job for #{fw}") unless job_id
       raise(Puppet::Error, "Duplicate job id #{job_id} for firmware #{fw}: #{statuses[job_id]}") if statuses[job_id]
       statuses[job_id] = { :job_id => job_id, :status => 'new', :firmware => fw, :start_time => Time.now }
@@ -113,10 +113,10 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     if reboot_required
       if @force_restart
         reboot_config_file = create_reboot_config_file
-        reboot_id = create_reboot_job(reboot_config_file.path)
+        reboot_id = create_reboot_job(reboot_config_file)
       end
       job_queue_config_file = create_job_queue_config(reboot_job_ids,reboot_id)
-      setup_job_queue(job_queue_config_file.path)
+      setup_job_queue(job_queue_config_file)
       if @force_restart
         reboot_status = 'new'
         until reboot_status == 'Reboot Completed'
@@ -196,7 +196,8 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     raise Puppet::Error, "Could not connect connect to wsman endpoint"
   end
 
-  def install_from_uri(config_file_path)
+  def install_from_uri(config_file)
+    config_file_path = config_file.path
     wsman_cmd = "wsman invoke -a InstallFromURI http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService,SystemCreationClassName=DCIM_ComputerSystem,SystemName=IDRAC:ID,Name=SoftwareUpdate -h #{transport[:host]} -V -v -c Dummy -P 443 -u #{transport[:user]} -p #{transport[:password]} -J #{config_file_path} -j utf-8 -y basic"
     resp = run_wsman(wsman_cmd)
     doc = Nokogiri::XML(resp)
@@ -206,6 +207,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
       Puppet.debug("JOB_ID: #{job_id}")
       return job_id
     else
+      Puppet.debug("Install From URI config: #{config_file.read}")
       raise Puppet::Error, "Problem running InstallFromURI: #{doc.xpath('//n1:Message')}"
     end
   end
@@ -259,7 +261,7 @@ EOF
   end
 
   def create_reboot_job(reboot_file)
-    wsman_cmd = "wsman invoke -a CreateRebootJob http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService,SystemCreationClassName=DCIM_ComputerSystem,SystemName=IDRAC:ID,Name=SoftwareUpdate -h #{transport[:host]} -V -v -c Dummy -P 443 -u #{transport[:user]} -p #{transport[:password]} -J #{reboot_file} -j utf-8 -y basic"
+    wsman_cmd = "wsman invoke -a CreateRebootJob http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService,SystemCreationClassName=DCIM_ComputerSystem,SystemName=IDRAC:ID,Name=SoftwareUpdate -h #{transport[:host]} -V -v -c Dummy -P 443 -u #{transport[:user]} -p #{transport[:password]} -J #{reboot_file.path} -j utf-8 -y basic"
     Puppet.debug("Creating Reboot Job")
     resp = run_wsman(wsman_cmd)
     doc = Nokogiri::XML(resp)
@@ -269,25 +271,26 @@ EOF
       Puppet.debug("Reboot Job ID: #{reboot_id}")
       return reboot_id
     else
+      Puppet.debug("Reboot Job config: #{reboot_file.read}")
       raise Puppet::Error, "Problem scheduling reboot.  Problem message: #{doc.xpath('//n1:Message').text}"
     end
   end
 
   def setup_job_queue(job_queue_config_file)
-    wsman_cmd = "wsman invoke -a SetupJobQueue http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\",SystemName=\"Idrac\",Name=\"JobService\",SystemCreationClassName=\"DCIM_ComputerSystem\" -N root/dcim -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -j utf-8 -y basic -o -m 256 -c Dummy -V -J #{job_queue_config_file}"
+    wsman_cmd = "wsman invoke -a SetupJobQueue http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\",SystemName=\"Idrac\",Name=\"JobService\",SystemCreationClassName=\"DCIM_ComputerSystem\" -N root/dcim -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -j utf-8 -y basic -o -m 256 -c Dummy -V -J #{job_queue_config_file.path}"
     Puppet.debug("Setting up Job Queue")
     4.times do |t|
       resp = run_wsman(wsman_cmd)
       doc = Nokogiri::XML(resp)
-      if doc.xpath('//n1:MessageID').text == 'SUP025'
+      if doc.xpath('//n1:ReturnValue').text == '0'
         Puppet.debug("Job Queue created successfully")
         break
       else
-        message = doc.xpath('//n1:Message').text
-        if message.include? 'Job cannot be scheduled' && t < 3
-          Puppet.debug("Error scheduling Job Queue.  ..retrying")
+        if t < 3
+          Puppet.debug('Error scheduling Job Queue.  ..retrying')
           sleep 10
         else
+          Puppet.debug("Job Queue config: #{job_queue_config_file.read}")
           raise Puppet::Error, "Problem scheduling the job queue.  Message: #{doc.xpath('//n1:Message').text}"
         end
       end
