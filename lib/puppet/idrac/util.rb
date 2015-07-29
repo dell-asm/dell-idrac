@@ -5,8 +5,8 @@ require 'pty'
 
 module Puppet
   module Idrac
+    class ConfigError < Exception; end
     module Util
-      class ConfigError < Exception; end
       def self.get_transport
         require 'asm/device_management'
         @transport ||= begin

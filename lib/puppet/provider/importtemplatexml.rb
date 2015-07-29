@@ -23,101 +23,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def importtemplatexml
-    munge_config_xml
+    munge_config_xml unless @xml_processed
     execute_import
-  end
-
-  #Bugs with the ordering of attributes/components in the import causes issues.
-  #This function will go send a very basic xml that will set attributes such as IntegratedRaid, InternalSdCard, NicPartitioning, etc so they are ready and valid in our big import.
-  #TODO:  Set Fcoe/IscsiOffload here as well, to workaround issues with setting those (currently just import twice as a workaround)
-  def setup_idrac
-    get_config_changes
-    additions = @changes['whole'].merge(@changes['partial'])
-    bios_presets = {}
-    if additions['BIOS.Setup.1-1']
-      bios_presets = {}
-      raid_value = find_attribute_value(xml_base, 'BIOS.Setup.1-1', 'IntegratedRaid', false)
-      bios_presets['IntegratedRaid'] = additions['BIOS.Setup.1-1']['IntegratedRaid'] if raid_value && raid_value != additions['BIOS.Setup.1-1']['IntegratedRaid']
-      sd_value = find_attribute_value(xml_base, 'BIOS.Setup.1-1', 'InternalSdCard', false)
-      bios_presets['InternalSdCard'] = additions['BIOS.Setup.1-1']['InternalSdCard'] if sd_value && sd_value != additions['BIOS.Setup.1-1']['InternalSdCard']
-    end
-    offload_attrs = ['FCoEOffloadMode', 'iScsiOffloadMode']
-    nic_attributes = ['VirtualizationMode', 'NicPartitioning', 'LegacyBootProto']
-    nic_changes = additions.select {|k,v|  k.include?('NIC.')}
-    nic_presets =
-      Hash[nic_changes.collect do |fqdd, attrs|
-        attrs_to_include = nic_attributes
-        #Part of a workaround to set iscsi/fcoe offload mode.  Existing modes need to be disabled before we can set them correctly
-        unless offloads_in_sync?
-          first_partition = fqdd.split('-')[0...-1].join('-') + '-1'
-          if find_attribute_value(xml_base, first_partition, "NicPartitioning", false) == "Enabled"
-           attrs_to_include += offload_attrs
-          end
-        end
-        preset_attrs = {}
-        attrs_to_include.each do |attr|
-         if attrs.has_key?(attr)
-           existing_value = find_attribute_value(xml_base, fqdd, attr, false)
-           if offload_attrs.include?(attr)
-             #If iscsi/fcoe offload, we just want to disable if it's enabled
-             if existing_value == 'Enabled'
-               preset_attrs[attr] = 'Disabled'
-             end
-           else
-             preset_attrs[attr] = attrs[attr] if attrs.has_key?(attr) && existing_value != attrs[attr]
-           end
-         end
-        end
-        [fqdd, preset_attrs] unless preset_attrs.empty?
-       end
-      ]
-    unless nic_presets.empty? && bios_presets.empty?
-      Puppet.info('Importing first config to setup idrac as needed for configuration updates....')
-      import_setup_config('preset', nic_presets, bios_presets)
-    end
-  end
-
-  def setup_nic_offloads
-    unless offloads_in_sync?
-      get_config_changes
-      additions = @changes['whole'].merge(@changes['partial'])
-      nic_changes = additions.select do  |k,v|
-        k.include?('NIC.') && ['FCoEOffloadMode', 'iScsiOffloadMode'].any? {|attr| v[attr]}
-      end
-      all_disabled = xml_base.xpath("//Attribute[@Name='FCoEOffloadMode' or @Name='iScsiOffloadMode']").find{|node| node.text=='Enabled'}.nil?
-    # Need to do one more import if we weren't already partitioned before, so now fcoe/iscsi offload attributes will be valid
-      unless all_disabled
-        nic_presets = Hash[
-            nic_changes.collect do |fqdd, attrs|
-              offload_attrs = {}
-              offload_attrs['FCoEOffloadMode'] = 'Disabled' if attrs['FCoEOffloadMode'] && find_attribute_value(xml_base, fqdd, 'FCoEOffloadMode', false) == 'Enabled'
-              offload_attrs['iScsiOffloadMode'] = 'Disabled' if attrs['iScsiOffloadMode'] && find_attribute_value(xml_base, fqdd , 'iScsiOffloadMode', false) == 'Enabled'
-              [fqdd, offload_attrs] unless offload_attrs.empty?
-            end
-        ]
-        unless nic_presets.empty?
-          Puppet.info('Importing second config to setup idrac as needed for FCoEOffloadMode/iScsiOffloadMode....')
-          import_setup_config('offload', nic_presets, {})
-        end
-      end
-    end
-  end
-
-  def import_setup_config(file_postfix, nic_presets, bios_presets)
-    xml_file = File.basename(@resource[:configxmlfilename], ".xml")+"_#{file_postfix}.xml"
-    config_xml_path = File.join(@resource[:nfssharepath], xml_file)
-    path_to_template = File.join(@templates_dir, 'preset-config.erb')
-    template_file = File.open(path_to_template)
-    template = ERB.new(template_file.read, nil, '-')
-    template_file.close
-    xml = template.result(binding)
-    # Nogogiri will insert a <?xml version="1.0"?> top level element, which can cause failures with idrac.
-    # just get the xml starting at SystemConfiguration parent node, since that should be all that's in the file.
-    offload_xml = Nokogiri::XML(xml) do |config|
-      config.default_xml.noblanks
-    end.at_xpath('/SystemConfiguration')
-    File.open(config_xml_path, 'w+') { |file| file.write(offload_xml.to_xml(:indent => 2)) }
-    execute_import(xml_file)
   end
 
   # Helper check that just sees if the iscsi/fcoe offloads are set as we want them.  Helps to avoid an extra import sometimes
@@ -163,7 +70,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         break
       else
         if response  == "Failed"
-          raise(Puppet::Idrac::Util::ConfigError, "ImportSystemConfiguration job failed")
+          raise(Puppet::Idrac::ConfigError, "ImportSystemConfiguration job failed")
         else
           Puppet.info "Job is running, wait for 1 minute"
           sleep 60
@@ -311,6 +218,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     remove_invalid_settings(xml_base)
     # Disable SD card and RAID controller for boot from SAN
     File.open(@config_xml_path, 'w+') { |file| file.write(xml_base.to_xml(:indent => 2)) }
+    @xml_processed = true
     xml_base
   end
 

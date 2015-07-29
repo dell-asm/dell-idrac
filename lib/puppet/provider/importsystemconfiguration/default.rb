@@ -2,6 +2,7 @@ provider_path = Pathname.new(__FILE__).parent.parent
 require 'rexml/document'
 require 'puppet/idrac/util'
 require 'asm/wsman'
+require 'fileutils'
 
 include REXML
 require File.join(provider_path, 'idrac')
@@ -13,9 +14,9 @@ Puppet::Type.type(:importsystemconfiguration).provide(
   desc "Dell idrac provider for import system configuration."
 
   def create
-    setup_idrac
-    exporttemplate('base')
-    setup_nic_offloads
+    new_file = File.join(resource[:nfssharepath], "#{resource[:servicetag]}_base.xml")
+    original_file = File.join(resource[:nfssharepath], "#{resource[:servicetag]}_original.xml")
+    FileUtils.cp(original_file, new_file)
     import_main_config
   end
 
@@ -40,64 +41,40 @@ Puppet::Type.type(:importsystemconfiguration).provide(
     end
   end
 
-  def setup_idrac
-    execute_import('original') do
-      obj = Puppet::Provider::Importtemplatexml.new(
-          transport[:host],
-          transport[:user],
-          transport[:password],
-          resource,
-          'original')
-      obj.setup_idrac
-    end
-  end
-
-  def setup_nic_offloads
-    execute_import('base') do
-      obj = Puppet::Provider::Importtemplatexml.new(
-          transport[:host],
-          transport[:user],
-          transport[:password],
-          resource,
-          'base')
-      obj.setup_nic_offloads
-    end
-  end
-
   def importtemplate
-    execute_import('base') do
-      obj = Puppet::Provider::Importtemplatexml.new(
-          transport[:host],
-          transport[:user],
-          transport[:password],
-          resource,
-          'base')
-      obj.importtemplatexml
-    end
-  end
-
-  def execute_import(export_postfix='base')
     Puppet::Idrac::Util.wait_for_running_jobs
-    attempts = 1
+    obj = Puppet::Provider::Importtemplatexml.new(
+        transport[:host],
+        transport[:user],
+        transport[:password],
+        resource,
+        'base')
+    attempts = 0
     begin
-      yield
-    rescue Puppet::Idrac::Util::ConfigError => e
-      if attempts == 1
-        Puppet.info("Resetting the iDRAC before performing any other operation")
-        reset
-        Puppet.info("Waiting for Lifecycle Controller to be ready")
-        lcstatus
-        clear_job_queue
-        reboot
-        lcstatus
-        exporttemplate(export_postfix)
-        synced = !resource[:force_reboot] && config_in_sync?(export_postfix)
-        if synced
-          Puppet.info("Configuration is already in sync. Skipping the retry on ImportSystemConfiguration")
-          return
-        end
-        attempts += 1
+      obj.importtemplatexml
+    rescue Puppet::Idrac::ConfigError => e
+      attempts += 1
+      case attempts
+      when 1
+        Puppet.info("First import failed.  Retrying import....")
         retry
+      when 2
+        if attempts == 2
+          Puppet.info("Resetting the iDRAC before performing any other operation")
+          reset
+          Puppet.info("Waiting for Lifecycle Controller to be ready")
+          lcstatus
+          clear_job_queue
+          reboot
+          lcstatus
+          exporttemplate('base')
+          synced = !resource[:force_reboot] && config_in_sync?('base')
+          if synced
+            Puppet.info("Configuration is already in sync. Skipping the retry on ImportSystemConfiguration")
+            return
+          end
+          retry
+        end
       else
         raise "ImportSystemConfiguration job failed"
       end
