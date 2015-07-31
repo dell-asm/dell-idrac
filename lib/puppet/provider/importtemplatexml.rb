@@ -274,7 +274,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   #Helper function which just searches through the xml comments for BiosBootSeq value, since it will be commented out
   def find_bios_boot_seq(xml_base)
     uncommented = xml_base.at_xpath("//Attribute[@Name='BiosBootSeq']")
-    if !uncommented.nil?
+    unless uncommented.nil?
       return uncommented.content
     else
       xml_base.xpath("//Component[@FQDD='BIOS.Setup.1-1']/comment()").each do |comment|

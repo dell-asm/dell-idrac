@@ -16,6 +16,7 @@ class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
   end
 
   def exporttemplatexml
+    Puppet::Idrac::Util.wait_or_clear_running_jobs
     require 'asm/util'
     props = {'IPAddress' => @resource[:nfsipaddress] || ASM::Util.get_preferred_ip(@ip),
              'ShareName' => @nfswritepath,
