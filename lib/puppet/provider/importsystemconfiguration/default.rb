@@ -42,7 +42,7 @@ Puppet::Type.type(:importsystemconfiguration).provide(
   end
 
   def importtemplate
-    Puppet::Idrac::Util.wait_for_running_jobs
+    Puppet::Idrac::Util.wait_or_clear_running_jobs
     obj = Puppet::Provider::Importtemplatexml.new(
         transport[:host],
         transport[:user],
@@ -59,22 +59,20 @@ Puppet::Type.type(:importsystemconfiguration).provide(
         Puppet.info("First import failed.  Retrying import....")
         retry
       when 2
-        if attempts == 2
-          Puppet.info("Resetting the iDRAC before performing any other operation")
-          reset
-          Puppet.info("Waiting for Lifecycle Controller to be ready")
-          lcstatus
-          clear_job_queue
-          reboot
-          lcstatus
-          exporttemplate('base')
-          synced = !resource[:force_reboot] && config_in_sync?('base')
-          if synced
-            Puppet.info("Configuration is already in sync. Skipping the retry on ImportSystemConfiguration")
-            return
-          end
-          retry
+        Puppet.info("Resetting the iDRAC before performing any other operation")
+        Puppet::Idrac::Util.reset
+        Puppet.info("Waiting for Lifecycle Controller to be ready")
+        Puppet::Idrac::Util.lcstatus
+        Puppet::Idrac::Util.clear_job_queue
+        reboot
+        Puppet::Idrac::Util.lcstatus
+        exporttemplate('base')
+        synced = !resource[:force_reboot] && config_in_sync?('base')
+        if synced
+          Puppet.info("Configuration is already in sync. Skipping the retry on ImportSystemConfiguration")
+          return
         end
+        retry
       else
         raise "ImportSystemConfiguration job failed"
       end
@@ -82,47 +80,6 @@ Puppet::Type.type(:importsystemconfiguration).provide(
       raise e
     end
   end
-
-  #TODO:  Similar code to idrac_fw_update.  Could be moved to somewhere both places can use.
-  def clear_job_queue
-    Puppet.debug("Clearing Job Queue")
-    tries = 1
-    begin
-      endpoint={:host => transport[:host], :user => transport[:user], :password => transport[:password]}
-      schema = "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\",SystemName=\"Idrac\",Name=\"JobService\",SystemCreationClassName=\"DCIM_ComputerSystem\""
-      options = {:props=>{'JobID'=> 'JID_CLEARALL'}, :selector => '//n1:ReturnValue', :logger => Puppet}
-      resp = ASM::WsMan.invoke(endpoint, 'DeleteJobQueue', schema, options)
-      if resp == '0'
-        Puppet.debug("Job Queue cleared successfully")
-      else
-        raise Puppet::Error, "Error clearing job queue.  Message: #{doc.xpath('//n1:Message')}"
-      end
-    rescue Puppet::Error => e
-      raise e if tries > 4
-      tries += 1
-      Puppet.info("Could not reset job queue.  Retrying in 30 seconds...")
-      sleep 30
-      retry
-    end
-    wait_for_jobs_clear
-  end
-
-  def wait_for_jobs_clear
-    Puppet.info("Waiting for job queue to be empty...")
-    endpoint={:host => transport[:host], :user => transport[:user], :password => transport[:password]}
-    schema = "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService"
-    10.times do
-      resp = ASM::WsMan.invoke(endpoint, 'enumerate', schema)
-      doc = Nokogiri::XML("<results>#{resp}</results>")
-      doc.remove_namespaces!
-      Puppet.debug("Response from DCIM_JobService:\n#{doc}")
-      if doc.xpath('//CurrentNumberOfJobs').text == '0'
-        Puppet.info("Job Queue is empty.")
-        return
-      else
-        sleep 15
-      end
-    end
-    Puppet.warning("Job queue still shows jobs exist.  This could cause issues during import of system config.")
-  end
 end
+
+

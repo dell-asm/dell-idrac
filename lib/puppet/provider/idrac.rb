@@ -24,7 +24,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
   def wait_for_lc_ready
     lc_ready = false
     30.times do
-      status = lcstatus.to_i
+      status = Puppet::Idrac::Util.lcstatus.to_i
       if status == 0
         lc_ready = true
         break
@@ -144,7 +144,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
         end
       end
     end
-    return in_sync
+    in_sync
   end
 
   def find_commented_attr_val(name, xml_base)
@@ -159,38 +159,6 @@ class Puppet::Provider::Idrac <  Puppet::Provider
     nil
   end
 
-  def reset
-    Puppet.info("Resetting Idrac...")
-    Net::SSH.start( transport[:host],
-                    transport[:user],
-                    :password => transport[:password],
-                    :paranoid => Net::SSH::Verifiers::Null.new,
-                    :global_known_hosts_file=>"/dev/null" ) do |ssh|
-      ssh.exec "racadm racreset soft" do |ch, stream, data|
-        Puppet.debug(data)
-
-        #Issue warning for the message 'Could not chdir to home directory /flash/data0/home/root: No such file or directory' else raise error
-        if data.include? "Could not chdir to home directory"
-           Puppet.warning "Warning for message - #{data}"
-        elsif stream == :stderr
-           raise Puppet::Error, 'Error resetting Idrac'
-        end
-      end
-    end
-    wait_for_idrac
-  end
-
-  def wait_for_idrac (timeout = 180, state = 0)
-    raise Puppet::Error, 'Timeout waiting for Idrac' if timeout == 0
-    Puppet.debug("waiting #{timeout} seconds for Idrac...")
-    sleep timeout
-    begin
-      wait_for_idrac(timeout/2) if lcstatus.to_i != state
-    rescue
-      wait_for_idrac(timeout/2)
-    end
-  end
-
   def transport
     @transport ||= Puppet::Idrac::Util.get_transport
   end
@@ -200,13 +168,12 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       execute_export_config(postfix)
     rescue Exception=>e
       Puppet.debug "Export template failed with exception: #{e}"
-      reset
+      Puppet::Idrac::Util.reset
       execute_export_config(postfix)
     end
   end
 
   def execute_export_config(postfix='original')
-    Puppet::Idrac::Util.wait_for_running_jobs
     #TODO:  remove /var/nfs and prefer to use resource[:nfssharepath]
     obj = Puppet::Provider::Exporttemplatexml.new(
         transport[:host],
@@ -227,15 +194,6 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       instanceid
     )
     obj.checkjdstatus
-  end
-
-  def lcstatus
-    obj = Puppet::Provider::Checklcstatus.new(
-      transport[:host],
-      transport[:user],
-      transport[:password]
-    )
-    obj.checklcstatus
   end
 
   def reboot

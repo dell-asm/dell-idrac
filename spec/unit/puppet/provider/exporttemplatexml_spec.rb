@@ -4,6 +4,7 @@ require 'yaml'
 require 'rspec/expectations'
 require 'asm/wsman'
 require 'nokogiri'
+require 'puppet/idrac/util'
 
 describe Puppet::Provider::Exporttemplatexml do
 	let(:test_config_dir){ File.join(Dir.pwd, "spec", "fixtures") }
@@ -44,7 +45,8 @@ describe Puppet::Provider::Exporttemplatexml do
 	end
 	context "when exporting template" do
 		it "should get Job id for Export template xml"  do
-      ASM::WsMan.should_receive(:invoke).once.and_return('<Selector Name="InstanceID">JID_896386820311</Selector>')
+      ASM::WsMan.should_receive(:invoke).and_return('<Selector Name="InstanceID">JID_896386820311</Selector>')
+      Puppet::Idrac::Util.stub(:wait_or_clear_running_jobs).and_return(nil)
 
       Puppet::Provider::Checkjdstatus.any_instance.stub(:checkjdstatus) do
 				xml_doc = Nokogiri::XML::Builder.new do |xml|
@@ -60,7 +62,8 @@ describe Puppet::Provider::Exporttemplatexml do
 
 		end
 		it "should not get Job it if export template fail" do
-			ASM::WsMan.should_receive(:invoke).once.and_return(nil)
+      Puppet::Idrac::Util.stub(:wait_or_clear_running_jobs).and_return(nil)
+			ASM::WsMan.should_receive(:invoke).and_return(nil)
 			 expect{ @fixture.exporttemplatexml}.to raise_error("ExportSystemConfiguration Job could not be created:  Response is invalid")
 
 		end
