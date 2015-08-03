@@ -185,7 +185,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
         sleep sleeptime
         sleeptime += 30
       elsif resp.include? 'TimedOut'
-        Puppetd.debug("WSMAN API timed out, retrying after sleep")
+        Puppet.debug("WSMAN API timed out, retrying after sleep")
         sleep sleeptime
         sleeptime += 30
       else
