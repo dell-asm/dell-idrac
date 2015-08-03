@@ -15,10 +15,12 @@ class Puppet::Provider::Checkjdstatus <  Puppet::Provider
     require 'asm/wsman'
     endpoint = {:host => @ip, :user => @username, :password => @password}
     schema = "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LifecycleJob?InstanceID=#{@instanceid}"
-    job_status, job_message = ASM::WsMan.invoke(endpoint, 'get', schema,
+    job_status, job_message, message_id = ASM::WsMan.invoke(endpoint, 'get', schema,
                                                 :logger => Puppet,
-                                                :selector => ["//n1:JobStatus", "//n1:Message"])
-    if job_status =~ /completed with errors/i || job_message =~ /completed with errors/i
+                                                :selector => ["//n1:JobStatus", "//n1:Message", "//n1:MessageID"])
+    if message_id =~ /SYS051/i
+      message_id
+    elsif job_status =~ /completed with errors/i || job_message =~ /completed with errors/i
       'Failed'
     elsif job_status.nil? || job_status.empty?
       raise "Job ID not created"
