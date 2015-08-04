@@ -7,6 +7,7 @@ module Puppet
   module Idrac
     class ConfigError < Exception; end
     class JobClearError < Exception; end
+    class ShutdownError < Exception; end
     module Util
       def self.get_transport
         require 'asm/device_management'
