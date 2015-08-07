@@ -14,9 +14,6 @@ Puppet::Type.type(:importsystemconfiguration).provide(
   desc "Dell idrac provider for import system configuration."
 
   def create
-    new_file = File.join(resource[:nfssharepath], "#{resource[:servicetag]}_base.xml")
-    original_file = File.join(resource[:nfssharepath], "#{resource[:servicetag]}_original.xml")
-    FileUtils.cp(original_file, new_file)
     import_main_config
   end
 
@@ -25,6 +22,9 @@ Puppet::Type.type(:importsystemconfiguration).provide(
   end
 
   def import_main_config
+    new_file = File.join(resource[:nfssharepath], "#{resource[:servicetag]}_base.xml")
+    original_file = File.join(resource[:nfssharepath], "#{resource[:servicetag]}_original.xml")
+    FileUtils.cp(original_file, new_file)
     importtemplate
     disks_ready = false
     Puppet.info('Checking for virtual disks to be out of any running operation...')
