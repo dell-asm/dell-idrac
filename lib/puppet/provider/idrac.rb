@@ -174,13 +174,11 @@ class Puppet::Provider::Idrac <  Puppet::Provider
   end
 
   def execute_export_config(postfix='original')
-    #TODO:  remove /var/nfs and prefer to use resource[:nfssharepath]
     obj = Puppet::Provider::Exporttemplatexml.new(
         transport[:host],
         transport[:user],
         transport[:password],
         resource,
-        '/var/nfs',
         postfix
     )
     obj.exporttemplatexml

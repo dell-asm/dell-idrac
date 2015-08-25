@@ -6,5 +6,5 @@ importnparsetting {
     dracusername => 'root',
     dracpassword => 'calvin',
     nfsipaddress => '172.28.15.192',
-    nfssharepath => '/var/nfs',
+    nfssharepath => '/var/nfs/idrac_config_xml',
 }

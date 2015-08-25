@@ -4,6 +4,6 @@ importsystemconfiguration { 'importsystemconfiguration':
   dracpassword => 'calvin',
   configxmlfilename => 'testconfig.xml',
   nfsipaddress => '172.28.10.189',
-  nfssharepath => '/var/nfs',
+  nfssharepath => '/var/nfs/idrac_config_xml',
 }
 

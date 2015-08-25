@@ -7,7 +7,7 @@ require 'nokogiri'
 require 'puppet/idrac/util'
 
 describe Puppet::Provider::Exporttemplatexml do
-	let(:test_config_dir){ File.join(Dir.pwd, "spec", "fixtures") }
+	let(:test_config_dir){ File.join(Dir.pwd, "spec", "fixtures", "mock_nfs") }
 	before(:each) do
 		Puppet::Module.stub(:find).with("idrac").and_return(test_config_dir)
 		@idrac_attrib = {
@@ -21,7 +21,7 @@ describe Puppet::Provider::Exporttemplatexml do
           :servicetag => 'EXPORT',
           :nfssharepath => test_config_dir
         }
-		@fixture=Puppet::Provider::Exporttemplatexml.new(@idrac_attrib[:ip],@idrac_attrib[:username],@idrac_attrib[:password], @idrac_attrib,File.join(test_config_dir, "mock_nfs"))
+		@fixture=Puppet::Provider::Exporttemplatexml.new(@idrac_attrib[:ip],@idrac_attrib[:username],@idrac_attrib[:password], @idrac_attrib)
 		@fixture.stub(:initialize).and_return("")
 	end
 
@@ -37,7 +37,7 @@ describe Puppet::Provider::Exporttemplatexml do
 			@fixture.instance_variable_get(:@password).should eql(@idrac_attrib[:password])
 			#@fixture.instance_variable_get(:@file_name).should eql(@idrac_attrib[:configxmlfilename])
 			#@fixture.instance_variable_get(:@nfsipaddress).should eql(@idrac_attrib[:nfsipaddress])
-			@fixture.instance_variable_get(:@nfswritepath).should eql(File.join(test_config_dir, "mock_nfs"))
+			@fixture.instance_variable_get(:@nfswritepath).should eql(test_config_dir)
 		end
 		it "should have method " do
 			@fixture.class.instance_method(:exporttemplatexml).should_not == nil
@@ -52,13 +52,12 @@ describe Puppet::Provider::Exporttemplatexml do
 				xml_doc = Nokogiri::XML::Builder.new do |xml|
 					xml.send(:"SystemConfiguration")
 				end
-				File.open(File.join(test_config_dir, "mock_nfs", "EXPORT_original.xml"), 'w+') { |file| file.write(xml_doc.to_xml(:indent => 2)) }
+				File.open(File.join(test_config_dir, "EXPORT_original.xml"), 'w+') { |file| file.write(xml_doc.to_xml(:indent => 2)) }
 				"Completed"
 			end
 			jobid = @fixture.exporttemplatexml
 			jobid.should == "JID_896386820311"
 			File.exist?(File.join(test_config_dir, "EXPORT_original.xml")).should == true
-			File.exist?(File.join(test_config_dir, "mock_nfs", "EXPORT_original.xml")).should_not == true
 
 		end
 		it "should not get Job it if export template fail" do
