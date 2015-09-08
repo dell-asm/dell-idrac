@@ -9,6 +9,7 @@ module Puppet
     class JobClearError < Exception; end
     class ShutdownError < Exception; end
     module Util
+      # FIXME: asm/device_management is dependent on asm-deployer, which should be eliminated as a dependency for this module
       def self.get_transport
         require 'asm/device_management'
         @transport ||= begin
