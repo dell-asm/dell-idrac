@@ -15,9 +15,10 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
   LC_ID = 28897
   UEFI_DIAGNOSTICS_ID = 25806
   DRIVER_PACK = 18981
+  OS_COLLECTOR = 101734
 
-  # Component ids that do not require a reboot
-  NO_REBOOT_COMPONENT_IDS = [IDRAC_ID, LC_ID, UEFI_DIAGNOSTICS_ID, DRIVER_PACK]
+  # Component ids that do not require a reboot (DIRECT UPDATES)
+  NO_REBOOT_COMPONENT_IDS = [IDRAC_ID, LC_ID, UEFI_DIAGNOSTICS_ID, DRIVER_PACK, OS_COLLECTOR]
 
   # Max time to wait for a job to complete
   MAX_WAIT_SECONDS = 1800
@@ -34,13 +35,10 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     sleep 20
     pre = []
     main = []
-    post = []
     @firmwares.each do |firmware|
       Puppet.debug(firmware)
-      if firmware["component_id"].to_i == LC_ID
+      if [LC_ID, IDRAC_ID].include? firmware['component_id'].to_i
         pre << firmware
-      elsif firmware["component_id"].to_i == IDRAC_ID
-        post << firmware
       else
         main << firmware
       end
@@ -50,15 +48,6 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
       update(pre)
     end
     update(main)
-    if post.size > 0
-      Puppet.debug("IDRAC update required, installing last")
-      update(post)
-
-      # idrac restarts after the firmware is installed. Sleep for a minute to
-      # ensure that is underway before we check for LC ready below.
-      sleep(60)
-    end
-
     # Ensure LC is up and in good state before exiting
     wait_for_lc_ready
   end
@@ -93,7 +82,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
       elsif statuses[job_id][:status]  ==  "Failed"
         raise Puppet::Error, "Firmware update failed in the lifecycle controller.  Please refer to LifeCycle job logs"
       elsif statuses[job_id][:status] ==  "Downloaded"
-        Puppet.debug("Firmware downloaded to idrac, scheduling apply")
+        Puppet.debug("Firmware downloaded to idrac")
       end
     end
 
@@ -116,6 +105,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
         reboot_id = create_reboot_job(reboot_config_file)
       end
       job_queue_config_file = create_job_queue_config(reboot_job_ids,reboot_id)
+      Puppet.debug("#{File.read(job_queue_config_file.path)}")
       setup_job_queue(job_queue_config_file)
       if @force_restart
         reboot_status = 'new'
@@ -290,7 +280,7 @@ EOF
           Puppet.debug('Error scheduling Job Queue.  ..retrying')
           sleep 10
         else
-          Puppet.debug("Job Queue config: #{job_queue_config_file.read}")
+          Puppet.debug("Job Queue config: #{File.read(job_queue_config_file.path)}")
           raise Puppet::Error, "Problem scheduling the job queue.  Message: #{doc.xpath('//n1:Message').text}"
         end
       end
