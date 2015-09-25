@@ -50,6 +50,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def execute_import(file_name=@resource['configxmlfilename'])
     require 'asm/util'
+    pending_attempts = 1
     props = {'IPAddress' => @resource[:nfsipaddress] || ASM::Util.get_preferred_ip(@ip),
              'ShareName' => @resource['nfssharepath'],
              'ShareType' => '0',
@@ -68,6 +69,15 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         props['ShutdownType'] = '1'
         retry
       end
+    rescue Puppet::Idrac::PendingChangesError
+      if pending_attempts <= 10
+        pending_attempts += 1
+        Puppet.info("Server has pending changes.  Waiting to give them time to clear...")
+        sleep 30
+        retry
+      else
+        raise('Server has pending changes that are not clearing on their own.')
+      end
     end
 
   end
@@ -78,23 +88,22 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     for i in 0..30
       response = job_status_obj.checkjdstatus
       Puppet.info "JD status : #{response}"
-      if response  == "Completed"
-        Puppet.info "Import System Configuration is completed."
-        break
-      else
-        if response  == "Failed"
-          raise(Puppet::Idrac::ConfigError, "ImportSystemConfiguration job failed")
-        elsif response.downcase == 'sys051'
+      case response
+        when 'Completed'
+          Puppet.info 'Import System Configuration is completed.'
+          return
+        when 'Failed'
+          raise(Puppet::Idrac::ConfigError, 'ImportSystemConfiguration job failed')
+        when 'SYS051'
           raise(Puppet::Idrac::ShutdownError, 'System could not be gracefully shut down')
+        when 'LC068'
+          raise(Puppet::Idrac::PendingChangesError, 'System has changes pending')
         else
           Puppet.info "Job is running, wait for 1 minute"
           sleep 60
-        end
       end
     end
-    if response != "Completed"
-      raise "Import System Configuration is still running."
-    end
+    raise "Import System Configuration is still running."
   end
 
   def find_target_bios_setting(attr_name)
