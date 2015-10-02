@@ -2,7 +2,7 @@ source 'https://rubygems.org'
 
 gem 'activesupport'
 gem 'nokogiri', '1.5.10'
-gem 'asm-deployer', :git => 'git@github.com:dell-asm/asm-deployer.git'
+gem 'asm-deployer', :git => 'git@github.com:dell-asm/asm-deployer.git', :branch => 'release/dell-asm-8.1.1'
 
 group :development, :test do
   gem 'rake'

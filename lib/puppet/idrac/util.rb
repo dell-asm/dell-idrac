@@ -8,6 +8,7 @@ module Puppet
     class ConfigError < Exception; end
     class JobClearError < Exception; end
     class ShutdownError < Exception; end
+    class PendingChangesError < Exception; end
     module Util
       def self.get_transport
         require 'asm/device_management'

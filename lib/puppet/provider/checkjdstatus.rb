@@ -18,7 +18,8 @@ class Puppet::Provider::Checkjdstatus <  Puppet::Provider
     job_status, job_message, message_id = ASM::WsMan.invoke(endpoint, 'get', schema,
                                                 :logger => Puppet,
                                                 :selector => ["//n1:JobStatus", "//n1:Message", "//n1:MessageID"])
-    if message_id =~ /SYS051/i
+
+    if message_id =~ /SYS051|LC068/i
       message_id
     elsif job_status =~ /completed with errors/i || job_message =~ /completed with errors/i
       'Failed'
