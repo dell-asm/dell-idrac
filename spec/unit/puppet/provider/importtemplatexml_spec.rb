@@ -14,11 +14,11 @@ describe Puppet::Provider::Importtemplatexml do
     Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
     @mock_net_config_data =
       Hashie::Mash.new({
-        "servertype"=>"blade",
-        "fabrics" => [
-          {"name" => "Fabric A",
+        "interfaces" => [
+          {"name" => "Interface",
             "enabled" => true,
             "nictype" => "2",
+            "fabrictype" => "ethernet",
             "interfaces" =>
             [{ "partitioned"=>true,
               "name" => "Port 1",
@@ -129,7 +129,7 @@ describe Puppet::Provider::Importtemplatexml do
           :target_boot_device => 'HD',
           :servicetag => 'FOOTAG',
           :nfssharepath => @test_config_dir.to_s,
-          :network_config_data => @mock_net_config_data,
+          :network_config => @mock_net_config_data,
           :raid_configuration =>@mock_raid_config,
           :bios_settings      => {'InternalSdCard' => 'Enabled'}
         }
