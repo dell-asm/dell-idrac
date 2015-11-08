@@ -14,12 +14,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @ip = ip
     @username = username
     @password = password
-    @configxmlfilename = resource[:configxmlfilename]
     @resource = resource
     @bios_settings = resource[:bios_settings]
-    @network_config_data = resource[:network_config]
     @templates_dir = File.join(Puppet::Module.find('idrac').path, 'templates')
     @exported_postfix = exported_postfix
+    @boot_device = resource[:target_boot_device]
   end
 
   def importtemplatexml
@@ -125,8 +124,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     nic_changes = process_nics
     changes.deep_merge!(nic_changes)
     #if idrac is booting from san, configure networks / virtual identities
-    munge_network_configuration(@resource[:network_config], changes, @resource[:target_boot_device]) if @resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC'
-    if @resource[:ensure] != :teardown && (@resource[:target_boot_device] == 'iSCSI' || @resource[:target_boot_device] == 'FC')
+    munge_network_configuration(@resource[:network_config], changes, @boot_device) if @boot_device == 'iSCSI' || @boot_device == 'FC'
+    if @resource[:ensure] != :teardown && (@boot_device == 'iSCSI' || @boot_device == 'FC')
       munge_bfs_bootdevice(changes)
     end
     @changes = changes
@@ -144,6 +143,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   def default_changes
     changes = {'partial'=>{'BIOS.Setup.1-1'=>{}}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
     changes['whole']['LifecycleController.Embedded.1'] = { 'LCAttributes.1#CollectSystemInventoryOnRestart' => 'Enabled' }
+    #We populate the BIOS settings from incoming data first, because we may need to overwrite a setting for our purposes later
     @bios_settings.keys.each do |key|
       unless @bios_settings[key].nil? || @bios_settings[key].empty?
         if @bios_settings[key] == 'n/a'
@@ -154,33 +154,27 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         end
       end
     end
-    unless @resource[:target_boot_device].start_with?('none')
-      changes['partial']['BIOS.Setup.1-1']['ProcVirtualization'] = 'Enabled'
-      changes['partial']['BIOS.Setup.1-1']['BootMode'] = 'Bios'
-    end
-    # target_boot_device settings
-    # Always want to turn on IntegratedRaid with teardown, so ASM can continue to inventory RAID info later.
-    if @resource[:ensure] == :teardown
+    # Always want to turn on IntegratedRaid with teardown, so RAID info can still be gathered from idrac/wsman queries
+    if @boot_device =~ /WITH_RAID|HD/i || @resource[:ensure] == :teardown
       changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'IntegratedRaid' => 'Enabled'})
-    elsif @resource[:target_boot_device] == "HD"
-      changes['partial'].deep_merge!(
-          {'BIOS.Setup.1-1' =>
-               {
-                   'IntegratedRaid' => 'Enabled',
-                   'InternalSdCard'  => 'Off'
-               }
-          })
-    elsif @resource[:target_boot_device] == "SD"
-      changes['partial'].deep_merge!(
-          {'BIOS.Setup.1-1' =>
-               {
-                   'IntegratedRaid' => 'Disabled',
-                   'InternalSdCard' => 'On'
-               }
-          })
-    elsif @resource[:target_boot_device].downcase.start_with?('none')
+    end
+    if @boot_device =~ /HD/i
+      #We turn off SD card in case of Hdd boot.  We don't want it on to potentially interfere with the esxi boot order (it doesn't follow the BiosBootSeq)
+      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCard' => 'Off'})
+    end
+    #Boot Device could be SD_WITHOUT_RAID or SD_WITH_RAID.  Raid Settings are handled above for WITH_RAID
+    if @boot_device =~ /SD/i
+      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCard' => 'On'})
+      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'HddSeq' => 'Disk.SDInternal.1-1'})
+    end
+    #If we have target boot device = NONE or NONE_WITH_RAID, we don't want to edit boot settings.
+    #If installing an OS, we need ProcVirtualization=Enabled, and BootMode=Bios
+    if @boot_device =~ /^NONE/i
       changes['remove']['attributes']['BIOS.Setup.1-1'] ||= []
       changes['remove']['attributes']['BIOS.Setup.1-1'] << 'BiosBootSeq'
+    else
+      changes['partial']['BIOS.Setup.1-1']['ProcVirtualization'] = 'Enabled'
+      changes['partial']['BIOS.Setup.1-1']['BootMode'] = 'Bios'
     end
     changes
   end
@@ -429,8 +423,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       Puppet.debug("Setting RAID configuration to be cleared as part of teardown.")
       raid_configuration.keys.each{|controller| changes['whole'][controller] = { 'RAIDresetConfig' => "True" } }
     else
-      if ['none_with_raid', 'hd'].include?(@resource[:target_boot_device].downcase)
-        changes['partial'] = {'BIOS.Setup.1-1'=> {'HddSeq' => raid_configuration.keys.first}}
+      if @boot_device =~ /WITH_RAID|HD/i
+        changes['partial'] = {'BIOS.Setup.1-1'=> {'HddSeq' => raid_configuration.keys.first}} if @boot_device =~ /HD/i
         unless raid_in_sync?(target_current_xml, true)
           #Getting the first key should get the first internal disk controller, or the first external if no internal on the server
           raid_configuration.keys.each do |raid_fqdd|
@@ -488,7 +482,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def raid_in_sync?(xml_base, log=false)
-    if ['none_with_raid', 'hd'].include?(@resource[:target_boot_device].downcase)
+    if @boot_device =~ /WITH_RAID|HD/i
       raid_configuration.keys.each do |raid_fqdd|
         raid_fqdd_xpath = "//Component[@FQDD='#{raid_fqdd}']"
         controller_xml = xml_base.xpath(raid_fqdd_xpath)
@@ -629,7 +623,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def process_nics
     require 'asm/network_configuration'
-    net_config = ASM::NetworkConfiguration.new(@network_config_data)
+    net_config = ASM::NetworkConfiguration.new(resource[:network_config])
     endpoint = Hashie::Mash.new({:host => @ip, :user => @username, :password => @password})
     net_config.add_nics!(endpoint, :add_partitions => true)
     fqdds_existing = xml_base.xpath("//Component[contains(@FQDD, 'NIC.') or contains(@FQDD, 'FC.')]").collect {|x| x.attribute("FQDD").value}
@@ -642,7 +636,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         config['remove']['components'][fqdd] = {}
     end
     #Don't mess with the boot order if the target_boot_device = none
-    unless @resource[:target_boot_device].downcase.start_with?('none')
+    unless @boot_device =~ /^NONE/i
       if net_config.get_partitions('PXE').first.nil?
         boot_seq = ['HardDisk.List.1-1'].join(', ')
       else
@@ -658,7 +652,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           #
           # SET UP NIC IN CASE INTERFACE IS BEING PARTITIONED, equivalent to the enable_npar parameter
           #
-          if !@resource[:target_boot_device].downcase.start_with?('none') || !partition.networkObjects.nil?
+          if @boot_device !~ /^NONE/i || !partition.networkObjects.nil?
             changes = config['whole'][fqdd] = {}
             partition_no = partition.partition_no
             #Intel cards don't have VLanMode, so we check if it exists before trying to set.
@@ -670,7 +664,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
               # CONFIGURE ISCSI NETWORK
               #
               changes['NicMode'] = 'Enabled'
-              if @resource[:target_boot_device] != 'iSCSI' && @resource[:target_boot_device] != 'FC'
+              if @boot_device != 'iSCSI' && @boot_device != 'FC'
                 if partition['networkObjects'] && !partition['networkObjects'].find { |obj| obj['type'].include?('ISCSI') }.nil?
                   changes['iScsiOffloadMode'] = 'Enabled'
                   #FCoEOffloadMode MUST be disabled if iScsiOffloadMode is Enabled
