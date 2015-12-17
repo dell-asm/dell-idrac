@@ -697,7 +697,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
               end
             else
               if partition_no == 1
-               handle_missing_attributes(changes)
+               handle_missing_attributes(changes,fqdd)
               else
                 #This is just to clean up the changes hash, but should be unnecessary
                 config['partial'].remove(fqdd)
@@ -717,12 +717,12 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
    #Helper function to remove two attributes from nic configuration. Should be for Intel cards only.
-  def handle_missing_attributes(changes)
+  def handle_missing_attributes(changes, fqdd)
     changes['VirtualizationMode'] = 'NONE'
     changes['NicPartitioning'] = 'Disabled'
     ['VirtualizationMode','NicPartitioning'].each do |dev_attr|
       #Check if Attribute name exists in the xml, and if it doesn't, check if we're trying to set to disabled.  If so, delete from the list of changes.
-      if xml_base.at_xpath("//Attribute[@Name='#{dev_attr}']").nil?
+      if xml_base.at_xpath("//Component[@FQDD='#{fqdd}']/Attribute[@Name='#{dev_attr}']").nil?
         Puppet.debug("Trying to set #{dev_attr}  but the relevant device does not exist on the server. The attribute will be ignored.")
          changes.delete(dev_attr)
       end
