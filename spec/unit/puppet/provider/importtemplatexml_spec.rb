@@ -8,7 +8,20 @@ require 'asm/network_configuration'
 
 describe Puppet::Provider::Importtemplatexml do
 
-	before(:each) do
+  def build_nic_views(fqdd_to_mac, vendor = nil, product = nil)
+    fqdd_to_mac.keys.map do |fqdd|
+      mac = fqdd_to_mac[fqdd]
+      nic_view = {"FQDD" => fqdd, "PermanentMACAddress" => mac, "CurrentMACAddress" => mac}
+      unless block_given? && yield(nic_view)
+        nic_view["LinkSpeed"] = "5"
+        nic_view["VendorName"] = vendor if vendor
+        nic_view["ProductName"] = product if product
+      end
+      nic_view
+    end
+  end
+
+  before(:each) do
     @test_config_dir = URI(File.join(Dir.pwd, "spec", "fixtures"))
     @view_disk_xml = File.read(@test_config_dir.path + '/disks.xml')
     Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
@@ -134,8 +147,8 @@ describe Puppet::Provider::Importtemplatexml do
           :bios_settings      => {'InternalSdCard' => 'Enabled'}
         }
     @fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'],@idrac_attrib['username'],@idrac_attrib['password'],@idrac_attrib)
-    #@fixture.stub(:initialize).and_return("")
-end
+    ASM::WsMan.stub(:get_bios_enumeration).and_return([])
+  end
 
 	context " instance validation " do
 		it "should have instance object" do
@@ -169,8 +182,18 @@ end
 			@fixture.stub(:munge_config_xml)
 			expect{ @fixture.importtemplatexml}.to raise_error("ImportSystemConfiguration Job could not be created:  Response is invalid")
 		end
-	end
+  end
+
 	context "when importing template" do
+    let(:fqdd_to_mac) { {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
+                         'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
+                         'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
+                         'NIC.Integrated.1-1-4' => '00:0E:1E:0D:8C:36',
+                         'NIC.Integrated.1-2-1' => '00:0E:1E:0D:8C:31',
+                         'NIC.Integrated.1-2-2' => '00:0E:1E:0D:8C:33',
+                         'NIC.Integrated.1-2-3' => '00:0E:1E:0D:8C:35',
+                         'NIC.Integrated.1-2-4' => '00:0E:1E:0D:8C:37', } }
+
     before(:each) do
       @exported_name = File.basename(@idrac_attrib[:configxmlfilename], ".xml") + "_base.xml"
       #Needed to call original open method by default
@@ -180,6 +203,8 @@ end
       original_method = File.method(:open)
       File.stub(:open).with(anything()) { |*args| original_method.call(*args) }
       File.stub(:open).with(File.join(@test_config_dir.path, @idrac_attrib[:configxmlfilename]), "w+").and_return('')
+
+      ASM::WsMan.stub(:get_nic_view).and_return(build_nic_views(fqdd_to_mac, "Broadcom", "57810"))
     end
 
 		it "should munge basic config xml data" do
@@ -220,12 +245,6 @@ end
     end
 
     it "should get changes based on network configuration hash" do
-      fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
-                     'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
-                     'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
-                     'NIC.Integrated.1-1-4' => '00:0E:1E:0D:8C:36'
-      }
-      ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
       ASM::WsMan.stub(:get_all_fqdds).and_return(fqdd_to_mac.keys)
       net_config = ASM::NetworkConfiguration.new(@mock_net_config_data)
       ASM::NetworkConfiguration.stub(:new).and_return(net_config)
@@ -256,12 +275,6 @@ end
       Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
       Puppet::Idrac::Util.stub(:get_transport).and_return({:host => '1.1.1.1', :user => 'root', :password => 'calvin'})
       Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
-      fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
-                     'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
-                     'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
-                     'NIC.Integrated.1-1-4' => '00:0E:1E:0D:8C:36'
-      }
-      ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
       net_config = ASM::NetworkConfiguration.new(@mock_net_config_data)
       ASM::NetworkConfiguration.stub(:new).and_return(net_config)
       ASM::WsMan.stub(:invoke).and_return(@view_disk_xml)
@@ -294,12 +307,6 @@ end
       Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
       Puppet::Idrac::Util.stub(:get_transport).and_return({:host => '1.1.1.1', :user => 'root', :password => 'calvin'})
       Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
-      fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
-                     'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
-                     'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
-                     'NIC.Integrated.1-1-4' => '00:0E:1E:0D:8C:36'
-      }
-      ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
       net_config = ASM::NetworkConfiguration.new(@mock_net_config_data)
       ASM::NetworkConfiguration.stub(:new).and_return(net_config)
       ASM::WsMan.stub(:invoke).and_return(@view_disk_xml)
@@ -313,38 +320,30 @@ end
 	end
 
     context "when munging network_configuration" do
-          it 'should configure nic partitions in config.xml' do
+      let(:fqdd_to_mac) { {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
+                           'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
+                           'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
+                           'NIC.Integrated.1-1-4' => '00:0E:1E:0D:8C:36',
+                           'NIC.Integrated.1-2-1' => '00:0E:1E:0D:8C:31',
+                           'NIC.Integrated.1-2-2' => '00:0E:1E:0D:8C:33',
+                           'NIC.Integrated.1-2-3' => '00:0E:1E:0D:8C:35',
+                           'NIC.Integrated.1-2-4' => '00:0E:1E:0D:8C:37', } }
+
+      before(:each) do
+        ASM::WsMan.stub(:get_nic_view).and_return(build_nic_views(fqdd_to_mac, "Broadcom", "57810"))
+      end
+
+      it 'should configure nic partitions in config.xml' do
             @network_configuration = JSON.parse(File.read(@test_config_dir.path + '/network_configuration.json'))['networkConfiguration']
             changes = {'partial' => {}, 'whole'=>{}, 'remove' => {'components' => {}} }
-            fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
-                     'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
-                     'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
-                     'NIC.Integrated.1-1-4' => '00:0E:1E:0D:8C:36',
-                     'NIC.Integrated.1-2-1' => '00:0E:1E:0D:8C:31',
-                     'NIC.Integrated.1-2-2' => '00:0E:1E:0D:8C:33',
-                     'NIC.Integrated.1-2-3' => '00:0E:1E:0D:8C:35',
-                     'NIC.Integrated.1-2-4' => '00:0E:1E:0D:8C:37',
-            }
-            require 'asm'
-            ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
             @fixture.munge_network_configuration(@network_configuration, changes, 'iSCSI')
             changes['partial']['NIC.Integrated.1-1-1'].should_not == nil
             changes['partial']['NIC.Integrated.1-2-1'].should_not == nil
           end
+
           it 'should configure nic partitions in config.xml FC case' do
             @network_configuration = JSON.parse(File.read(@test_config_dir.path + '/network_configuration_fc.json'))['networkConfiguration']
             changes = {'partial' => {}, 'remove' => {'components' => {}} }
-            fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
-                     'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
-                     'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
-                     'NIC.Integrated.1-1-4' => '00:0E:1E:0D:8C:36',
-                     'NIC.Integrated.1-2-1' => '00:0E:1E:0D:8C:31',
-                     'NIC.Integrated.1-2-2' => '00:0E:1E:0D:8C:33',
-                     'NIC.Integrated.1-2-3' => '00:0E:1E:0D:8C:35',
-                     'NIC.Integrated.1-2-4' => '00:0E:1E:0D:8C:37',
-            }
-            require 'asm'
-            ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
             @fixture.munge_network_configuration(@network_configuration, changes, 'FC')
             changes['partial']['NIC.Integrated.1-1-1'].should_not == nil
             changes['partial']['NIC.Integrated.1-2-1'].should_not == nil
@@ -363,17 +362,6 @@ end
             @fixture.resource[:target_iscsi] = "mytargetiscsiiqn"
             @fixture.resource[:enable_npar] = 'false'
             changes = {'partial' => {}, 'remove' => {'components' => {}} }
-            fqdd_to_mac = {'NIC.Integrated.1-1-1' => '00:0E:1E:0D:8C:30',
-               'NIC.Integrated.1-1-2' => '00:0E:1E:0D:8C:32',
-               'NIC.Integrated.1-1-3' => '00:0E:1E:0D:8C:34',
-               'NIC.Integrated.1-1-4' => '00:0E:1E:0D:8C:36',
-               'NIC.Integrated.1-2-1' => '00:0E:1E:0D:8C:31',
-               'NIC.Integrated.1-2-2' => '00:0E:1E:0D:8C:33',
-               'NIC.Integrated.1-2-3' => '00:0E:1E:0D:8C:35',
-               'NIC.Integrated.1-2-4' => '00:0E:1E:0D:8C:37',
-            }
-            require 'asm'
-            ASM::WsMan.stub(:get_mac_addresses).and_return(fqdd_to_mac)
             @fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'],@idrac_attrib['username'],@idrac_attrib['password'],@idrac_attrib)
             @exported_name = File.basename(@idrac_attrib[:configxmlfilename], ".xml") + "_base.xml"
             #Needed to call original open method by default
