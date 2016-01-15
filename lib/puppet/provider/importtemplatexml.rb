@@ -637,12 +637,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
     #Don't mess with the boot order if the target_boot_device = none
     unless @boot_device =~ /^NONE/i
-      if net_config.get_partitions('PXE').first.nil?
-        boot_seq = ['HardDisk.List.1-1'].join(', ')
-      else
-        boot_seq = [net_config.get_partitions('PXE').first.fqdd, 'HardDisk.List.1-1'].join(', ')
-      end
-      config['partial']['BIOS.Setup.1-1'] = {'BiosBootSeq'=>boot_seq}
+      config['partial']['BIOS.Setup.1-1'] = {'BiosBootSeq'=> "HardDisk.List.1-1"}
     end
     net_config.cards.each do |card|
       card.interfaces.each do |interface|
