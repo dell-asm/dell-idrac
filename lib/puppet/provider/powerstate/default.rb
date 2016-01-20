@@ -7,7 +7,7 @@ require 'puppet/idrac/util'
 Puppet::Type.type(:powerstate).provide(:powerstate) do
   desc "Dell idrac provider for import system configuration."
   def exists?
-    if(checkpowerstate != '2')
+    if checkpowerstate != :on
       false
     else
       Puppet.info 'Server is already powered on.'
