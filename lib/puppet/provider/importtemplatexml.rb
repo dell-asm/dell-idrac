@@ -310,7 +310,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def munge_bfs_bootdevice(changes)
     Puppet.debug("configuring the bfs boot device")
-    changes['partial'].deep_merge!({'BIOS.Setup.1-1' => { 'InternalSDCard' => "Off",  'IntegratedRaid' => 'Disabled'} })
+    changes['partial'].deep_merge!({'BIOS.Setup.1-1' => { 'InternalSdCard' => "Off",  'IntegratedRaid' => 'Disabled'} })
   end
 
   def munge_network_configuration(network_configuration, changes, target_boot)
