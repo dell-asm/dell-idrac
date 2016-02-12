@@ -167,6 +167,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCard' => 'On'})
       changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'HddSeq' => 'Disk.SDInternal.1-1'})
     end
+
+    if @boot_device =~ /VSAN/i
+      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCard' => 'On'})
+      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'IntegratedRaid' => 'Enabled'})
+      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'HddSeq' => 'Disk.SDInternal.1-1'})
+    end
+
     #If we have target boot device = NONE or NONE_WITH_RAID, we don't want to edit boot settings.
     #If installing an OS, we need ProcVirtualization=Enabled, and BootMode=Bios
     if @boot_device =~ /^NONE/i
@@ -230,6 +237,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
     @changes["remove"]["components"].keys.each do |parent|
       process_remove_nodes(parent, @changes["remove"]["components"][parent], xml_base, "Component")
+    end
+    # For VSAN configuration, need to set the HBA Mode
+    if @boot_device.match(/VSAN/)
+      xml_base.match(/="CurrentControllerMode">RAID/)
+      update_raid_controller
     end
     ##Clean up the config file of all the commented text
     xml_base.xpath('//comment()').remove
@@ -482,7 +494,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def raid_in_sync?(xml_base, log=false)
-    if @boot_device =~ /WITH_RAID|HD/i
+    if @boot_device =~ /WITH_RAID|HD/i && !@boot_device =~ /SD_WITH_RAID_VSAN/i
       raid_configuration.keys.each do |raid_fqdd|
         raid_fqdd_xpath = "//Component[@FQDD='#{raid_fqdd}']"
         controller_xml = xml_base.xpath(raid_fqdd_xpath)
@@ -722,6 +734,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
          changes.delete(dev_attr)
       end
     end
+  end
+
+  def update_raid_controller_mode(changes)
+    changes['CurrentControllerMode'] = 'HBA'
+    process_partials('CurrentControllerMode', 'HBA', xml_base, path="//Component[@FQDD='BIOS.Setup.1-1']")
   end
 
   #TODO: Use this function whereever we're doing a search for certain attributes, such as in handle_missing_attributes
