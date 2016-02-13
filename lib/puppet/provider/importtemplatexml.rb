@@ -238,11 +238,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @changes["remove"]["components"].keys.each do |parent|
       process_remove_nodes(parent, @changes["remove"]["components"][parent], xml_base, "Component")
     end
-    # For VSAN configuration, need to set the HBA Mode
-    if @boot_device.match(/VSAN/)
-      xml_base.match(/="CurrentControllerMode">RAID/)
-      update_raid_controller
-    end
+
     ##Clean up the config file of all the commented text
     xml_base.xpath('//comment()').remove
     remove_invalid_settings(xml_base)
@@ -435,7 +431,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       Puppet.debug("Setting RAID configuration to be cleared as part of teardown.")
       raid_configuration.keys.each{|controller| changes['whole'][controller] = { 'RAIDresetConfig' => "True" } }
     else
-      if @boot_device =~ /WITH_RAID|HD/i
+      if @boot_device =~ /VSAN/i
+        if target_current_xml.to_s.match(/="CurrentControllerMode">RAID/)
+          changes['whole']['RAID.Integrated.1-1'] = { 'CurrentControllerMode' => "HBA"}
+        end
+      elsif @boot_device =~ /WITH_RAID|HD/i
         changes['partial'] = {'BIOS.Setup.1-1'=> {'HddSeq' => raid_configuration.keys.first}} if @boot_device =~ /HD/i
         unless raid_in_sync?(target_current_xml, true)
           #Getting the first key should get the first internal disk controller, or the first external if no internal on the server
@@ -734,11 +734,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
          changes.delete(dev_attr)
       end
     end
-  end
-
-  def update_raid_controller_mode(changes)
-    changes['CurrentControllerMode'] = 'HBA'
-    process_partials('CurrentControllerMode', 'HBA', xml_base, path="//Component[@FQDD='BIOS.Setup.1-1']")
   end
 
   #TODO: Use this function whereever we're doing a search for certain attributes, such as in handle_missing_attributes
