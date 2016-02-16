@@ -433,7 +433,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     else
       if @boot_device =~ /VSAN/i
         if target_current_xml.to_s.match(/="CurrentControllerMode">RAID/)
-          changes['whole']['RAID.Integrated.1-1'] = { 'CurrentControllerMode' => "HBA"}
+          changes['whole'][raid_configuration.keys.first] = { 'CurrentControllerMode' => "HBA"}
         end
       elsif @boot_device =~ /WITH_RAID|HD/i
         changes['partial'] = {'BIOS.Setup.1-1'=> {'HddSeq' => raid_configuration.keys.first}} if @boot_device =~ /HD/i
