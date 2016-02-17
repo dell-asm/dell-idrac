@@ -493,7 +493,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def raid_in_sync?(xml_base, log=false)
-    if @boot_device =~ /WITH_RAID|HD/i && !@boot_device =~ /SD_WITH_RAID_VSAN/i
+    if @boot_device =~ /WITH_RAID|HD/i && !(@boot_device =~ /SD_WITH_RAID_VSAN/i)
       raid_configuration.keys.each do |raid_fqdd|
         raid_fqdd_xpath = "//Component[@FQDD='#{raid_fqdd}']"
         controller_xml = xml_base.xpath(raid_fqdd_xpath)
