@@ -167,6 +167,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCard' => 'On'})
       changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'HddSeq' => 'Disk.SDInternal.1-1'})
     end
+
+    if @boot_device =~ /VSAN/i
+      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCard' => 'On'})
+      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'IntegratedRaid' => 'Enabled'})
+      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'HddSeq' => 'Disk.SDInternal.1-1'})
+    end
+
     #If we have target boot device = NONE or NONE_WITH_RAID, we don't want to edit boot settings.
     #If installing an OS, we need ProcVirtualization=Enabled, and BootMode=Bios
     if @boot_device =~ /^NONE/i
@@ -231,6 +238,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @changes["remove"]["components"].keys.each do |parent|
       process_remove_nodes(parent, @changes["remove"]["components"][parent], xml_base, "Component")
     end
+
     ##Clean up the config file of all the commented text
     xml_base.xpath('//comment()').remove
     remove_invalid_settings(xml_base)
@@ -423,7 +431,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       Puppet.debug("Setting RAID configuration to be cleared as part of teardown.")
       raid_configuration.keys.each{|controller| changes['whole'][controller] = { 'RAIDresetConfig' => "True" } }
     else
-      if @boot_device =~ /WITH_RAID|HD/i
+      if @boot_device =~ /VSAN/i
+        if target_current_xml.to_s.match(/="CurrentControllerMode">RAID/)
+          changes['whole'][raid_configuration.keys.first] = { 'CurrentControllerMode' => "HBA"}
+        end
+      elsif @boot_device =~ /WITH_RAID|HD/i
         changes['partial'] = {'BIOS.Setup.1-1'=> {'HddSeq' => raid_configuration.keys.first}} if @boot_device =~ /HD/i
         unless raid_in_sync?(target_current_xml, true)
           #Getting the first key should get the first internal disk controller, or the first external if no internal on the server
@@ -482,7 +494,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def raid_in_sync?(xml_base, log=false)
-    if @boot_device =~ /WITH_RAID|HD/i
+    if @boot_device =~ /WITH_RAID|HD/i && !@boot_device =~ /SD_WITH_RAID_VSAN/i
       raid_configuration.keys.each do |raid_fqdd|
         raid_fqdd_xpath = "//Component[@FQDD='#{raid_fqdd}']"
         controller_xml = xml_base.xpath(raid_fqdd_xpath)
