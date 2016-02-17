@@ -175,12 +175,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
 
     #If we have target boot device = NONE or NONE_WITH_RAID, we don't want to edit boot settings.
-    #If installing an OS, we need ProcVirtualization=Enabled, and BootMode=Bios
+    #If installing an OS, we need BootMode=Bios
     if @boot_device =~ /^NONE/i
       changes['remove']['attributes']['BIOS.Setup.1-1'] ||= []
       changes['remove']['attributes']['BIOS.Setup.1-1'] << 'BiosBootSeq'
     else
-      changes['partial']['BIOS.Setup.1-1']['ProcVirtualization'] = 'Enabled'
       changes['partial']['BIOS.Setup.1-1']['BootMode'] = 'Bios'
     end
     changes
