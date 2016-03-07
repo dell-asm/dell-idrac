@@ -165,11 +165,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     #Boot Device could be SD_WITHOUT_RAID or SD_WITH_RAID.  Raid Settings are handled above for WITH_RAID
     if @boot_device =~ /SD/i
       changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCard' => 'On'})
+      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCardRedundancy' => 'Mirror'})
       changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'HddSeq' => 'Disk.SDInternal.1-1'})
     end
 
     if @boot_device =~ /VSAN/i
       changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCard' => 'On'})
+      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCardRedundancy' => 'Mirror'})
       changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'IntegratedRaid' => 'Enabled'})
       changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'HddSeq' => 'Disk.SDInternal.1-1'})
     end
