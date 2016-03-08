@@ -151,7 +151,7 @@ module Puppet
             end
           end
         end
-        wait_for_idrac
+        wait_for_idrac(360)
       end
 
       def self.wait_for_idrac (timeout = 180, state = 0)
@@ -212,3 +212,4 @@ module Puppet
     end
   end
 end
+
