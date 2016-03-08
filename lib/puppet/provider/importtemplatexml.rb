@@ -69,10 +69,22 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         retry
       end
     rescue Puppet::Idrac::PendingChangesError
+      pending_attempts += 1
       if pending_attempts <= 10
-        pending_attempts += 1
         Puppet.info("Server has pending changes.  Waiting to give them time to clear...")
         sleep 30
+        retry
+      elsif pending_attempts == 11
+        Puppet::Idrac::Util.wait_for_running_jobs
+        Puppet.info("Server still has pending changes. Clearing job queue")
+        Puppet::Idrac::Util.clear_job_queue(false)
+        Puppet::Idrac::Util.wait_for_idrac
+        retry
+      elsif pending_attempts == 12
+        Puppet::Idrac::Util.wait_for_running_jobs
+        Puppet.warn("Server still has pending changes. No jobs running. Executing CLEARALL_FORCE")
+        Puppet::Idrac::Util.clear_job_queue(true)
+        Puppet::Idrac::Util.wait_for_idrac
         retry
       else
         raise('Server has pending changes that are not clearing on their own.')
