@@ -86,25 +86,27 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
       end
     end
 
-    # Reboot if necessary
-    reboot_job_ids = statuses.values.map do |v|
-      v[:job_id] unless NO_REBOOT_COMPONENT_IDS.include?(v[:firmware]['component_id'].to_i)
-    end.compact
-    if reboot_job_ids.empty?
-      Puppet.debug("Reboot not required")
-      reboot_required = false
-      update_complete = 'Completed'
-    else
-      reboot_required = true
-      update_complete = @force_restart ? 'Completed' : 'Scheduled'
+    statuses.each do |_,v|
+      if NO_REBOOT_COMPONENT_IDS.include?(v[:firmware]['component_id'].to_i)
+        v[:desired] = "Completed"
+        v[:reboot_required] = false
+      else
+        @force_restart ? v[:desired] = "Completed" : v[:desired] = "Scheduled"
+        v[:reboot_required] = true
+      end
     end
-    reboot_id = nil
-    if reboot_required
+
+    reboot_firmwares = statuses.select {|_,v| v[:reboot_required]}
+    completed_endstate_firmwares = statuses.select {|_,v| v[:desired] == "Completed"}
+    scheduled_endstate_firmwares = statuses.select{|_,v| v[:desired] == "Scheduled"}
+
+    unless reboot_firmwares.empty?
+      reboot_id = nil
       if @force_restart
         reboot_config_file = create_reboot_config_file
         reboot_id = create_reboot_job(reboot_config_file)
       end
-      job_queue_config_file = create_job_queue_config(reboot_job_ids,reboot_id)
+      job_queue_config_file = create_job_queue_config(reboot_firmwares.keys,reboot_id)
       Puppet.debug("#{File.read(job_queue_config_file.path)}")
       setup_job_queue(job_queue_config_file)
       if @force_restart
@@ -117,17 +119,18 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
       end
     end
 
-    # Poll for all jobs to complete or time out
-    until statuses.values.all? { |v| v[:status] =~ /#{update_complete}|Failed|InternalTimeout/ }
-      statuses.each do |key, val|
-        if Time.now - val[:start_time] > MAX_WAIT_SECONDS
-          val[:status] = 'InternalTimeout'
-        else
-          val[:status] = checkjobstatus key
-          Puppet.debug("Job Status #{key}: #{val[:status]}")
+    [scheduled_endstate_firmwares, completed_endstate_firmwares].each do |firmware_set|
+      until firmware_set.values.all? {|v| v[:status] =~ /#{v[:desired]}|Failed|InternalTimeout/}
+        firmware_set.each do |key, val|
+          if Time.now - val[:start_time] > MAX_WAIT_SECONDS
+            val[:status] = 'InternalTimeout'
+          else
+            val[:status] = checkjobstatus key
+            Puppet.debug("Job Status #{key}: #{val[:status]}")
+          end
         end
+        sleep 30
       end
-      sleep 30
     end
 
     # Raise an error if any firmware jobs failed
