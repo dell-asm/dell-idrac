@@ -102,6 +102,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       case response
         when 'Completed'
           Puppet.info 'Import System Configuration is completed.'
+          sleep(60)
           return
         when 'Failed'
           raise(Puppet::Idrac::ConfigError, 'ImportSystemConfiguration job failed')
