@@ -153,48 +153,51 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   #
   #
   def default_changes
-    changes = {'partial'=>{'BIOS.Setup.1-1'=>{}}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
-    changes['whole']['LifecycleController.Embedded.1'] = { 'LCAttributes.1#CollectSystemInventoryOnRestart' => 'Enabled' }
+    changes = {"partial"=>{"BIOS.Setup.1-1"=>{}}, "whole"=>{}, "remove"=> {"attributes"=>{}, "components"=>{}}}
+    changes["whole"]["LifecycleController.Embedded.1"] = { "LCAttributes.1#CollectSystemInventoryOnRestart" => "Enabled" }
     #We populate the BIOS settings from incoming data first, because we may need to overwrite a setting for our purposes later
     @bios_settings.keys.each do |key|
       unless @bios_settings[key].nil? || @bios_settings[key].empty?
         if @bios_settings[key] == 'n/a'
-          changes['remove']['attributes']['BIOS.Setup.1-1'] ||= []
-          changes['remove']['attributes']['BIOS.Setup.1-1'] << key
+          changes["remove"]["attributes"]["BIOS.Setup.1-1"] ||= []
+          changes["remove"]["attributes"]["BIOS.Setup.1-1"] << key
         else
-          changes['partial']['BIOS.Setup.1-1'][key] = @bios_settings[key]
+          changes["partial"]["BIOS.Setup.1-1"][key] = @bios_settings[key]
         end
       end
     end
+
+    # Always disable ErrPrompt so we can avoid a hangup due to a user needing to put input on the server manually
+    changes["partial"]["BIOS.Setup.1-1"]["ErrPrompt"] = "Disabled"
     # Always want to turn on IntegratedRaid with teardown, so RAID info can still be gathered from idrac/wsman queries
     if @boot_device =~ /WITH_RAID|HD/i || @resource[:ensure] == :teardown
-      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'IntegratedRaid' => 'Enabled'})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"IntegratedRaid" => "Enabled"})
     end
     if @boot_device =~ /HD/i
       #We turn off SD card in case of Hdd boot.  We don't want it on to potentially interfere with the esxi boot order (it doesn't follow the BiosBootSeq)
-      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCard' => 'Off'})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "Off"})
     end
     #Boot Device could be SD_WITHOUT_RAID or SD_WITH_RAID.  Raid Settings are handled above for WITH_RAID
     if @boot_device =~ /SD/i
-      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCard' => 'On'})
-      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCardRedundancy' => 'Mirror'})
-      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'HddSeq' => 'Disk.SDInternal.1-1'})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "On"})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCardRedundancy" => "Mirror"})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => "Disk.SDInternal.1-1"})
     end
 
     if @boot_device =~ /VSAN/i
-      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCard' => 'On'})
-      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'InternalSdCardRedundancy' => 'Mirror'})
-      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'IntegratedRaid' => 'Enabled'})
-      changes['partial'].deep_merge!('BIOS.Setup.1-1' => {'HddSeq' => 'Disk.SDInternal.1-1'})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "On"})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCardRedundancy" => "Mirror"})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"IntegratedRaid" => "Enabled"})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => "Disk.SDInternal.1-1"})
     end
 
     #If we have target boot device = NONE or NONE_WITH_RAID, we don't want to edit boot settings.
     #If installing an OS, we need BootMode=Bios
     if @boot_device =~ /^NONE/i
-      changes['remove']['attributes']['BIOS.Setup.1-1'] ||= []
-      changes['remove']['attributes']['BIOS.Setup.1-1'] << 'BiosBootSeq'
+      changes["remove"]["attributes"]["BIOS.Setup.1-1"] ||= []
+      changes["remove"]["attributes"]["BIOS.Setup.1-1"] << "BiosBootSeq"
     else
-      changes['partial']['BIOS.Setup.1-1']['BootMode'] = 'Bios'
+      changes["partial"]["BIOS.Setup.1-1"]["BootMode"] = "Bios"
     end
     changes
   end
