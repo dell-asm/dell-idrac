@@ -77,18 +77,18 @@ module Puppet
       end
 
       #Clears the job queue and waits for it to be empty.  Raises a JobClearError from wait_for_jobs_clear if the job queue isn't empty after 2 minutes.
-      def self.clear_job_queue
+      def self.clear_job_queue(force=false)
         Puppet.debug("Clearing Job Queue")
         tries = 1
         begin
           schema = "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\",SystemName=\"Idrac\",Name=\"JobService\",SystemCreationClassName=\"DCIM_ComputerSystem\""
-          options = {:props=>{'JobID'=> 'JID_CLEARALL'}, :selector => '//n1:ReturnValue', :logger => Puppet}
-          resp = ASM::WsMan.invoke(get_transport, 'DeleteJobQueue', schema, options)
-          if resp == '0'
+          options = {:props=>{"JobID"=> "JID_CLEARALL#{"_FORCE" if force}"}, :selector => ["//n1:ReturnValue", "//n1:Message"], :logger => Puppet}
+          response_id, message = ASM::WsMan.invoke(get_transport, "DeleteJobQueue", schema, options)
+          if response_id == '0'
             Puppet.debug("Job Queue cleared successfully")
             wait_for_jobs_clear
           else
-            raise Puppet::Error, "Error clearing job queue.  Message: #{doc.xpath('//n1:Message')}"
+            raise Puppet::Error, "Error clearing job queue.  Message: #{message}"
           end
         rescue Puppet::Error => e
           raise e if tries > 4
@@ -192,6 +192,8 @@ module Puppet
             if message_id && message_id.text == 'LC062'
               Puppet.info("Job was already running on idrac.  Waiting 1 minute to retry #{action}...")
               sleep 60
+            elsif message_id && message_id.text == "LC068"
+              raise Puppet::Idrac::PendingChangesError
             else
               message = response.at_xpath("//#{action}_OUTPUT/Message")
               output = message ? message.text : "Response is invalid"
@@ -212,4 +214,3 @@ module Puppet
     end
   end
 end
-
