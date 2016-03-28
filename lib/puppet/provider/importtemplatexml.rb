@@ -182,6 +182,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "On"})
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCardRedundancy" => "Mirror"})
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => "Disk.SDInternal.1-1"})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"IntegratedRaid" => "Disabled"})
     end
 
     if @boot_device =~ /VSAN/i
