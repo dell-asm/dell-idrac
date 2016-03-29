@@ -1,7 +1,7 @@
 require 'rexml/document'
 
 include REXML
-require 'pty'
+#require 'pty'
 
 module Puppet
   module Idrac
