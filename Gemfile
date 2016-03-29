@@ -21,8 +21,13 @@ platforms :mswin, :mingw do
 end
 
 group :development, :test do
+
   #private github gems need ssh from travis ci and https from the dev environment
-  gem 'asm-deployer', :git => 'https://github.com/dell-asm/asm-deployer.git', :branch => 'master'
+  gem 'asm-deployer', :git => 'git@github.com:dell-asm/asm-deployer.git', :branch => 'master'
+
+  #For Local Development uncomment this line
+  #gem 'asm-deployer', :git => 'https://github.com/dell-asm/asm-deployer.git', :branch => 'master'
+
   gem 'rake',"~> 10.0"
   gem 'rspec', '~> 2.14'
   gem 'puppetlabs_spec_helper'
