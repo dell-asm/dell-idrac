@@ -54,7 +54,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
              'ShareName' => @resource['nfssharepath'],
              'ShareType' => '0',
              'FileName' => file_name,
-             'ShutdownType' => '0'}
+             'ShutdownType' => '0',      # graceful shutdown
+             'EndHostPowerState' => '0'} # final power state is off
     forced_shutdown = false
     begin
       job_id = Puppet::Idrac::Util.wsman_system_config_action(:import, props)
