@@ -1,7 +1,7 @@
 require 'rexml/document'
 
 include REXML
-require 'pty'
+
 
 module Puppet
   module Idrac
@@ -10,12 +10,13 @@ module Puppet
     class ShutdownError < Exception; end
     class PendingChangesError < Exception; end
     module Util
-      # FIXME: asm/device_management is dependent on asm-deployer, which should be eliminated as a dependency for this module
+
       def self.get_transport
-        require 'asm/device_management'
-        @transport ||= begin
-          ASM::DeviceManagement.parse_device_config(Puppet[:certname])
-        end
+        @transport
+      end
+
+      def self.transport=(transport)
+        @transport=transport
       end
 
       def self.view_disks(type=:virtual)
