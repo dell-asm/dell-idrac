@@ -173,8 +173,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     if @boot_device =~ /WITH_RAID|HD/i || @resource[:ensure] == :teardown
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"IntegratedRaid" => "Enabled"})
     end
-    # RAID is disabled in BIOS for deployment option "SD with RAID disabled"
-    if @boot_device == 'SD'
+    # RAID is disabled in BIOS and re-enabled after teardown
+    if @boot_device == 'SD' && @resource[:ensure] != :teardown
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"IntegratedRaid" => "Disabled"})
     end
     if @boot_device =~ /HD/i
