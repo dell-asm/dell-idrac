@@ -1,10 +1,11 @@
 provider_path = Pathname.new(__FILE__).parent.parent
 require 'rexml/document'
-
 include REXML
 require 'puppet/idrac/util'
+require File.join(provider_path, 'idrac')
 
-Puppet::Type.type(:powerstate).provide(:powerstate) do
+Puppet::Type.type(:powerstate).provide(:powerstate,
+                                       :parent => Puppet::Provider::Idrac) do
   desc "Dell idrac provider for import system configuration."
   def exists?
     if checkpowerstate != :on
@@ -17,10 +18,6 @@ Puppet::Type.type(:powerstate).provide(:powerstate) do
 
   def create
     ensure_on
-  end
-
-  def transport
-    @transport ||= Puppet::Idrac::Util.get_transport()
   end
 
   def ensure_on

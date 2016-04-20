@@ -11,6 +11,11 @@ require 'net/ssh'
 require 'puppet/util/warnings'
 require 'fileutils'
 
+require 'pathname' # workaround not necessary in newer versions of Puppet
+mod = Puppet::Module.find('transport', Puppet[:environment].to_s)
+require File.join mod.path, 'lib/puppet_x/puppetlabs/transport'
+require 'puppet_x/puppetlabs/transport/idrac'
+
 class Puppet::Provider::Idrac <  Puppet::Provider
   def exists?
     wait_for_lc_ready
@@ -160,7 +165,11 @@ class Puppet::Provider::Idrac <  Puppet::Provider
   end
 
   def transport
-    @transport ||= Puppet::Idrac::Util.get_transport
+    @transport ||= begin
+     transport=PuppetX::Puppetlabs::Transport.retrieve(:resource_ref => resource[:transport], :catalog => resource.catalog, :provider => 'idrac')
+     Puppet::Idrac::Util.transport = transport.endpoint
+     transport.endpoint
+    end
   end
 
   def exporttemplate(postfix='original')

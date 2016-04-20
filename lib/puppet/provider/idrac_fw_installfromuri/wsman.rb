@@ -156,10 +156,6 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     end
   end
 
-  def transport
-    @transport ||= Puppet::Idrac::Util.get_transport()
-  end
-
   def run_wsman(cmd)
     wait_for_lc_ready
     sleeptime = 30

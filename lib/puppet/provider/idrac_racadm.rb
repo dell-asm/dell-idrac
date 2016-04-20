@@ -1,11 +1,11 @@
 begin
   require 'puppet_x/puppetlabs/transport'
-  require 'puppet_x/puppetlabs/transport/idrac'
+  require 'puppet_x/puppetlabs/transport/racadm'
 rescue LoadError
   require 'pathname' # WORK_AROUND #14073 and #7788
   mod = Puppet::Module.find('transport', Puppet[:environment].to_s)
   require File.join mod.path, 'lib/puppet_x/puppetlabs/transport'
-  require File.join mod.path, 'lib/puppet_x/puppetlabs/transport/idrac'
+  require File.join mod.path, 'lib/puppet_x/puppetlabs/transport/racadm'
 end
 
 class Puppet::Provider::IdracRacadm <  Puppet::Provider
@@ -23,7 +23,7 @@ class Puppet::Provider::IdracRacadm <  Puppet::Provider
   end
 
   def client
-    @transport ||= PuppetX::Puppetlabs::Transport.retrieve(:resource_ref => resource[:transport], :catalog => resource.catalog, :provider => 'idrac')
+    @transport ||= PuppetX::Puppetlabs::Transport.retrieve(:resource_ref => resource[:transport], :catalog => resource.catalog, :provider => 'racadm')
     @transport.ssh
   end
 
