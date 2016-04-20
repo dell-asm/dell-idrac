@@ -22,7 +22,7 @@ describe Puppet::Provider::Importtemplatexml do
   end
 
   before(:each) do
-    @test_config_dir = URI(File.join(Dir.pwd, "spec", "fixtures"))
+    @test_config_dir = URI( File.expand_path("../../../../fixtures", __FILE__))
     @view_disk_xml = File.read(@test_config_dir.path + '/disks.xml')
     Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
     @mock_net_config_data =
@@ -140,7 +140,7 @@ describe Puppet::Provider::Importtemplatexml do
         :enable_npar => 'true',
         :target_boot_device => 'HD',
         :servicetag => 'FOOTAG',
-        :nfssharepath => @test_config_dir.to_s,
+        :nfssharepath => @test_config_dir.path.to_s,
         :network_config => @mock_net_config_data,
         :raid_configuration => @mock_raid_config,
         :bios_settings => {'InternalSdCard' => 'Enabled'}
@@ -355,7 +355,7 @@ describe Puppet::Provider::Importtemplatexml do
       @network_configuration = JSON.parse(File.read(@test_config_dir.path + '/network_configuration.json'))['networkConfiguration']
       #ASM::NetworkConfiguration.any_instance.stub(:new).and_return(ASM::NetworkConfiguration.new(@network_configuration))
       #ASM::NetworkConfiguration.any_instance.stub(:add_nics!).and_return(nil)
-      @test_config_dir = URI(File.join(Dir.pwd, "spec", "fixtures"))
+      @test_config_dir = URI( File.expand_path("../../../../fixtures", __FILE__))
       Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
       #Puppet::Provider::Importtemplatexml.any_instance.stub(:process_nics).and_return({"partial" => {"NIC.Integrated.1-1-1" => {"IntegratedRaid"=>"Disabled"}}})
       @fixture.resource[:target_boot_device] = 'iSCSI'
