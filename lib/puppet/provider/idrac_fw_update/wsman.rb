@@ -2,7 +2,8 @@ require 'puppet/idrac/util'
 require 'nokogiri'
 require 'active_support'
 
-Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
+Puppet::Type.type(:idrac_fw_update).provide(:wsman,
+                                            :parent => Puppet::Provider::Idrac) do
 
   def exists?
     @share = resource[:path].split('/')[0..-2].join('/')
@@ -28,10 +29,6 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman) do
     else
       raise Puppet::Error, doc.xpath('//n1:Message')
     end
-  end
-
-  def transport
-    @transport ||= Puppet::Idrac::Util.get_transport()
   end
 
   def run_wsman(cmd)
