@@ -184,7 +184,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => "Disk.SDInternal.1-1"})
     end
 
-    if @boot_device =~ /VSAN/i
+    if @boot_device =~ /AHCI_VSAN/i
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"EmbSata" => "AhciMode"})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"SecurityFreezeLock" => "Disabled"})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"WriteCache" => "Disabled"})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => get_first_sata_disk})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "Off"}) if is_sd_card?
+    elsif @boot_device =~ /VSAN/i
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "On"})
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCardRedundancy" => "Mirror"})
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"IntegratedRaid" => "Enabled"})
@@ -200,6 +206,37 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       changes["partial"]["BIOS.Setup.1-1"]["BootMode"] = "Bios"
     end
     changes
+  end
+
+  def physical_disks
+    @physical_disks ||= Puppet::Idrac::Util.view_disks(:physical)
+  end
+
+  def is_sd_card?
+    disks_enum = physical_disks
+    sd_disks = []
+    disks_enum.xpath('//Envelope/Body/PullResponse/Items/DCIM_PhysicalDiskView').each do |x|
+      sd_disks << x.at_xpath('FQDD') if x.at_xpath('MediaType').text != '0'
+    end
+    !sd_disks.empty?
+  end
+
+  def get_first_sata_disk
+    disks_enum = physical_disks
+    sata_disks = []
+    disks_enum.xpath('//Envelope/Body/PullResponse/Items/DCIM_PhysicalDiskView').each do |x|
+      slot = x.xpath('Slot').text
+      connector = x.xpath('Connector').text
+      bus_protocol = x.xpath('BusProtocol').text
+      sata_disks << "%s-%s" % [slot, connector] if bus_protocol == '5'
+    end
+    raise("Embedded SATA Disk not found") if sata_disks.empty?
+
+    Puppet.debug("SATA Disk: #{sata_disks}")
+
+    suffix = sata_disks.first.split('-')
+    disk_name = ('A'..'Z').to_a[suffix[0].to_i]
+    "Disk.SATAEmbedded.%s-%s" % [ disk_name, '1' ]
   end
 
   def xml_base
@@ -510,7 +547,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def raid_in_sync?(xml_base, log=false)
-    if @boot_device =~ /WITH_RAID|HD/i && !(@boot_device =~ /SD_WITH_RAID_VSAN/i)
+    if @boot_device =~ /WITH_RAID|HD/i && !(@boot_device =~ /SD_WITH_RAID_VSAN|AHCI_VSAN/i)
       raid_configuration.keys.each do |raid_fqdd|
         raid_fqdd_xpath = "//Component[@FQDD='#{raid_fqdd}']"
         controller_xml = xml_base.xpath(raid_fqdd_xpath)
