@@ -114,11 +114,11 @@ module Puppet
         end
       end
 
-      # Waits 30 minutes for the job queue to be empty.  Raises JobClearError if it doesn't clear in that time
+      # Waits 150 seconds for the job queue to be empty.  Raises JobClearError if it doesn't clear in that time
       def self.wait_for_jobs_clear
         Puppet.info("Waiting for job queue to be empty...")
         schema = "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService"
-        60.times do
+        10.times do
           resp = ASM::WsMan.invoke(get_transport, 'enumerate', schema)
           doc = Nokogiri::XML("<results>#{resp}</results>")
           doc.remove_namespaces!
@@ -127,7 +127,7 @@ module Puppet
             Puppet.info("Job Queue is empty.")
             return
           else
-            sleep 30
+            sleep 15
           end
         end
         raise(Puppet::Idrac::JobClearError, "Timed out waiting for job queue to clear out.")
