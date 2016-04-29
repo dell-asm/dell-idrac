@@ -18,34 +18,14 @@ require 'puppet_x/puppetlabs/transport/idrac'
 
 class Puppet::Provider::Idrac <  Puppet::Provider
   def exists?
-    wait_for_lc_ready
+    Puppet::Idrac::Util.wait_for_lc_ready
     exporttemplate
     synced = resource[:ensure] != :teardown && !resource[:force_reboot] && config_in_sync?
     Puppet.info("Server is already configured.  Skipping import...") if synced
     synced
   end
 
-  #This function will exit when the LC status is 0, or a puppet error will be raised if the LC status never is 0 (never stops being busy)
-  def wait_for_lc_ready
-    lc_ready = false
-    30.times do
-      status = Puppet::Idrac::Util.lcstatus.to_i
-      if status == 0
-        lc_ready = true
-        break
-      else
-        Puppet.debug "LC status is busy: status code #{status}. Waiting..."
-        sleep sleep_time
-      end
-    end
-    raise(Puppet::Error, "Life cycle controller is busy") unless lc_ready
-  end
 
-  # how much time to sleep during wait_for_lc_ready method
-  #For some reason, this doens't actually sleep for 1 minute as expected.  It seems to sleep closer to 4-6 seconds.
-  def sleep_time
-    60
-  end
 
   #this could probably be more "integrated" with importtemplatexml's munge_config_xml with some reasonable changes to that function
   def config_in_sync?(export_postfix='original')
