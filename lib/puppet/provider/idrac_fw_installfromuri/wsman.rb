@@ -49,7 +49,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     end
     update(main)
     # Ensure LC is up and in good state before exiting
-    wait_for_lc_ready
+    Puppet::Idrac::Util.wait_for_lc_ready
   end
 
   def update(firmware_list)
@@ -157,7 +157,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
   end
 
   def run_wsman(cmd)
-    wait_for_lc_ready
+    Puppet::Idrac::Util.wait_for_lc_ready
     sleeptime = 30
     4.times do
       resp = %x[#{cmd}]

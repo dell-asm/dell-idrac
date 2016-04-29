@@ -19,6 +19,23 @@ module Puppet
         @transport = transport
       end
 
+      #This function will exit when the LC status is 0, or a puppet error will be raised if the LC status never is 0 (never stops being busy)
+      def self.wait_for_lc_ready
+        Puppet.debug "Executing LC Ready from Idrac::Util"
+        lc_ready = false
+        30.times do
+          status = Puppet::Idrac::Util.lcstatus.to_i
+          if status == 0
+            lc_ready = true
+            break
+          else
+            Puppet.debug "LC status is busy: status code #{status}. Waiting..."
+            sleep 60
+          end
+        end
+        raise(Puppet::Error, "Life cycle controller is busy") unless lc_ready
+      end
+
       def self.view_disks(type=:virtual)
         output = ASM::WsMan.invoke(get_transport, 'enumerate', "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_#{type.capitalize}DiskView")
         #Response will return multiple base nodes, which will error out with Nokogiri, so we wrap response output
@@ -114,11 +131,11 @@ module Puppet
         end
       end
 
-      # Waits 150 seconds for the job queue to be empty.  Raises JobClearError if it doesn't clear in that time
+      # Waits 30 minutes for the job queue to be empty.  Raises JobClearError if it doesn't clear in that time
       def self.wait_for_jobs_clear
         Puppet.info("Waiting for job queue to be empty...")
         schema = "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService"
-        10.times do
+        60.times do
           resp = ASM::WsMan.invoke(get_transport, 'enumerate', schema)
           doc = Nokogiri::XML("<results>#{resp}</results>")
           doc.remove_namespaces!
@@ -127,7 +144,7 @@ module Puppet
             Puppet.info("Job Queue is empty.")
             return
           else
-            sleep 15
+            sleep 30
           end
         end
         raise(Puppet::Idrac::JobClearError, "Timed out waiting for job queue to clear out.")
