@@ -1,105 +1,68 @@
-require 'spec_helper'
-require 'puppet/provider/checkjdstatus'
-require 'yaml'
-require 'rspec/expectations'
-require 'asm/wsman'
+require "spec_helper"
+require "puppet/provider/checkjdstatus"
+require "asm/wsman"
 
 describe Puppet::Provider::Checkjdstatus do
-	
-	before(:each) do
-		@idrac_attrib = {
-          :ip => '172.17.10.106',
-          :username => 'root',
-          :password => 'calvin',
-          :configxmlfilename => 'FOOTAG.xml',
-          :nfsipaddress => '172.28.10.191',
-          :enable_npar => 'true',
-          :target_boot_device => 'HD',
-          :servicetag => 'FOOTAG',
-          :nfssharepath => @test_config_dir
-        }
-		@fixture=Puppet::Provider::Checkjdstatus.new(@idrac_attrib['ip'],@idrac_attrib['username'],@idrac_attrib['password'],@idrac_attrib['dummy_job_id'])
-		@fixture.stub(:initialize).and_return("")
-		@respjdstatus= <<END
-		<?xml version="1.0" encoding="UTF-8"?>
-		<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:n1="http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LifecycleJob">
-		  <s:Header>
-			<wsa:To>http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous</wsa:To>
-			<wsa:Action>http://schemas.xmlsoap.org/ws/2004/09/transfer/GetResponse</wsa:Action>
-			<wsa:RelatesTo>uuid:09b21a27-efcf-1fcf-8002-9f3392565000</wsa:RelatesTo>
-			<wsa:MessageID>uuid:9301dff1-efdf-1fdf-81d8-502ed9ddf95c</wsa:MessageID>
-		  </s:Header>
-		  <s:Body>
-			<n1:DCIM_LifecycleJob>
-			  <n1:ElapsedTimeSinceCompletion>78</n1:ElapsedTimeSinceCompletion>
-			  <n1:InstanceID>JID_896386820311</n1:InstanceID>
-			  <n1:JobStartTime>NA</n1:JobStartTime>
-			  <n1:JobStatus>Completed</n1:JobStatus>
-			  <n1:JobUntilTime>NA</n1:JobUntilTime>
-			  <n1:Message>Successfully exported system configuration XML file.</n1:Message>
-			  <n1:MessageArguments>NA</n1:MessageArguments>
-			  <n1:MessageID>SYS043</n1:MessageID>
-			  <n1:Name>Export Configuration</n1:Name>
-			  <n1:PercentComplete>100</n1:PercentComplete>
-			</n1:DCIM_LifecycleJob>
-		  </s:Body>
-		</s:Envelope>
-END
-	@failedresp= <<END
-	<?xml version="1.0" encoding="UTF-8"?>
-<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:wsman="http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd">
-  <s:Header>
-    <wsa:To>http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous</wsa:To>
-    <wsa:Action>http://schemas.dmtf.org/wbem/wsman/1/wsman/fault</wsa:Action>
-    <wsa:RelatesTo>uuid:243235b0-efcf-1fcf-8002-9f3392565000</wsa:RelatesTo>
-    <wsa:MessageID>uuid:ad7be40f-efdf-1fdf-81db-502ed9ddf95c</wsa:MessageID>
-  </s:Header>
-  <s:Body>
-    <s:Fault>
-      <s:Code>
-        <s:Value>s:Sender</s:Value>
-        <s:Subcode>
-          <s:Value>wsman:InvalidParameter</s:Value>
-        </s:Subcode>
-      </s:Code>
-      <s:Reason>
-        <s:Text xml:lang="en">CMPI_RC_ERR_INVALID_PARAMETER</s:Text>
-      </s:Reason>
-      <s:Detail>
-        <wsman:FaultDetail>http://schemas.dmtf.org/wbem/wsman/1/wsman/faultDetail/MissingValues</wsman:FaultDetail>
-      </s:Detail>
-    </s:Fault>
-  </s:Body>
-</s:Envelope>
-END
-	end
-	context " instance validation " do
-		it "should have instance object" do
-			@fixture.should be_kind_of(Puppet::Provider::Checkjdstatus)
-			
-		end
-		it "should get the instance variable value"  do
-			
-			@fixture.instance_variable_get(:@ip).should eql(@idrac_attrib['ip'])
-			@fixture.instance_variable_get(:@username).should eql(@idrac_attrib['username'])
-			@fixture.instance_variable_get(:@password).should eql(@idrac_attrib['password'])
-			@fixture.instance_variable_get(:@instanceid).should eql(@idrac_attrib['dummy_job_id'])
-		end
-		it "should have method " do
-			@fixture.class.instance_method(:checkjdstatus).should_not == nil
-		end
-	end
-	context "when checking lc status" do
-		it "should job check status job id"  do
-			status = 'Completed'
-			message = 'Successfully exported system configuration XML file.'
-			ASM::WsMan.should_receive(:invoke).once.and_return([status, message])
-			status = @fixture.checkjdstatus
-			status.should == "Completed"
-		end
-		it "should fail if invalid job id passed" do
-			ASM::WsMan.should_receive(:invoke).once.and_return([nil, nil])
-			expect {@fixture.checkjdstatus}.to raise_error("Job ID not created")
-		end
-	end
+  let(:check_jd_status) { Puppet::Provider::Checkjdstatus.new("172.17.9.172",
+                                                              "root",
+                                                              "calvin",
+                                                              "JID_621911093617") }
+  it "should be a provider" do
+    check_jd_status.should be_kind_of(Puppet::Provider::Checkjdstatus)
+  end
+
+  it "has class variables" do
+    check_jd_status.instance_variable_get(:@ip).should eql("172.17.9.172")
+    check_jd_status.instance_variable_get(:@username).should eql("root")
+    check_jd_status.instance_variable_get(:@password).should eql("calvin")
+    check_jd_status.instance_variable_get(:@instanceid).should eql("JID_621911093617")
+  end
+
+  it "should ASM::WsMan.invoke with initalized variables" do
+    ASM::WsMan.should_receive(:invoke).with({:host => "172.17.9.172", :user => "root", :password => "calvin"},
+                                            "get",
+                                            "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LifecycleJob?InstanceID=JID_621911093617",
+                                            :logger => Puppet,
+                                            :selector => ["//n1:JobStatus", "//n1:Message", "//n1:MessageID"]
+    ).once.and_return(["Completed",
+                       "Successfully exported system configuration XML file.",
+                       "SYS043"])
+    check_jd_status.checkjdstatus.should == "Completed"
+  end
+
+  it "should return job_status when successful" do
+    ASM::WsMan.should_receive(:invoke).once.and_return(["Completed", "Successfully exported system configuration XML file.", "SYS043"])
+    check_jd_status.checkjdstatus.should == "Completed"
+  end
+
+  it "should return SYS051 when message_id is SYS051" do
+    ASM::WsMan.should_receive(:invoke).once.and_return(["", "", "SYS051"])
+    check_jd_status.checkjdstatus.should == "SYS051"
+  end
+
+  it "should return LC068 message_id is LC068" do
+    ASM::WsMan.should_receive(:invoke).once.and_return(["", "", "LC068"])
+    check_jd_status.checkjdstatus.should == "LC068"
+  end
+
+  it "should return Failed if job_status is completed with errors" do
+    ASM::WsMan.should_receive(:invoke).once.and_return(["completed with errors", "", ""])
+    check_jd_status.checkjdstatus.should == "Failed"
+  end
+
+  it "should return Failed if job_message is completed with errors" do
+    ASM::WsMan.should_receive(:invoke).once.and_return(["", "completed with errors", ""])
+    check_jd_status.checkjdstatus.should == "Failed"
+  end
+
+  it "should raise an error when job_status is an empty string" do
+    ASM::WsMan.should_receive(:invoke).once.and_return(["", "", ""])
+    expect { check_jd_status.checkjdstatus }.to raise_error(RuntimeError, "Job ID not created")
+  end
+
+  it "should raise an error when job_status is nil" do
+    ASM::WsMan.should_receive(:invoke).once.and_return([nil, "", ""])
+    expect { check_jd_status.checkjdstatus }.to raise_error(RuntimeError, "Job ID not created")
+  end
+
 end
