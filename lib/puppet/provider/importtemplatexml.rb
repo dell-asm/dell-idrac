@@ -234,7 +234,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
     Puppet.debug("SATA Disk: #{sata_disks}")
 
-    suffix = sata_disks.first.split('-')
+    suffix = sata_disks.sort.first.split('-')
     disk_name = ('A'..'Z').to_a[suffix[0].to_i]
     "Disk.SATAEmbedded.%s-%s" % [ disk_name, '1' ]
   end
