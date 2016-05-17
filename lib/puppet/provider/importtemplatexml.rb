@@ -268,6 +268,22 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         @changes['partial']['BIOS.Setup.1-1'].delete('BiosBootSeq')
       end
     end
+
+    existing_hdd_seq = find_hdd_seq(xml_base)
+    hdd_seq_change = @changes['partial']['BIOS.Setup.1-1']['HddSeq']
+    Puppet.debug("Existing HDD SEQ: #{existing_hdd_seq}")
+    Puppet.debug("HDD Seq Change: #{hdd_seq_change}")
+    if existing_boot_seq && boot_seq_change
+      seq_diff = hdd_seq_change.delete(' ').split(',').zip(existing_hdd_seq.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
+      #If tearing down, the HDD will already be removed from the boot sequence
+      if seq_diff.size ==0 || @resource[:ensure] == :teardown
+        @changes['partial']['BIOS.Setup.1-1'].delete('HddSeq')
+      end
+      if existing_hdd_seq.split(",").first.strip == hdd_seq_change
+        @changes['partial']['BIOS.Setup.1-1'].delete('HddSeq')
+      end
+    end
+
     handle_missing_devices(xml_base, @changes)
     @changes.deep_merge!(get_raid_config_changes(xml_base))
     #Handle whole nodes (node should be replaced if exists, or should be created if not)
@@ -361,6 +377,25 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           node = Nokogiri::XML(comment.content)
           #Other names are possible for the node that contain "BiosBootSeq", such as "OneTimeBiosBootSeq", so must ensure it is exactly "BiosBootSeq"
           if node.at_xpath("/Attribute")['Name'] == "BiosBootSeq"
+            return node.at_xpath("/Attribute").content
+          end
+        end
+      end
+    end
+    nil
+  end
+
+  #Helper function which just searches through the xml comments for HddSeq value, since it will be commented out
+  def find_hdd_seq(xml_base)
+    uncommented = xml_base.at_xpath("//Attribute[@Name='HddSeq']")
+    unless uncommented.nil?
+      return uncommented.content
+    else
+      xml_base.xpath("//Component[@FQDD='BIOS.Setup.1-1']/comment()").each do |comment|
+        if comment.content.include?("HddSeq")
+          node = Nokogiri::XML(comment.content)
+          #Other names are possible for the node that contain "BiosBootSeq", such as "OneTimeBiosBootSeq", so must ensure it is exactly "BiosBootSeq"
+          if node.at_xpath("/Attribute")['Name'] == "HddSeq"
             return node.at_xpath("/Attribute").content
           end
         end
