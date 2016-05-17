@@ -258,29 +258,18 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     get_config_changes
     xml_base.xpath("//Component[contains(@FQDD, 'NIC.') or contains(@FQDD, 'FC.')]").remove unless @changes['whole'].find_all{|k,v| k =~ /^(NIC|FC)\./}.empty?
     xml_base['ServiceTag'] = @resource[:servicetag]
-    # Current workaround for LC issue, where if BiotBootSeq is already set to what ASM needs it to be, setting it again to the same thing will cause an error.
-    existing_boot_seq = find_bios_boot_seq(xml_base)
-    boot_seq_change = @changes['partial']['BIOS.Setup.1-1']['BiosBootSeq']
-    if existing_boot_seq && boot_seq_change
-      seq_diff = boot_seq_change.delete(' ').split(',').zip(existing_boot_seq.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
-      #If tearing down, the HDD will already be removed from the boot sequence
-      if seq_diff.size ==0 || @resource[:ensure] == :teardown
-        @changes['partial']['BIOS.Setup.1-1'].delete('BiosBootSeq')
-      end
-    end
 
-    existing_hdd_seq = find_hdd_seq(xml_base)
-    hdd_seq_change = @changes['partial']['BIOS.Setup.1-1']['HddSeq']
-    Puppet.debug("Existing HDD SEQ: #{existing_hdd_seq}")
-    Puppet.debug("HDD Seq Change: #{hdd_seq_change}")
-    if existing_hdd_seq && hdd_seq_change
-      seq_diff = hdd_seq_change.delete(' ').split(',').zip(existing_hdd_seq.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
-      #If tearing down, the HDD will already be removed from the boot sequence
-      if seq_diff.size ==0 || @resource[:ensure] == :teardown
-        @changes['partial']['BIOS.Setup.1-1'].delete('HddSeq')
-      end
-      if existing_hdd_seq.split(",").first.strip == hdd_seq_change
-        @changes['partial']['BIOS.Setup.1-1'].delete('HddSeq')
+    %w(BiosBootSeq, HddSeq).each do |attr|
+      existing_attr_val = find_bios_attribute(xml_base, attr)
+      requested_val = @changes['partial']['BIOS.Setup.1-1'][attr]
+      message = "Attribute: %s, Existing value: %s, Requested value: %s" % [attr, existing_attr_val, requested_val] 
+      Puppet.debug(message)
+      if existing_attr_val && requested_val
+        seq_diff = requested_val.delete(' ').split(',').zip(existing_attr_val.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
+        #If tearing down, the HDD will already be removed from the boot sequence
+        if seq_diff.size ==0 || @resource[:ensure] == :teardown
+          @changes['partial']['BIOS.Setup.1-1'].delete(attr)
+        end
       end
     end
 
@@ -366,36 +355,16 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
   end
 
-  #Helper function which just searches through the xml comments for BiosBootSeq value, since it will be commented out
-  def find_bios_boot_seq(xml_base)
-    uncommented = xml_base.at_xpath("//Attribute[@Name='BiosBootSeq']")
-    unless uncommented.nil?
-      return uncommented.content
-    else
-      xml_base.xpath("//Component[@FQDD='BIOS.Setup.1-1']/comment()").each do |comment|
-        if comment.content.include?("BiosBootSeq")
-          node = Nokogiri::XML(comment.content)
-          #Other names are possible for the node that contain "BiosBootSeq", such as "OneTimeBiosBootSeq", so must ensure it is exactly "BiosBootSeq"
-          if node.at_xpath("/Attribute")['Name'] == "BiosBootSeq"
-            return node.at_xpath("/Attribute").content
-          end
-        end
-      end
-    end
-    nil
-  end
-
   #Helper function which just searches through the xml comments for HddSeq value, since it will be commented out
-  def find_hdd_seq(xml_base)
-    uncommented = xml_base.at_xpath("//Attribute[@Name='HddSeq']")
+  def find_bios_attribute(xml_base, attr_name)
+    uncommented = xml_base.at_xpath("//Attribute[@Name='#{attr_name}']")
     unless uncommented.nil?
       return uncommented.content
     else
       xml_base.xpath("//Component[@FQDD='BIOS.Setup.1-1']/comment()").each do |comment|
-        if comment.content.include?("HddSeq")
+        if comment.content.include?(attr_name)
           node = Nokogiri::XML(comment.content)
-          #Other names are possible for the node that contain "BiosBootSeq", such as "OneTimeBiosBootSeq", so must ensure it is exactly "BiosBootSeq"
-          if node.at_xpath("/Attribute")['Name'] == "HddSeq"
+          if node.at_xpath("/Attribute")['Name'] == attr_name
             return node.at_xpath("/Attribute").content
           end
         end
@@ -841,3 +810,4 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     attr_node.nil? ? nil : attr_node.content
   end
 end
+
