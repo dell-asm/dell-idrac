@@ -273,7 +273,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     hdd_seq_change = @changes['partial']['BIOS.Setup.1-1']['HddSeq']
     Puppet.debug("Existing HDD SEQ: #{existing_hdd_seq}")
     Puppet.debug("HDD Seq Change: #{hdd_seq_change}")
-    if existing_boot_seq && boot_seq_change
+    if existing_hdd_seq && hdd_seq_change
       seq_diff = hdd_seq_change.delete(' ').split(',').zip(existing_hdd_seq.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
       #If tearing down, the HDD will already be removed from the boot sequence
       if seq_diff.size ==0 || @resource[:ensure] == :teardown
