@@ -213,7 +213,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman,
  
   def clear_job_queue
     Puppet.debug("Clearing Job Queue")
-    wsman_cmd = "wsman invoke -a \"DeleteJobQueue\" http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\",SystemName=\"Idrac\",Name=\"JobService\",SystemCreationClassName=\"DCIM_ComputerSystem\" -N root/dcim -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -j utf-8 -y basic -o -m 256 -c Dummy -V  -k \"JobID=JID_CLEARALL\" "
+    wsman_cmd = "wsman invoke -a \"DeleteJobQueue\" http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\"&SystemName=\"Idrac\"&Name=\"JobService\"&SystemCreationClassName=\"DCIM_ComputerSystem\" -N root/dcim -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -j utf-8 -y basic -o -m 256 -c Dummy -V  -k \"JobID=JID_CLEARALL\" "
     resp = run_wsman(wsman_cmd)
     doc = Nokogiri::XML(resp)
     if doc.xpath('//n1:MessageID').text == 'SUP020'
@@ -225,7 +225,7 @@ Puppet::Type.type(:idrac_fw_update).provide(:wsman,
   
   def get_api_status
     Puppet.debug("Checking API Status")
-    wsman_cmd = "wsman invoke -a GetRemoteServicesAPIStatus http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\",CreationClassName=\"DCIM_LCService\",SystemName=\"DCIM:ComputerSystem\",Name=\"DCIM:LCService\" -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -y basic -c Dummy -V"
+    wsman_cmd = "wsman invoke -a GetRemoteServicesAPIStatus http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName=\"DCIM_ComputerSystem\"&CreationClassName=\"DCIM_LCService\"&SystemName=\"DCIM:ComputerSystem\"&Name=\"DCIM:LCService\" -u #{transport[:user]} -p #{transport[:password]} -h #{transport[:host]} -P 443 -v -y basic -c Dummy -V"
     resp = %x[ #{wsman_cmd} ]
     doc = Nokogiri::XML(resp)
     if doc.xpath('//n1:LCStatus').text == "0"
