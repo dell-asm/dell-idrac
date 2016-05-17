@@ -99,7 +99,7 @@ module Puppet
         Puppet.debug("Clearing Job Queue")
         tries = 1
         begin
-          schema = "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\",SystemName=\"Idrac\",Name=\"JobService\",SystemCreationClassName=\"DCIM_ComputerSystem\""
+          schema = "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\"&SystemName=\"Idrac\"&Name=\"JobService\"&SystemCreationClassName=\"DCIM_ComputerSystem\""
           options = {:props=>{"JobID"=> "JID_CLEARALL#{"_FORCE" if force}"}, :selector => ["//n1:ReturnValue", "//n1:Message"], :logger => Puppet}
           response_id, message = ASM::WsMan.invoke(get_transport, "DeleteJobQueue", schema, options)
           if response_id == '0'
@@ -195,7 +195,7 @@ module Puppet
 
       def self.wsman_system_config_action(type, props={})
         require 'asm/wsman'
-        schema ='http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName="DCIM_ComputerSystem",CreationClassName="DCIM_LCService",SystemName="DCIM:ComputerSystem",Name="DCIM:LCService"'
+        schema ='http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LCService?SystemCreationClassName="DCIM_ComputerSystem"&CreationClassName="DCIM_LCService"&SystemName="DCIM:ComputerSystem"&Name="DCIM:LCService"'
         options = {:props=>props, :logger => Puppet}
         job_id = ''
         action = "#{type.capitalize}SystemConfiguration"
