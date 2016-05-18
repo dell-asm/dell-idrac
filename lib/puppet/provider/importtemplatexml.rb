@@ -259,7 +259,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     xml_base.xpath("//Component[contains(@FQDD, 'NIC.') or contains(@FQDD, 'FC.')]").remove unless @changes['whole'].find_all{|k,v| k =~ /^(NIC|FC)\./}.empty?
     xml_base['ServiceTag'] = @resource[:servicetag]
 
-    %w(BiosBootSeq, HddSeq).each do |attr|
+    %w(BiosBootSeq HddSeq).each do |attr|
       existing_attr_val = find_bios_attribute(xml_base, attr)
       requested_val = @changes['partial']['BIOS.Setup.1-1'][attr]
       message = "Attribute: %s, Existing value: %s, Requested value: %s" % [attr, existing_attr_val, requested_val] 
