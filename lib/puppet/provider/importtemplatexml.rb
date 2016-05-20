@@ -460,8 +460,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
             raid_configuration = {}
             disk_types.keys.each do |disk|
               controller = disk.split(':').last
-              raid_configuration[controller] ||= []
-              raid_configuration[controller] << disk
+              raid_configuration[controller][:hotspares] << disk
             end
             Puppet.debug("Inside VSAN RAID Configuration: #{raid_configuration}")
           elsif !(unprocessed['virtualDisks'].empty? && unprocessed['externalVirtualDisks'].empty?)
