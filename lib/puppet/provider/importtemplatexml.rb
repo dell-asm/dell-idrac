@@ -457,7 +457,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           end
           raid_configuration = Hash.new { |h, k| h[k] = {:virtual_disks => [], :hotspares => []} }
           if unprocessed.nil? && @boot_device.match(/VSAN/i)
-            raid_configuration = {}
             disk_types.keys.each do |disk|
               controller = disk.split(':').last
               raid_configuration[controller][:hotspares] << disk
