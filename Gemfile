@@ -2,6 +2,7 @@ source 'https://rubygems.org'
 
 gem 'activesupport'
 gem 'nokogiri', '1.5.10'
+gem 'rbvmomi'
 gem 'dell-asm-util', :git => 'https://github.com/dell-asm/dell-asm-util.git', :branch => 'master'
 
 group :development, :test do
