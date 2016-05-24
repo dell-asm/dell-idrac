@@ -498,7 +498,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         if target_current_xml.to_s.match(/="CurrentControllerMode">RAID/)
           changes['whole'][raid_configuration.keys.first] = { 'CurrentControllerMode' => "HBA"}
           # Need to remove Virtual Disks when we move Controller from RAID to HBA mode.
-          raid_configuration.keys.each{|controller| changes['whole'][controller] = { 'RAIDresetConfig' => "True" } }
+          raid_configuration.keys.each{|controller| changes['whole'][controller].merge!({ 'RAIDresetConfig' => "True" }) }
         end
       elsif @boot_device =~ /WITH_RAID|HD/i
         changes['partial'] = {'BIOS.Setup.1-1'=> {'HddSeq' => raid_configuration.keys.first}} if @boot_device =~ /HD/i
