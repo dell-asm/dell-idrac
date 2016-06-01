@@ -27,6 +27,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
 
 
   def exists?
+    transport # Force initialization, Puppet::Idrac::Util depends on it
     @force_restart = resource[:force_restart]
     @firmwares = ASM::Util.asm_json_array(resource[:idrac_firmware])
     false
@@ -143,10 +144,6 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
       Puppet.info("Failed firmware jobs: #{failures}")
       raise Puppet::Error, "Firmware update failed in the lifecycle controller.  Please refer to LifeCycle job logs"
     end
-  end
-
-  def transport
-    @transport ||= Puppet::Idrac::Util.get_transport()
   end
 
   def wsman_client
