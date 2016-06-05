@@ -35,7 +35,7 @@ Puppet::Type.type(:powerstate).provide(:powerstate,
     endpoint = {:host => transport[:host], :user => transport[:user], :password => transport[:password]}
     options = {'RequestedState' => '2'}
     ASM::WsMan.invoke(endpoint, 'RequestStateChange',
-    'http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_ComputerSystem?CreationClassName="DCIM_ComputerSystem",Name="srv:system"',
+    'http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_ComputerSystem?CreationClassName="DCIM_ComputerSystem"&Name="srv:system"',
     :selector => '//n1:ReturnValue',
     :logger => Puppet,
     :props => options)
