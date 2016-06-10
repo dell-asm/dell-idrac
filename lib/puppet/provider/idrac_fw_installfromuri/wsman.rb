@@ -152,7 +152,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
 
   def install_from_uri(config_file)
     config_file_path = config_file.path
-    schema = "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService,SystemCreationClassName=DCIM_ComputerSystem,SystemName=IDRAC:ID,Name=SoftwareUpdate"
+    schema = "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService&SystemCreationClassName=DCIM_ComputerSystem&SystemName=IDRAC:ID&Name=SoftwareUpdate"
     resp = wsman_client.invoke("InstallFromURI", schema, :input_file => config_file_path)
     if resp[:return_value] == '4096'
       job_id = resp[:job]
@@ -214,7 +214,7 @@ EOF
   end
 
   def create_reboot_job(reboot_file)
-    url = "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService,SystemCreationClassName=DCIM_ComputerSystem,SystemName=IDRAC:ID,Name=SoftwareUpdate"
+    url = "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareInstallationService?CreationClassName=DCIM_SoftwareInstallationService&SystemCreationClassName=DCIM_ComputerSystem&SystemName=IDRAC:ID&Name=SoftwareUpdate"
     Puppet.debug("Creating Reboot Job")
     resp = wsman_client.invoke("CreateRebootJob", url, :input_file => reboot_file.path)
     if resp[:return_value] == '4096'
@@ -229,7 +229,7 @@ EOF
   end
 
   def setup_job_queue(job_queue_config_file)
-    url = "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\",SystemName=\"Idrac\",Name=\"JobService\",SystemCreationClassName=\"DCIM_ComputerSystem\" -N root/dcim"
+    url = "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_JobService?CreationClassName=\"DCIM_JobService\"&SystemName=\"Idrac\"&Name=\"JobService\"&SystemCreationClassName=\"DCIM_ComputerSystem\" -N root/dcim"
     Puppet.debug("Setting up Job Queue")
     4.times do |t|
       resp = wsman_client.invoke("SetupJobQueue", url, :input_file => job_queue_config_file.path)
