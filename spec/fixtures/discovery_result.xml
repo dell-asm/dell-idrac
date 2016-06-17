@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<DiscoveryResult>
+  <deviceRefMap>
+    <entry>
+      <key>172.17.2.188</key>
+      <value>
+        <refId>ff8080815471c3b50154a0cb562233d7</refId>
+        <refType>serverRefType</refType>
+        <displayName>Server - JDQSGT1</displayName>
+        <deviceType>server</deviceType>
+      </value>
+    </entry>
+  </deviceRefMap>
+  <exceptionMessageMap/>
+</DiscoveryResult>
