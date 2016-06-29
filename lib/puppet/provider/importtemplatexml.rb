@@ -185,6 +185,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
 
     if @boot_device =~ /AHCI_VSAN/i
+      # Delete embedded disk component in case we are setting EmbSata to AhciMode
+      xml_base.xpath("//Component[contains(@FQDD, 'RAID.Embedded.')]").remove
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"EmbSata" => "AhciMode"})
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"SecurityFreezeLock" => "Disabled"})
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"WriteCache" => "Disabled"})
@@ -496,8 +498,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     else
       if @boot_device =~ /VSAN/i
         if target_current_xml.to_s.match(/="CurrentControllerMode">RAID/)
-          changes['whole'][raid_configuration.keys.first] = { 'CurrentControllerMode' => "HBA",
-                                                              'RAIDresetConfig' => "True" }
+          raids = (raid_configuration.keys || []).reject {|x| x.match(/Embedded/)}
+          unless raids.empty?
+            changes['whole'][raids.first] = { 'CurrentControllerMode' => "HBA",
+                                              'RAIDresetConfig' => "True" }
+          end
         end
       elsif @boot_device =~ /WITH_RAID|HD/i
         changes['partial'] = {'BIOS.Setup.1-1'=> {'HddSeq' => raid_configuration.keys.first}} if @boot_device =~ /HD/i
