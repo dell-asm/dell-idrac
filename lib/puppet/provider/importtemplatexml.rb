@@ -500,8 +500,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         if target_current_xml.to_s.match(/="CurrentControllerMode">RAID/)
           raids = (raid_configuration.keys || []).reject {|x| x.match(/Embedded/)}
           unless raids.empty?
-            changes['whole'][raids.first] = { 'CurrentControllerMode' => "HBA",
-                                              'RAIDresetConfig' => "True" }
+            changes['whole'][raids.first] = { 'CurrentControllerMode' => "HBA" }
           end
         end
       elsif @boot_device =~ /WITH_RAID|HD/i
