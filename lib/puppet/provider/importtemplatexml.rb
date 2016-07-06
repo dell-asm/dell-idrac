@@ -19,11 +19,45 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @templates_dir = File.join(Puppet::Module.find('idrac').path, 'templates')
     @exported_postfix = exported_postfix
     @boot_device = resource[:target_boot_device]
+    @import_operation_count = 1
+    @ahci_mode = false
   end
 
   def importtemplatexml
-    munge_config_xml unless @xml_processed
-    execute_import
+    if @boot_device == "AHCI_VSAN"
+      2.times do
+        Puppet.debug("Import Count: #{@import_operation_count}")
+        Puppet.debug("Boot Device: #{@boot_device}")
+        munge_config_xml
+        execute_import
+
+        break if @ahci_mode
+
+        @xml_base = nil
+        @xml_processed = false
+        @changes = nil
+        @import_operation_count += 1
+        export_config
+      end
+    else
+      munge_config_xml unless @xml_processed
+      execute_import
+    end
+  end
+
+  def export_config(name_postfix='original')
+    export_file_name = File.basename(@resource[:configxmlfilename], ".xml")+ "_#{name_postfix}.xml"
+    Puppet::Idrac::Util.wait_or_clear_running_jobs
+    require 'asm/util'
+    props = {'IPAddress' => resource[:nfsipaddress] || ASM::Util.get_preferred_ip(@ip),
+             'ShareName' => resource[:nfssharepath],
+             'ShareType' => 0,
+             'FileName' => export_file_name, }
+    job_id = Puppet::Idrac::Util.wsman_system_config_action(:export, props)
+    Puppet.debug("ExportSystemConfiguration job id: #{job_id}")
+    wait_for_export(job_id)
+    write_export_xml
+    job_id
   end
 
   # Helper check that just sees if the iscsi/fcoe offloads are set as we want them.  Helps to avoid an extra import sometimes
@@ -117,6 +151,39 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     raise "Import System Configuration is still running."
   end
 
+  def write_export_xml(name_postfix='original')
+    export_file_name = File.basename(@resource[:configxmlfilename], ".xml")+ "_#{name_postfix}.xml"
+    file_path = File.join(@resource[:nfssharepath], export_file_name)
+    #Need to remove this section because of potentially sensitive data
+    xml = Nokogiri::XML(File.read(file_path))
+    xml.xpath("//Component[not(contains(@FQDD, 'NIC.') or contains(@FQDD, 'BIOS.') or contains(@FQDD, 'RAID.') or contains(@FQDD, 'LifecycleController.'))]").remove
+    #The remove above leaves many empty lines in the xml.  Just remove all the text() at the top level to keep file clean
+    xml.xpath('/SystemConfiguration/text()').remove
+    File.open(file_path, 'w+') { |file| file.write(xml.root.to_xml(:indent => 2)) }
+  end
+
+
+  def wait_for_export(instance_id)
+    job_status_obj = Puppet::Provider::Checkjdstatus.new(@ip, @username, @password, instance_id)
+    for i in 0..30
+      response = job_status_obj.checkjdstatus
+      if response  == "Completed"
+        Puppet.info "Export System Configuration is completed."
+        break
+      else
+        if response  == "Failed"
+          raise "Export Job Failed."
+        else
+          Puppet.info "Export job is still running, waiting..."
+          sleep 15
+        end
+      end
+    end
+    if response != "Completed"
+      raise "Export System Configuration has not completed."
+    end
+  end
+
   def find_target_bios_setting(attr_name)
     @bios_enumeration ||=
       begin
@@ -186,12 +253,24 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
     if @boot_device =~ /AHCI_VSAN/i
       # Delete embedded disk component in case we are setting EmbSata to AhciMode
-      xml_base.xpath("//Component[contains(@FQDD, 'RAID.Embedded.')]").remove
-      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"EmbSata" => "AhciMode"})
-      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"SecurityFreezeLock" => "Disabled"})
-      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"WriteCache" => "Disabled"})
-      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => get_first_sata_disk})
-      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "Off"}) if is_sd_card?
+      emb_sata = find_attribute_value(xml_base, 'BIOS.Setup.1-1', 'EmbSata', false)
+      Puppet.debug("Embedded Sata value: #{emb_sata}, import count #{@import_operation_count}")
+      if emb_sata == "RaidMode" && @import_operation_count == 1
+        # Check if there is any Virtual Disk
+        emb_raids = raid_configuration.keys.find_all {|x| x.match(/Embedded/i)}
+        emb_raids.each do |emb_raids|
+          changes['whole'][emb_raids] = { 'RAIDresetConfig' => "True",
+                                          'RAIDforeignConfig' => 'Clear'}
+        end
+      else
+        @ahci_mode = true
+        xml_base.xpath("//Component[contains(@FQDD, 'RAID.Embedded.')]").remove
+        changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"EmbSata" => "AhciMode"})
+        changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"SecurityFreezeLock" => "Disabled"})
+        changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"WriteCache" => "Disabled"})
+        changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => get_first_sata_disk})
+        changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "Off"}) if is_sd_card?
+      end
     elsif @boot_device =~ /VSAN/i
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "On"})
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCardRedundancy" => "Mirror"})
@@ -311,8 +390,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   def remove_invalid_settings(xml_to_edit)
     # HddSeq seems to cause a lot of issues by letting it stay.
     # We only allow it to stay if we're specifically trying to set it for booting from hard drive
-    hdd_seq = find_attribute_value(xml_to_edit, 'BIOS.Setup.1-1', 'HddSeq', false)
-    hdd_seq.remove unless hdd_seq.nil? || @changes['partial']['BIOS.Setup.1-1']['HddSeq']
+    #hdd_seq = find_attribute_value(xml_to_edit, 'BIOS.Setup.1-1', 'HddSeq', false)
+    #hdd_seq.remove unless hdd_seq.nil? || @changes['partial']['BIOS.Setup.1-1']['HddSeq']
     # Compare the changes to BIOS.Setup.1-1 with the bios settings that exist on the target server.
     # We do not attempt to set if we cannot find the bios setting in the server's BIOS enumeration
     bios_settings = xml_to_edit.xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute")
