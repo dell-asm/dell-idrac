@@ -454,14 +454,16 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @raid_configuration ||=
         begin
           unprocessed = @resource[:raid_configuration]
-          disks_enum = Puppet::Idrac::Util.view_disks(:physical)
+          raid_configuration = Hash.new { |h, k| h[k] = {:virtual_disks => [], :hotspares => [], :nonraid => []} }
           disk_types = {}
+          disks_enum = Puppet::Idrac::Util.view_disks(:physical)
+
           disks_enum.xpath('//Envelope/Body/PullResponse/Items/DCIM_PhysicalDiskView').each do |x|
             fqdd = x.xpath('FQDD').text
             type = x.at_xpath('MediaType').text == '0' ? :hdd : :ssd
             disk_types[fqdd] = type
           end
-          raid_configuration = Hash.new { |h, k| h[k] = {:virtual_disks => [], :hotspares => []} }
+
           if unprocessed.nil? && @boot_device.match(/VSAN/i)
             disk_types.keys.each do |disk|
               controller = disk.split(':').last
@@ -470,11 +472,16 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
             Puppet.debug("Inside VSAN RAID Configuration: #{raid_configuration}")
           elsif !(unprocessed['virtualDisks'].empty? && unprocessed['externalVirtualDisks'].empty?)
             (unprocessed['virtualDisks'] + unprocessed['externalVirtualDisks']).each do |config|
-              type = disk_types[config['physicalDisks'].first]
               #Just check first disk in the list to get what type of virtual disk it is
-              raid_configuration[config['controller']][:virtual_disks] << {:disks => config['physicalDisks'], :level => config['raidLevel'], :type => type}
+              type = disk_types[config['physicalDisks'].first]
+              # Nonraid disks will be set in the raid_configuration resource before
+              unless config["raidLevel"] == "nonraid"
+                raid_configuration[config["controller"]][:virtual_disks] << {:disks => config["physicalDisks"], :level => config["raidLevel"], :type => type}
+              end
             end
+
             hotspares = []
+
             [:internal, :external].each do |raid_type|
               [:ssd, :hdd].each do |disk_type|
                 key = raid_type == :internal ? "#{disk_type}HotSpares" : "external#{disk_type.capitalize}HotSpares"
@@ -484,12 +491,14 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                   hotspares += unprocessed[key]
                 end
               end
+
               hotspares.each do |disk|
                 controller = disk.split(':').last
                 raid_configuration[controller][:hotspares] << disk
               end
             end
           end
+
           raid_configuration
         end
   end
@@ -573,6 +582,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           Puppet.debug("RAID config needs to be updated. Existing virtual disks don't match up to requested configuration for #{raid_fqdd}") if log
           return false
         end
+
         existing_virtual_disks.each do |disk|
           disk_name, controller = disk.attr('FQDD').split(':')
           disk_num = disk_name.split('.').last.to_i
@@ -602,12 +612,14 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           end
         end
       end
+
       #Won't reach this point if the raid is out of sync, as we'll have returned false above.
       if @resource[:ensure] == :teardown
         Puppet.debug("RAID config needs to be cleared for teardown.") if log
         return false
       end
     end
+
     Puppet.info("RAID configuration does not need to be updated.")
     true
   end

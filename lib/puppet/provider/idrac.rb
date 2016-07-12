@@ -64,7 +64,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       in_sync &= check_removes(fqdd, children, "/SystemConfiguration", xml_base, "Component")
     end
     in_sync &= import_obj.raid_in_sync?(xml_base, true) if in_sync
-    return in_sync
+    in_sync
   end
 
   def check_for_important_attrs(xml_base, changes)
@@ -95,22 +95,22 @@ class Puppet::Provider::Idrac <  Puppet::Provider
         in_sync = false
       end
     end
-    return in_sync
+    in_sync
   end
 
   def check_changes(changes, path, xml_base)
     in_sync = true
     changes.each do |key, value|
-      if(value.is_a?(String))
+      if value.is_a?(String)
         node = xml_base.at_xpath("#{path}/Attribute[@Name='#{key}']")
         existing_val = node.nil? ? find_commented_attr_val(key, xml_base) : node.content
-        if(existing_val.nil?)
+        if existing_val.nil?
           Puppet.debug("Could not find a value for #{key} under FQDD at xpath #{path}. Will need need to import new configuration.")
           in_sync=false
-        elsif(existing_val != value)
-          if(key == "BiosBootSeq")
+        elsif existing_val != value
+          if key == "BiosBootSeq"
             compare = value.delete(' ').split(',').zip(existing_val.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
-            if(compare.size != 0 && @resource[:ensure] != :teardown)
+            if compare.size != 0 && @resource[:ensure] != :teardown
               Puppet.debug("Value of BiosBootSeq does not match up. Existing Seq: #{existing_val}, trying to set to  #{value}")
               in_sync = false
               break
@@ -121,10 +121,10 @@ class Puppet::Provider::Idrac <  Puppet::Provider
             break
           end
         end
-      elsif(value.is_a?(Hash))
+      elsif value.is_a?(Hash)
         new_path = "#{path}/Component[@FQDD='#{key}']"
         in_sync &= check_changes(value, new_path, xml_base)
-        if(!in_sync)
+        unless in_sync
           break;
         end
       end
