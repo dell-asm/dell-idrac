@@ -233,6 +233,7 @@ describe Puppet::Provider::Importtemplatexml do
     it "should get changes based on raid configuration hash" do
       Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
       Puppet::Provider::Importtemplatexml.any_instance.stub(:raid_in_sync?).and_return(false)
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:find_attribute_value).and_return("RAID")
       ASM::WsMan.stub(:invoke).and_return(@view_disk_xml)
       Puppet::Idrac::Util.stub(:get_transport).and_return({:host => '1.1.1.1', :user => 'root', :password => 'calvin'})
       changes = @fixture.get_raid_config_changes(nil)
