@@ -520,7 +520,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         unless raid_in_sync?(target_current_xml, true)
           #Getting the first key should get the first internal disk controller, or the first external if no internal on the server
           raid_configuration.keys.each do |raid_fqdd|
-            changes['whole'][raid_fqdd] = { 'RAIDresetConfig' => "True", 'RAIDforeignConfig' => 'Clear'}
+            changes['whole'][raid_fqdd] = { "RAIDresetConfig" => "True", "RAIDforeignConfig" => "Clear"}
+
+            # CurrentControllerMode is not a valid attribute on IDRAC 7
+            if find_attribute_value(target_current_xml, raid_fqdd, "CurrentControllerMode", true)
+              changes["whole"][raid_fqdd]["CurrentControllerMode"] = "RAID"
+            end
+
             raid_configuration[raid_fqdd][:virtual_disks].each_with_index do |disk_config, index|
               case disk_config[:level]
                 when 'raid10'
