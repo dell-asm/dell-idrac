@@ -398,4 +398,22 @@ describe Puppet::Provider::Importtemplatexml do
       comp.at_xpath("Attribute[@Name='iScsiOffloadMode']").should == nil
     end
   end
+
+  context "return disk initiatlization status" do
+    before(:each) do
+      @test_config_dir = URI( File.expand_path("../../../../fixtures", __FILE__))
+    end
+
+    it "should return false when disk initiatlization is not completed" do
+      view_disk_xml = File.read(@test_config_dir.path + '/VirtualDiskView.xml')
+      ASM::WsMan.stub(:invoke).and_return(view_disk_xml)
+      Puppet::Idrac::Util.virtual_disks_ready?.should  == false
+    end
+
+    it "should return true when disk initiatlization is completed" do
+      view_disk_xml = File.read(@test_config_dir.path + '/VirtualDiskView2.xml')
+      ASM::WsMan.stub(:invoke).and_return(view_disk_xml)
+      Puppet::Idrac::Util.virtual_disks_ready?.should  == true
+    end
+  end
 end

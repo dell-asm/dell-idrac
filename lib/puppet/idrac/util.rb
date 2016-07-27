@@ -47,9 +47,9 @@ module Puppet
 
       def self.virtual_disks_ready?
         response = view_disks
-        response.xpath('//DCIM_VirtualDiskView').each do |disk|
+        response.xpath('//DCIM_VIRTUALDiskView').each do |disk|
           current_op = disk.at_xpath('//OperationName').content
-          unless current_op =~ /None|Background/
+          if current_op =~ /Background/
             fqdd = disk.at_xpath('FQDD').content
             percent = disk.at_xpath('OperationPercentComplete').content
             Puppet.info("Virtual disk #{fqdd} is currently performing operation #{current_op} at #{percent} percent completion. Waiting...")
