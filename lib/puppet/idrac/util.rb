@@ -47,7 +47,7 @@ module Puppet
 
       def self.virtual_disks_ready?
         response = view_disks
-        response.xpath('//DCIM_VIRTUALDiskView').each do |disk|
+        response.xpath('//DCIM_VirtualDiskView').each do |disk|
           current_op = disk.at_xpath('//OperationName').content
           if current_op =~ /Background/
             fqdd = disk.at_xpath('FQDD').content

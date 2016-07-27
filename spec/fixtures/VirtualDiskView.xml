@@ -23,7 +23,7 @@
 <s:Body>
   <wsen:PullResponse>
     <wsen:Items>
-      <n1:DCIM_VIRTUALDiskView>
+      <n1:DCIM_VirtualDiskView>
         <n1:BlockSizeInBytes>512</n1:BlockSizeInBytes>
         <n1:BusProtocol>6</n1:BusProtocol>
         <n1:Cachecade>0</n1:Cachecade>
@@ -56,7 +56,7 @@
         <n1:T10PIStatus>0</n1:T10PIStatus>
         <n1:VirtualDiskTargetID>0</n1:VirtualDiskTargetID>
         <n1:WriteCachePolicy>2</n1:WriteCachePolicy>
-      </n1:DCIM_VIRTUALDiskView>
+      </n1:DCIM_VirtualDiskView>
     </wsen:Items>
     <wsen:EndOfSequence/>
   </wsen:PullResponse>
