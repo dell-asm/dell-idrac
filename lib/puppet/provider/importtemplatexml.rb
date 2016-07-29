@@ -282,7 +282,22 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
 
     handle_missing_devices(xml_base, @changes)
+    @nonraid_to_raid = false
     @changes.deep_merge!(get_raid_config_changes(xml_base))
+    # If we are tearing down and there are nonraid volumes, we need to make them raid volumes to
+    # be able to boot from this controller again
+    if @resource[:ensure] == :teardown && raid_configuration.select{|_,v| !v[:nonraid].empty?}
+      # Move the nonraids to raid
+      nonraid_map = {}
+      raid_configuration.each{|k,v| nonraid_map[k] = v[:nonraid] if v[:nonraid]}
+      nonraid_map.each do |controller, disks|
+        @raid_configuration[controller][:virtual_disks] = [{:disks => disks, :level => "raid0", :type => :hdd}]
+        @raid_configuration[controller][:nonraid] = []
+      end
+      # run #get_raid_config_changes again with overwritten raid_configuration
+      @nonraid_to_raid = true
+      @changes.deep_merge!(get_raid_config_changes(xml_base))
+    end
     #Handle whole nodes (node should be replaced if exists, or should be created if not)
     @changes["whole"].keys.each do |name|
       path = "/SystemConfiguration/Component[@FQDD='#{name}']"
@@ -508,7 +523,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def get_raid_config_changes(target_current_xml)
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
-    if @resource[:ensure] == :teardown && !@resource[:raid_configuration].nil?
+    if @resource[:ensure] == :teardown && !@resource[:raid_configuration].nil? && !@nonraid_to_raid
       Puppet.debug("Setting RAID configuration to be cleared as part of teardown.")
       raid_configuration.keys.each{|controller| changes['whole'][controller] = { 'RAIDresetConfig' => "True" } }
     else
