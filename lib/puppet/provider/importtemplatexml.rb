@@ -487,7 +487,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
               raid_configuration[controller][:hotspares] << disk
             end
             Puppet.debug("Inside VSAN RAID Configuration: #{raid_configuration}")
-          elsif !(unprocessed['virtualDisks'].empty? && unprocessed['externalVirtualDisks'].empty?)
+          elsif !(unprocessed['virtualDisks'] && unprocessed['virtualDisks'].empty? && unprocessed['externalVirtualDisks'] && unprocessed['externalVirtualDisks'].empty?)
             (unprocessed['virtualDisks'] + unprocessed['externalVirtualDisks']).each do |config|
               #Just check first disk in the list to get what type of virtual disk it is
               type = disk_types[config["physicalDisks"].first]
