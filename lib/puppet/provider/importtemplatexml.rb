@@ -182,6 +182,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     if @boot_device =~ /HD/i
       #We turn off SD card in case of Hdd boot.  We don't want it on to potentially interfere with the esxi boot order (it doesn't follow the BiosBootSeq)
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "Off"})
+      # since we set SD card to off, ensure we don't set any other SD card related attributes
+      changes["remove"]["attributes"]["BIOS.Setup.1-1"] ||= []
+      changes["remove"]["attributes"]["BIOS.Setup.1-1"].push("InternalSdCardRedundancy", "InternalSdCardPrimaryCard")
     end
     #Boot Device could be SD_WITHOUT_RAID or SD_WITH_RAID.  Raid Settings are handled above for WITH_RAID
     if @boot_device =~ /SD/i
