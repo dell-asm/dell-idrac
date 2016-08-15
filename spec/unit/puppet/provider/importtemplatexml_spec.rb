@@ -353,6 +353,8 @@ describe Puppet::Provider::Importtemplatexml do
     end
 
     it "when munging BFS parameters" do
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:get_raid_config_changes).and_return({})
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:raid_configuration).and_return({})
       @network_configuration = JSON.parse(File.read(@test_config_dir.path + '/network_configuration.json'))['networkConfiguration']
       #ASM::NetworkConfiguration.any_instance.stub(:new).and_return(ASM::NetworkConfiguration.new(@network_configuration))
       #ASM::NetworkConfiguration.any_instance.stub(:add_nics!).and_return(nil)

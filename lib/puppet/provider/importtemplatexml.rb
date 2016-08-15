@@ -289,7 +289,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @changes.deep_merge!(get_raid_config_changes(xml_base))
     # If we are tearing down and there are nonraid volumes, we need to make them raid volumes to
     # be able to boot from this controller again
-    if @resource[:ensure] == :teardown && raid_configuration.select{|_,v| !v[:nonraid].empty?}
+    nonraid_disks = raid_configuration.select{|_,v| !v[:nonraid].empty?}
+    if @resource[:ensure] == :teardown && !nonraid_disks.empty?
       # Move the nonraids to raid
       nonraid_map = {}
       raid_configuration.each{|k,v| nonraid_map[k] = v[:nonraid] if v[:nonraid]}
