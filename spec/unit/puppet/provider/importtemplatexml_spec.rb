@@ -314,6 +314,7 @@ describe Puppet::Provider::Importtemplatexml do
       ASM::NetworkConfiguration.stub(:new).and_return(net_config)
       ASM::WsMan.stub(:invoke).and_return(@view_disk_xml)
       Puppet::Provider::Importtemplatexml.any_instance.stub(:get_raid_config_changes).and_return({})
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:find_attribute_value).and_return("RAID.Integrated.1-1")
       @fixture.stub(:find_target_bios_setting).and_return("value")
       @fixture.stub(:find_target_bios_setting).with('InvalidAttribute').and_return(nil)
       #The xml that @fixture will read (FOOTAG_original) will have the InvalidAttribute attribute. It should not exist after munging.
