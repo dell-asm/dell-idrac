@@ -125,7 +125,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     [scheduled_endstate_firmwares, completed_endstate_firmwares].each do |firmware_set|
       until firmware_set.values.all? {|v| v[:status] =~ /#{v[:desired]}|Failed|InternalTimeout/}
         firmware_set.each do |key, val|
-          if Time.now - val[:start_time] > MAX_WAIT_SECONDS
+          if val[:status] != val[:desired] && Time.now - val[:start_time] > MAX_WAIT_SECONDS
             val[:status] = 'InternalTimeout'
           else
             val[:status] = checkjobstatus key
