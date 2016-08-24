@@ -18,6 +18,7 @@ end
 group :development, :test do
   gem 'rake'
   gem 'rspec'
+  gem 'json_pure', '2.0.1' # pin this puppet dependency to 1.9-compat version
   gem 'puppetlabs_spec_helper'
   gem 'json_pure', '2.0.1'
   if puppetversion = ENV['PUPPET_GEM_VERSION']
