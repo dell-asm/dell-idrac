@@ -270,6 +270,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     xml_base.xpath("//Component[contains(@FQDD, 'NIC.') or contains(@FQDD, 'FC.')]").remove unless @changes['whole'].find_all{|k,v| k =~ /^(NIC|FC)\./}.empty?
     xml_base['ServiceTag'] = @resource[:servicetag]
 
+    handle_missing_devices(xml_base, @changes)
+    @nonraid_to_raid = false
+    @changes.deep_merge!(get_raid_config_changes(xml_base))
+
     %w(BiosBootSeq HddSeq).each do |attr|
       existing_attr_val = find_bios_attribute(xml_base, attr)
       requested_val = @changes['partial']['BIOS.Setup.1-1'][attr]
@@ -284,9 +288,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       end
     end
 
-    handle_missing_devices(xml_base, @changes)
-    @nonraid_to_raid = false
-    @changes.deep_merge!(get_raid_config_changes(xml_base))
     # If we are tearing down and there are nonraid volumes, we need to make them raid volumes to
     # be able to boot from this controller again
     nonraid_disks = raid_configuration.select{|_,v| !v[:nonraid].empty?}
