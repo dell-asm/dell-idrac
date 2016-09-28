@@ -59,6 +59,11 @@ module Puppet
         true
       end
 
+      def self.boot_source_settings
+        require 'asm/wsman'
+        ASM::WsMan.new(get_transport).boot_source_settings
+      end
+
       #This method waits for any running jobs to complete, and raises an exception after 5 minutes
       def self.wait_for_running_jobs
         require 'asm/wsman'
