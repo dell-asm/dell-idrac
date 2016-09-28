@@ -506,7 +506,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
               raid_configuration[controller][:hotspares] << disk
             end
             Puppet.debug("Inside VSAN RAID Configuration: #{raid_configuration}")
-          elsif unprocessed.nil?
+          elsif unprocessed.nil? || unprocessed.empty?
             Puppet.debug("No RAID Configuration required")
           elsif !(unprocessed['virtualDisks'] && unprocessed['virtualDisks'].empty? && unprocessed['externalVirtualDisks'] && unprocessed['externalVirtualDisks'].empty?)
             (unprocessed['virtualDisks'] + unprocessed['externalVirtualDisks']).each do |config|
