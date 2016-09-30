@@ -431,6 +431,7 @@ describe Puppet::Provider::Importtemplatexml do
       expect(@fixture.embsata_in_sync?).to eq(false)
     end
   end
+
    context "when getting SATA disk for boot" do
      it "should raise error if no SATA disk is found" do
        ASM::WsMan.stub(:invoke).and_return("")

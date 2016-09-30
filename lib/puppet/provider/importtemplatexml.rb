@@ -24,7 +24,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   def importtemplatexml
     unless embsata_in_sync?
       Puppet.debug("Embedded Sata settings out of sync. Need to configure first.")
-      munge_config_xml(true)
+      munge_config_xml(:embsata_out_of_sync? => true)
       execute_import
     end
     munge_config_xml unless @xml_processed
@@ -285,14 +285,21 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     xml_doc.xpath('/SystemConfiguration').first
   end
 
-  def munge_config_xml(emb_mode_change=false)
+  # Munge config xml
+  #
+  # This builds out the appropriate xml file for the requested configuration changes
+  #
+  # @param [Hash] opts
+  # @option opts [Boolean] :embsata_out_of_sync?  True will cause raid configuration to be skipped
+  # @return [Nokogiri::XML::Document] xml_doc
+  def munge_config_xml(opts={})
     get_config_changes
     xml_base.xpath("//Component[contains(@FQDD, 'NIC.') or contains(@FQDD, 'FC.')]").remove unless @changes['whole'].find_all{|k,v| k =~ /^(NIC|FC)\./}.empty?
     xml_base['ServiceTag'] = @resource[:servicetag]
 
     handle_missing_devices(xml_base, @changes)
     @nonraid_to_raid = false
-    @changes.deep_merge!(get_raid_config_changes(xml_base)) unless emb_mode_change
+    @changes.deep_merge!(get_raid_config_changes(xml_base)) unless opts[:embsata_out_of_sync?]
 
     %w(BiosBootSeq HddSeq).each do |attr|
       existing_attr_val = find_bios_attribute(xml_base, attr)
