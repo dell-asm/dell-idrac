@@ -401,4 +401,34 @@ describe Puppet::Provider::Importtemplatexml do
       comp.at_xpath("Attribute[@Name='iScsiOffloadMode']").should == nil
     end
   end
+
+  describe "#is_embedded_raid?" do
+    it "should return false when no virtual disks use embedded controllers" do
+      expect(@fixture.is_embedded_raid?).to eq(false)
+    end
+
+    it "should return true when there are virtual disks on embedded controller" do
+      resource = {:raid_configuration => {"virtualDisks" => [{"controller" => "NonRAID.Embedded.2-1"}]}}
+      @fixture.instance_variable_set(:@resource, resource)
+      expect(@fixture.is_embedded_raid?).to eq(true)
+    end
+  end
+
+  describe "#embsata_in_sync?" do
+    it "should return true when embSata Raid not required" do
+      expect(@fixture.embsata_in_sync?).to eq(true)
+    end
+
+    it "should return true when embSata required but mode is already set" do
+      resource = {:configxmlfilename => "BARTAG.xml", :nfssharepath => @test_config_dir.path.to_s}
+      @fixture.stub(:is_embedded_raid?).and_return(true)
+      @fixture.instance_variable_set(:@resource, resource)
+      expect(@fixture.embsata_in_sync?).to eq(true)
+    end
+
+    it "should return false when embSata Raid required and not current" do
+      @fixture.stub(:is_embedded_raid?).and_return(true)
+      expect(@fixture.embsata_in_sync?).to eq(false)
+    end
+  end
 end
