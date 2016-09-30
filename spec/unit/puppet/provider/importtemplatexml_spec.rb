@@ -431,4 +431,71 @@ describe Puppet::Provider::Importtemplatexml do
       expect(@fixture.embsata_in_sync?).to eq(false)
     end
   end
+   context "when getting SATA disk for boot" do
+     it "should raise error if no SATA disk is found" do
+       ASM::WsMan.stub(:invoke).and_return("")
+       expect { @fixture.get_first_sata_disk }.to raise_error(RuntimeError, /Embedded SATA Disk not found/)
+     end
+
+     it "should find SATADOM when found in boot source settings" do
+       mock_boot_source_settings = [
+         {
+           :bios_boot_string=>"NIC in Slot 1 Port 2 Partition 1: IBA XE Slot 0401 v2334 BootSeq",
+           :boot_source_type=>"IPL",
+           :boot_string=>"NIC in Slot 1 Port 2 Partition 1: IBA XE Slot 0401 v2334 BootSeq",
+           :current_assigned_sequence=>"5",
+           :current_enabled_status=>"1",
+           :instance_id=>"IPL:BIOS.Setup.1-1#BootSeq#NIC.Slot.1-2-1#27d35f79888d0fa3f74312ff1da778fb"
+         },
+         {
+            :bios_boot_string=>"Embedded SATA Port Disk J: SATADOM-ML 3ME HddSeq",
+            :boot_source_type=>"BCV",
+            :boot_string=>"Embedded SATA Port Disk J: SATADOM-ML 3ME HddSeq",
+            :current_assigned_sequence=>"0",
+            :current_enabled_status=>"1",
+            :instance_id=>"BCV:BIOS.Setup.1-1#HddSeq#Disk.SATAEmbedded.J-1#4e861c42e369a695a66a0cd22fd492c3"
+         }
+       ]
+       Puppet::Idrac::Util.stub(:boot_source_settings).and_return(mock_boot_source_settings)
+       expect(@fixture.get_boot_sata_disk).to eq("Disk.SATAEmbedded.J-1")
+     end
+
+     it "should return any available SATA disk if SATADOM is not found" do
+       mock_boot_source_settings = [
+           {
+               :bios_boot_string=>"NIC in Slot 1 Port 2 Partition 1: IBA XE Slot 0401 v2334 BootSeq",
+               :boot_source_type=>"IPL",
+               :boot_string=>"NIC in Slot 1 Port 2 Partition 1: IBA XE Slot 0401 v2334 BootSeq",
+               :current_assigned_sequence=>"5",
+               :current_enabled_status=>"1",
+               :instance_id=>"IPL:BIOS.Setup.1-1#BootSeq#NIC.Slot.1-2-1#27d35f79888d0fa3f74312ff1da778fb"
+           }
+       ]
+
+       mock_physical_disks = <<EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:wsen="http://schemas.xmlsoap.org/ws/2004/09/enumeration" xmlns:n1="http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_PhysicalDiskView">
+        <s:Body>
+        <wsen:PullResponse>
+          <wsen:Items>
+            <n1:DCIM_PhysicalDiskView>
+              <n1:FQDD>Disk.Direct.5-9:AHCI.Embedded.2-1</n1:FQDD>
+              <n1:FreeSizeInBytes>0</n1:FreeSizeInBytes>
+              <n1:HotSpareStatus>0</n1:HotSpareStatus>
+              <n1:InstanceID>Disk.Direct.5-9:AHCI.Embedded.2-1</n1:InstanceID>
+              <n1:BusProtocol>5</n1:BusProtocol>
+              <n1:Connector>5</n1:Connector>
+              <n1:Slot>5</n1:Slot>
+            </n1:DCIM_PhysicalDiskView>
+          </wsen:Items>
+          <wsen:EndOfSequence/>
+        </wsen:PullResponse>
+        </s:Body>
+        </s:Envelope>
+EOF
+       ASM::WsMan.stub(:invoke).and_return(mock_physical_disks)
+       Puppet::Idrac::Util.stub(:boot_source_settings).and_return(mock_boot_source_settings)
+       expect(@fixture.get_boot_sata_disk).to eq("Disk.SATAEmbedded.F-1")
+     end
+   end
 end
