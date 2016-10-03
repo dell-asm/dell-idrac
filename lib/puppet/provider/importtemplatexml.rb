@@ -918,6 +918,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   #
   # @return Boolean
   def is_embedded_raid?
+    return false unless @resource[:raid_configuration]
     virtual_disks = @resource[:raid_configuration].fetch("virtualDisks", [])
     virtual_disks.each do |vd|
       controller = vd.fetch("controller", "")
