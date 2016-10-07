@@ -1,0 +1,3 @@
+fixtures:
+  repositories:
+    transport: "https://github.com/dell-asm/puppet-transport.git"
