@@ -1,5 +1,6 @@
-require 'rake'
-require 'rspec/core/rake_task'
+require "rake"
+require "puppetlabs_spec_helper/rake_tasks"
+require "rspec/core/rake_task"
 
 # Customize lint option
 task :lint do
@@ -31,7 +32,7 @@ namespace :rspec do
     end
   end
 end
-task :default => :rspec
+task :default => :spec
 
 begin
   if Gem::Specification::find_by_name('puppet-lint')
