@@ -22,11 +22,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def importtemplatexml
-    unless embsata_in_sync?
-      Puppet.debug("Embedded Sata settings out of sync. Need to configure first.")
-      munge_config_xml(:embsata_out_of_sync? => true)
-      execute_import
-    end
     munge_config_xml unless @xml_processed
     execute_import
   end
@@ -192,6 +187,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       changes["remove"]["attributes"]["BIOS.Setup.1-1"].push("InternalSdCardRedundancy", "InternalSdCardPrimaryCard")
       if is_embedded_raid?
         changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"EmbSata" => "RaidMode"})
+        changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"SecurityFreezeLock" => "Disabled"})
+        changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"WriteCache" => "Disabled"})
       end
     end
     #Boot Device could be SD_WITHOUT_RAID or SD_WITH_RAID.  Raid Settings are handled above for WITH_RAID
@@ -289,17 +286,15 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   #
   # This builds out the appropriate xml file for the requested configuration changes
   #
-  # @param [Hash] opts
-  # @option opts [Boolean] :embsata_out_of_sync?  True will cause raid configuration to be skipped
   # @return [Nokogiri::XML::Document] xml_doc
-  def munge_config_xml(opts={})
+  def munge_config_xml
     get_config_changes
     xml_base.xpath("//Component[contains(@FQDD, 'NIC.') or contains(@FQDD, 'FC.')]").remove unless @changes['whole'].find_all{|k,v| k =~ /^(NIC|FC)\./}.empty?
     xml_base['ServiceTag'] = @resource[:servicetag]
 
     handle_missing_devices(xml_base, @changes)
     @nonraid_to_raid = false
-    @changes.deep_merge!(get_raid_config_changes(xml_base)) unless opts[:embsata_out_of_sync?]
+    @changes.deep_merge!(get_raid_config_changes(xml_base))
 
     %w(BiosBootSeq HddSeq).each do |attr|
       existing_attr_val = find_bios_attribute(xml_base, attr)
@@ -356,7 +351,17 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     xml_base.xpath('//comment()').remove
     remove_invalid_settings(xml_base)
     # Disable SD card and RAID controller for boot from SAN
-    File.open(@config_xml_path, 'w+') { |file| file.write(xml_base.to_xml(:indent => 2)) }
+
+    File.open(@config_xml_path, 'w+') do |file|
+      if embsata_in_sync?
+        file.write(xml_base.to_xml(:indent => 2))
+      else
+        # If Embedded Sata mode is out of sync we need to change the FQDD's to what they will be
+        # after the EmbSat mode is changed to RAIDmode
+        file.write(xml_base.to_xml(:indent => 2).gsub("AHCI.Embedded", "RAID.Embedded").gsub("ATA.Embedded","RAID.Embedded"))
+      end
+    end
+
     @xml_processed = true
     xml_base
   end
@@ -597,22 +602,24 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                   span_depth = '1'
                   span_length = disk_config[:disks].size
               end
-              changes['whole'][raid_fqdd]["Disk.Virtual.#{index}:#{raid_fqdd}"] =
-                {
-                  'RAIDaction'=>'Create',
-                  'RAIDinitOperation'=>'Fast',
-                  'Name'=>"ASM VD#{index}",
-                  'Size'=>'0',
-                  'StripeSize'=>'128',
-                  'SpanDepth'=>span_depth,
-                  'SpanLength'=>span_length,
-                  'RAIDTypes'=> disk_config[:level].sub('raid', 'RAID '),
-                  'IncludedPhysicalDiskID'=> disk_config[:disks]
-                }
+              raid_settings = {
+                "RAIDaction"        => "Create",
+                "Name"              => "ASM VD#{index}",
+                "Size"              => "0",
+                "StripeSize"        => "128",
+                "SpanDepth"         => span_depth,
+                "SpanLength"        => span_length,
+                "RAIDTypes"         => disk_config[:level].sub("raid", "RAID "),
+                "IncludedPhysicalDiskID"=> disk_config[:disks]
+              }
+
+              # This settings is not supported on RAID_Mode.  It defaults to Fast
+              raid_settings["RAIDinitOperation"] = "Fast" unless is_embedded_raid?
+
+              changes['whole'][raid_fqdd]["Disk.Virtual.#{index}:#{raid_fqdd}"] = raid_settings
 
               set_disk_changes!(disk_config[:disks], :raid, changes["whole"][raid_fqdd])
             end
-
             set_disk_changes!(raid_configuration[raid_fqdd][:hotspares], :hotspare, changes["whole"][raid_fqdd])
             set_disk_changes!(raid_configuration[raid_fqdd][:nonraid], :nonraid, changes["whole"][raid_fqdd])
           end
@@ -630,12 +637,17 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     disks.each do |disk_fqdd|
       disk_attributes = {}
       _bay, enclosure_fqdd = disk_fqdd.split(':', 2)
-      controller_changes[enclosure_fqdd] ||= {}
 
       disk_attributes["RAIDPDState"] = type == :nonraid ? "Non-RAID" : "Ready"
       disk_attributes["RAIDHotSpareStatus"] = "Global" if type == :hotspare
 
-      controller_changes[enclosure_fqdd].merge!({disk_fqdd => disk_attributes})
+      if is_embedded_raid?
+        # Embedded s130 do not have an enclosure
+        controller_changes[disk_fqdd] = disk_attributes
+      else
+        controller_changes[enclosure_fqdd] ||= {}
+        controller_changes[enclosure_fqdd].merge!({disk_fqdd => disk_attributes})
+      end
     end
   end
 
