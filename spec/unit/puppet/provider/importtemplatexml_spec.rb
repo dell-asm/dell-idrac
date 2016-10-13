@@ -499,4 +499,118 @@ EOF
        expect(@fixture.get_boot_sata_disk).to eq("Disk.SATAEmbedded.F-1")
      end
    end
+
+  describe "#get_raid_config_changes" do
+    before(:each) do
+      export_file_name = File.basename("FOOTAG.xml", ".xml") + "_base.xml"
+      og_xml = File.join(@test_config_dir.path, export_file_name)
+      xml_doc = Nokogiri::XML(File.read(og_xml)) {|config| config.default_xml.noblanks}
+      @fixture.stub(:xml_base).and_return(xml_doc.xpath('/SystemConfiguration').first)
+    end
+
+    context "when Embedded Sata HD" do
+      before(:each) do
+        resource_raid_config = {"virtualDisks"=>
+           [{"raidLevel"=>"raid0",
+             "physicalDisks"=>["Disk.Direct.1-1:RAID.Embedded.1-1", "Disk.Direct.0-0:RAID.Embedded.1-1"],
+             "controller"=>"RAID.Embedded.1-1",
+             "configuration"=>{"id"=>"10763ffd-6bea-4edb-9273-57e7259d1fa5", "raidlevel"=>"raid0", "comparator"=>"minimum", "numberofdisks"=>"1", "disktype"=>"any"},
+             "mediatype"=>"ANY"}],
+         "hddHotSpares"=>[],
+         "ssdHotSpares"=>[],
+         "externalVirtualDisks"=>[],
+         "externalHddHotSpares"=>[],
+         "externalSsdHotSpares"=>[]}
+
+        resource = {:ensure => :present, :raid_configuration => resource_raid_config}
+        @fixture.instance_variable_set(:@resource, resource)
+
+        raid_config = {"RAID.Embedded.1-1" => {:virtual_disks => [
+          {:disks => ["Disk.Direct.1-1:RAID.Embedded.1-1", "Disk.Direct.0-0:RAID.Embedded.1-1"],
+           :level => "raid0", :type=>:ssd}], :hotspares=>[], :nonraid=>[]}}
+
+        @fixture.stub(:raid_configuration).and_return(raid_config)
+        @fixture.instance_variable_set(:@boot_device, "HD")
+        @fixture.stub(:raid_in_sync).and_return(false)
+        @fixture.stub(:is_embedded_raid?).and_return(true)
+      end
+
+      it "should return the correct hash" do
+        raid_changes = @fixture.get_raid_config_changes(@fixture.xml_base)
+
+        expected_changes = {
+          "partial" => {"BIOS.Setup.1-1" => {"HddSeq" => "RAID.Embedded.1-1"}},
+          "remove" => {"attributes" => {}, "components" => {}},
+          "whole" => { "RAID.Embedded.1-1" =>{
+            "RAIDresetConfig" => "True",
+            "RAIDforeignConfig" => "Clear",
+            "Disk.Virtual.0:RAID.Embedded.1-1" => {
+              "RAIDaction"=>"Create", "Name"=>"ASM VD0", "Size"=>"0",
+              "StripeSize"=>"128", "SpanDepth"=>"1", "SpanLength"=>2,
+              "RAIDTypes"=>"RAID 0",
+              "IncludedPhysicalDiskID"=> ["Disk.Direct.1-1:RAID.Embedded.1-1", "Disk.Direct.0-0:RAID.Embedded.1-1"]},
+            "Disk.Direct.1-1:RAID.Embedded.1-1" => {"RAIDPDState"=>"Ready"},
+            "Disk.Direct.0-0:RAID.Embedded.1-1"=>{"RAIDPDState"=>"Ready"}}}
+          }
+        expect(raid_changes).to eq(expected_changes)
+      end
+    end
+
+    context "when integrated RAID" do
+      before(:each) do
+        resource_raid_config = {"virtualDisks"=>
+                                  [{"raidLevel"=>"raid0",
+                                    "physicalDisks"=>["Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1", "Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1"],
+                                    "controller"=>"RAID.Integrated.1-1",
+                                    "configuration"=>{"id"=>"10763ffd-6bea-4edb-9273-57e7259d1fa5", "raidlevel"=>"raid0", "comparator"=>"minimum", "numberofdisks"=>"1", "disktype"=>"any"},
+                                    "mediatype"=>"ANY"}],
+                                "hddHotSpares"=>[],
+                                "ssdHotSpares"=>[],
+                                "externalVirtualDisks"=>[],
+                                "externalHddHotSpares"=>[],
+                                "externalSsdHotSpares"=>[]}
+
+        resource = {:ensure => :present, :raid_configuration => resource_raid_config}
+        @fixture.instance_variable_set(:@resource, resource)
+
+        raid_config = {"RAID.Integrated.1-1" => {:virtual_disks => [
+          {:disks => ["Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1", "Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1"],
+           :level => "raid0", :type=>:ssd}], :hotspares=>[], :nonraid=>[]}}
+
+        @fixture.stub(:raid_configuration).and_return(raid_config)
+        @fixture.instance_variable_set(:@boot_device, "HD")
+        @fixture.stub(:raid_in_sync).and_return(false)
+      end
+
+      it "should return the correct hash" do
+        raid_changes = @fixture.get_raid_config_changes(@fixture.xml_base)
+
+        expected_changes = {
+          "partial" => {"BIOS.Setup.1-1" => {"HddSeq" => "RAID.Integrated.1-1"}},
+          "whole" => {
+            "RAID.Integrated.1-1" =>{
+              "RAIDresetConfig" => "True",
+              "RAIDforeignConfig" => "Clear",
+              "Disk.Virtual.0:RAID.Integrated.1-1" => {
+                "RAIDaction"=>"Create", "Name"=>"ASM VD0", "Size"=>"0",
+                "StripeSize"=>"128", "SpanDepth"=>"1", "SpanLength"=>2,
+                "RAIDTypes"=>"RAID 0",
+                "IncludedPhysicalDiskID"=> [
+                  "Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1",
+                  "Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1"
+                ],
+                "RAIDinitOperation" => "Fast",
+              },
+              "Enclosure.Internal.0-1:RAID.Integrated.1-1" => {
+                "Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1" => {"RAIDPDState"=>"Ready"},
+                "Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1" => {"RAIDPDState"=>"Ready"}
+              }
+            }
+          },
+          "remove" => {"attributes" => {}, "components" => {}},
+        }
+        expect(raid_changes).to eq(expected_changes)
+      end
+    end
+  end
 end
