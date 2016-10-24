@@ -613,4 +613,49 @@ EOF
       end
     end
   end
+
+  describe "#controller_disk_fqdd" do
+    before(:each) do
+      @test_config_dir = URI( File.expand_path("../../../../fixtures", __FILE__))
+      @controller_disk_xml = eval File.read(@test_config_dir.path + '/controller_view.xml')
+      @physical_disk_view = File.read(@test_config_dir.path + '/physical_disk_view.xml')
+      Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
+      Puppet::Idrac::Util.stub(:disk_controller).and_return(@controller_disk_xml)
+      ASM::WsMan.stub(:invoke).and_return(@physical_disk_view)
+    end
+
+    context "when PERC controller is H330" do
+      it "should return list of disks managed by H330" do
+        supported_controller = ["PERC H330 Mini"]
+        disk_controller = @fixture.controller_disk_fqdd(supported_controller)
+        expect(disk_controller).to eq("RAID.Integrated.1-1")
+      end
+
+      it "should return list of disks managed by given controller" do
+        supported_controller = ["PERC H330 Mini", "PERC H730 Mini"]
+        disk_controller = @fixture.controller_disk_fqdd(supported_controller)
+        expect(disk_controller).to eq("RAID.Integrated.1-1")
+      end
+
+      it "should return nil when there controller do not match" do
+        supported_controller = ["PERC H730 Mini"]
+        disk_controller = @fixture.controller_disk_fqdd(supported_controller)
+        expect(disk_controller).to eq(nil)
+      end
+
+      it "should return list of disks managed by given controller" do
+        @fixture.stub(:fc630_controllers).and_return(["PERC H330 Mini", "PERC H730 Mini"])
+        disks = @fixture.fc630_disks
+        expect(disks).to eq(["Disk.Bay.0:Enclosure.Internal.0-1:RAID.Integrated.1-1",
+                             "Disk.Bay.1:Enclosure.Internal.0-1:RAID.Integrated.1-1"])
+      end
+
+      it "should raise error in no disks are found" do
+        supported_controllers = ["PERC H430 Mini", "PERC H730 Mini"]
+        @fixture.stub(:fc630_controllers).and_return(supported_controllers)
+        message = "Failed to find disks added to controller '%s'" % [supported_controllers]
+        expect { @fixture.fc630_disks }.to raise_error(message)
+      end
+    end
+  end
 end

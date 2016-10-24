@@ -59,8 +59,13 @@ module Puppet
         true
       end
 
+      def self.disk_controller
+        require "asm/wsman"
+        ASM::WsMan.new(get_transport).controller_views
+      end
+
       def self.boot_source_settings
-        require 'asm/wsman'
+        require "asm/wsman"
         ASM::WsMan.new(get_transport).boot_source_settings
       end
 
