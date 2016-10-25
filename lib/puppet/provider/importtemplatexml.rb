@@ -19,6 +19,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @templates_dir = File.join(Puppet::Module.find('idrac').path, 'templates')
     @exported_postfix = exported_postfix
     @boot_device = resource[:target_boot_device]
+    if fc630_with_vsan_on_hdd?
+      @resource[:raid_configuration] = fc630_raid_configuration
+    end
   end
 
   def importtemplatexml
@@ -198,7 +201,17 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => "Disk.SDInternal.1-1"})
     end
 
-    if @boot_device =~ /AHCI_VSAN/i
+    if fc630_with_vsan_on_hdd?
+      xml_base.xpath("//Component[contains(@FQDD, 'RAID.Embedded.')]").remove
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"EmbSata" => "RaidMode"})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"IntegratedRaid" => "Enabled"})
+      #TODO Needs to remove the hard-code value.
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => "RAID.Integrated.1-1"})
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "Off"}) if is_sd_card?
+
+      changes["remove"]["attributes"]["BIOS.Setup.1-1"] ||= []
+      changes["remove"]["attributes"]["BIOS.Setup.1-1"] << "SecurityFreezeLock"
+    elsif @boot_device =~ /AHCI_VSAN/i
       # Delete embedded disk component in case we are setting EmbSata to AhciMode
       xml_base.xpath("//Component[contains(@FQDD, 'RAID.Embedded.')]").remove
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"EmbSata" => "AhciMode"})
@@ -568,14 +581,20 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       Puppet.debug("Setting RAID configuration to be cleared as part of teardown.")
       raid_configuration.keys.each{|controller| changes['whole'][controller] = { 'RAIDresetConfig' => "True" } }
     else
-      if @boot_device =~ /VSAN/i
+      if @boot_device =~ /VSAN/i && !fc630_with_vsan_on_hdd?
         if target_current_xml.to_s.match(/="CurrentControllerMode">RAID/)
           raids = (raid_configuration.keys || []).reject {|x| x.match(/Embedded/)}
           unless raids.empty?
             changes['whole'][raids.first] = { 'CurrentControllerMode' => "HBA" }
           end
         end
-      elsif @boot_device =~ /WITH_RAID|HD/i
+      elsif @boot_device =~ /WITH_RAID|HD/i || fc630_with_vsan_on_hdd?
+        if fc630_with_vsan_on_hdd?
+          raids = (raid_configuration.keys || []).reject {|x| x.match(/Embedded/)}
+          unless raids.empty?
+            changes['whole'][raids.first] = { 'CurrentControllerMode' => "RAID" }
+          end
+        end
         changes['partial'] = {'BIOS.Setup.1-1'=> {'HddSeq' => raid_configuration.keys.first}} if @boot_device =~ /HD/i
         unless raid_in_sync?(target_current_xml, true)
           #Getting the first key should get the first internal disk controller, or the first external if no internal on the server
@@ -652,7 +671,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def raid_in_sync?(xml_base, log=false)
-    if @boot_device =~ /WITH_RAID|HD/i && !(@boot_device =~ /SD_WITH_RAID_VSAN|AHCI_VSAN/i)
+    if @boot_device =~ /WITH_RAID|HD/i && !(@boot_device =~ /SD_WITH_RAID_VSAN|AHCI_VSAN/i) || fc630_with_vsan_on_hdd?
       raid_configuration.keys.each do |raid_fqdd|
         raid_fqdd_xpath = "//Component[@FQDD='#{raid_fqdd}']"
         controller_xml = xml_base.xpath(raid_fqdd_xpath)
@@ -948,5 +967,66 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     return true unless is_embedded_raid?
     find_bios_attribute(original_xml, "EmbSata") == "RaidMode"
   end
+
+  def fc630_with_vsan_on_hdd?
+    @resource[:model] == "fc630" && @resource[:target_boot_device] == "AHCI_VSAN"
+  end
+
+  def disk_controllers
+    @disk_controllers ||= Puppet::Idrac::Util.disk_controller
+  end
+
+  def controller_disk_fqdd(controller_type)
+    device_id = nil
+    disk_controllers.each do |x|
+      product_name = x[:product_name]
+      if controller_type.include?(product_name)
+        device_id = x[:fqdd]
+      end
+    end
+    return device_id
+  end
+
+  def fc630_controllers
+    ["PERC H330 Mini", "PERC H730 Mini"]
+  end
+
+  def fc630_disks
+    disks = []
+    device_fqdd = controller_disk_fqdd(fc630_controllers)
+    raise("Failed to find disks added to controller '%s'" % [fc630_controllers]) unless device_fqdd
+    physical_disks.xpath("//Envelope/Body/PullResponse/Items/DCIM_PhysicalDiskView").each do |x|
+      fqdd = x.xpath("FQDD").text
+      disks << fqdd if fqdd =~ /\S+#{device_fqdd}/i
+    end
+    raise("Expect 2 disks, got %d" % [disks.size]) if disks.size != 2
+    disks
+  end
+
+  #TODO: Find disks under H330 controller
+  def fc630_raid_configuration
+    {
+      "externalVirtualDisks" => [],
+      "externalSsdHotSpares" => [],
+      "externalHddHotSpares" => [],
+      "ssdHotSpares" => [],
+      "virtualDisks" => [
+        {
+          "physicalDisks" => fc630_disks,
+          "raidLevel" => "raid1",
+          "controller" => controller_disk_fqdd(fc630_controllers),
+          "configuration" => {
+            "raidlevel" => "raid1",
+            "numberofdisks" => 1,
+            "comparator" => "minimum",
+            "disktype" => "any"
+          },
+          "mediaType" => "ANY"
+        }
+      ],
+      "hddHotSpares" =>[]
+    }
+  end
+
 end
 
