@@ -42,13 +42,25 @@ Puppet::Type.type(:importsystemconfiguration).provide(
   end
 
   def importtemplate
-    Puppet::Idrac::Util.wait_or_clear_running_jobs
     obj = Puppet::Provider::Importtemplatexml.new(
-        transport[:host],
-        transport[:user],
-        transport[:password],
-        resource,
-        'base')
+      transport[:host],
+      transport[:user],
+      transport[:password],
+      resource,
+      'base')
+    unless obj.embsata_in_sync?
+      # On the first run if the embedded sata is out of sync and needs to change, we will run import
+      # XML with no RAID configurations
+      obj.embedded_sata_change = true
+      import_template_job(obj)
+    end
+
+    obj.embedded_sata_change = false
+    import_template_job(obj)
+  end
+
+  def import_template_job(obj)
+    Puppet::Idrac::Util.wait_or_clear_running_jobs
     attempts = 0
     begin
       obj.importtemplatexml

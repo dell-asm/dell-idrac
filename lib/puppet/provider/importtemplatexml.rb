@@ -10,6 +10,8 @@ include REXML
 
 class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
+  attr_accessor :embedded_sata_change
+
   def initialize (ip,username,password,resource, exported_postfix='base')
     @ip = ip
     @username = username
@@ -307,7 +309,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
     handle_missing_devices(xml_base, @changes)
     @nonraid_to_raid = false
-    @changes.deep_merge!(get_raid_config_changes(xml_base))
+
+    if embedded_sata_change
+      Puppet.debug("Embedded Mode Change detected running with RAID teardown only")
+      @changes.deep_merge!(get_raid_config_changes(xml_base, raid_reset=true))
+    else
+      @changes.deep_merge!(get_raid_config_changes(xml_base))
+    end
 
     %w(BiosBootSeq HddSeq).each do |attr|
       existing_attr_val = find_bios_attribute(xml_base, attr)
@@ -375,7 +383,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       end
     end
 
-    @xml_processed = true
+    @xml_processed = true unless embedded_sata_change # Need to reprocess after we change embedded RAID mode
     xml_base
   end
 
@@ -575,10 +583,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         end
   end
 
-  def get_raid_config_changes(target_current_xml)
+  def get_raid_config_changes(target_current_xml, raid_reset=false)
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
-    if @resource[:ensure] == :teardown && !@resource[:raid_configuration].nil? && !@nonraid_to_raid
-      Puppet.debug("Setting RAID configuration to be cleared as part of teardown.")
+    if (@resource[:ensure] == :teardown && !@resource[:raid_configuration].nil? && !@nonraid_to_raid) || raid_reset
+      Puppet.debug("Setting RAID configuration to be cleared as part of %s" % (raid_reset ? "raid reset" : "teardown"))
       raid_configuration.keys.each{|controller| changes['whole'][controller] = { 'RAIDresetConfig' => "True" } }
     else
       if @boot_device =~ /VSAN/i && !fc630_with_vsan_on_hdd?
