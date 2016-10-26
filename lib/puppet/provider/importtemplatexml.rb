@@ -24,10 +24,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     if fc630_with_vsan_on_hdd?
       @resource[:raid_configuration] = fc630_raid_configuration
     end
-    if !non_raid_disks.empty? && non_raid_not_requested? && !@boot_device.match(/vsan/i)
-      @nonraid_to_raid = true
-      @resource[:raid_configuration]["virtualDisks"] << non_raid_disks
-    end
   end
 
   def importtemplatexml
@@ -532,6 +528,14 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def raid_configuration
+    # For scenario where non-raid disks already exists on the server but current configruation haven't requested it
+    # Need to convert all non-raid disks to raid disks
+    # Specifically required for Windows deployment where OS installation is failing due to pre-existing non-raid disks
+    if !non_raid_disks.empty? && non_raid_not_requested? && !@boot_device.match(/vsan/i)
+      @nonraid_to_raid = true
+      @resource[:raid_configuration]["virtualDisks"] << non_raid_disks
+    end
+
     @raid_configuration ||=
         begin
           unprocessed = @resource[:raid_configuration]
