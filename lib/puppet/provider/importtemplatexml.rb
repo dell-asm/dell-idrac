@@ -24,6 +24,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     if fc630_with_vsan_on_hdd?
       @resource[:raid_configuration] = fc630_raid_configuration
     end
+    if !non_raid_disks.empty? && non_raid_not_requested? && !@boot_device.match(/vsan/i)
+      @nonraid_to_raid = true
+      @resource[:raid_configuration]["virtualDisks"] << non_raid_disks
+    end
   end
 
   def importtemplatexml
@@ -334,7 +338,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     # If we are tearing down and there are nonraid volumes, we need to make them raid volumes to
     # be able to boot from this controller again
     nonraid_disks = raid_configuration.select{|_,v| !v[:nonraid].empty?}
-    if @resource[:ensure] == :teardown && !nonraid_disks.empty?
+    if (@resource[:ensure] == :teardown && !nonraid_disks.empty?)
       # Move the nonraids to raid
       nonraid_map = {}
       raid_configuration.each{|k,v| nonraid_map[k] = v[:nonraid] if v[:nonraid]}
@@ -668,6 +672,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       disk_attributes["RAIDPDState"] = type == :nonraid ? "Non-RAID" : "Ready"
       disk_attributes["RAIDHotSpareStatus"] = "Global" if type == :hotspare
 
+      if @non_raid_info
+        disk_attributes["RAIDPDState"] = "Ready"
+      end
+
       if is_embedded_raid?
         # Embedded s130 do not have an enclosure
         controller_changes[disk_fqdd] = disk_attributes
@@ -691,6 +699,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
           unless find_attribute_value(enclosure_xml, nonraid_disk, "RAIDPDState", true) == "Non-RAID"
             Puppet.debug("RAID config needs to be updated. %s is in RAID mode." % nonraid_disk)
+            return false
+          end
+
+          if @non_raid_info && (@non_raid_info["physicalDisks"] || []).include?(nonraid_disk)
+            Puppet.debug("Disks %s is configured as Non-Raid. Need to be converted to RAID" % [nonraid_disk])
             return false
           end
         end
@@ -1036,5 +1049,46 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     }
   end
 
+  def non_raid_not_requested?
+    vds = @resource["raid_configuration"]["virtualDisks"]
+    if vds
+      vds.each do |vd|
+        return true if vd["raidLevel"] == "nonraid"
+      end
+    else
+      return true
+    end
+  end
+
+  def non_raid_disks
+    return @non_raid_info if @non_raid_info
+    disks = []
+    controllers = []
+    physical_disks.xpath("//Envelope/Body/PullResponse/Items/DCIM_PhysicalDiskView").each do |x|
+      raid_status = x.xpath("RaidStatus").text
+      fqdd = x.xpath("FQDD").text
+      Puppet.debug("FQDD: #{fqdd}, raid_status: #{raid_status}")
+      if raid_status.to_i == 8
+        disks << fqdd
+        controllers << fqdd.scan(/\S+:(\S+)/).flatten.first
+      end
+    end
+    return {} if disks.empty?
+
+    @non_raid_info = {
+      "raidLevel" => "nonraid",
+      "physicalDisks" => disks,
+      "controller" => controllers.first,
+      "configuration" => {
+        "raidlevel" => "nonraid",
+        "comparator" => "minimum",
+        "numberofdisks" => "1",
+        "disktype" => "any",
+      },
+      "mediaType" => "ANY"
+    }
+  end
+
 end
+
 
