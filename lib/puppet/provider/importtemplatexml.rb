@@ -1055,13 +1055,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def non_raid_not_requested?
     vds = @resource["raid_configuration"]["virtualDisks"]
-    if vds
-      vds.each do |vd|
-        return true if vd["raidLevel"] == "nonraid"
-      end
-    else
-      return true
-    end
+    return false unless vds
+    !!vds.find { |vd| vd["raidLevel"] == "nonraid" }
   end
 
   def non_raid_disks
@@ -1092,7 +1087,4 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       "mediaType" => "ANY"
     }
   end
-
 end
-
-
