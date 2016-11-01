@@ -318,9 +318,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
 
     %w(BiosBootSeq HddSeq).each do |attr|
-      existing_attr_val = find_bios_attribute(xml_base, attr)
+      existing_attr_val = find_current_boot_attribute(attr.downcase.to_sym)
       requested_val = @changes['partial']['BIOS.Setup.1-1'][attr]
-      message = "Attribute: %s, Existing value: %s, Requested value: %s" % [attr, existing_attr_val, requested_val] 
+      message = "Attribute: %s, Existing value: %s, Requested value: %s" % [attr, existing_attr_val, requested_val]
       Puppet.debug(message)
       if existing_attr_val && requested_val
         seq_diff = requested_val.delete(' ').split(',').zip(existing_attr_val.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
@@ -1059,6 +1059,35 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     !!vds.find { |vd| vd["raidLevel"] == "nonraid" }
   end
 
+  def wsman
+    require "asm/wsman"
+    @wsman ||= begin
+      endpoint = {:host => @ip, :user => @username, :password => @password}
+      ASM::WsMan.new(endpoint, :logger => Puppet)
+    end
+  end
+
+  # Finds the current boot atrribute
+  #
+  # This will make a wsman call to the current server to get the
+  # the attribute at this point in time
+  #
+  # @param [:biosbootseq, :hddseq] attribute attribute we are looking for
+  # @return [String] the attribute value
+  def find_current_boot_attribute(attribute)
+    boot_source_settings = wsman.boot_source_settings
+    if attribute == :hddseq
+      sorted_hdd = boot_source_settings.select{ |b| b[:boot_source_type] == "BCV" && b[:current_enabled_status] == "1"
+      }.sort_by{|b| b[:current_assigned_sequence]}
+      return "" if sorted_hdd.empty?
+      sorted_hdd.first[:instance_id].split("#")[2]
+    else
+      sorted_bss = boot_source_settings.select{|b| b[:boot_source_type] == "IPL"}.sort_by{|b| b[:current_assigned_sequence]}
+      sorted_bss.map{|x| x[:instance_id].split("#")[2]}.join(", ")
+    end
+
+  end
+
   def non_raid_disks
     return @non_raid_info if @non_raid_info
     disks = []
@@ -1087,4 +1116,5 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       "mediaType" => "ANY"
     }
   end
+
 end

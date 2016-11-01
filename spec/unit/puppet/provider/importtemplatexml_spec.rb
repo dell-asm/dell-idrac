@@ -21,6 +21,99 @@ describe Puppet::Provider::Importtemplatexml do
     end
   end
 
+  def bios_boot_settings
+    [{:bios_boot_string=>"Hard drive C: BootSeq",
+      :boot_source_type=>"IPL",
+      :boot_string=>"Hard drive C: BootSeq",
+      :current_assigned_sequence=>"0",
+      :current_enabled_status=>"1",
+      :element_name=>"Hard drive C: BootSeq",
+      :fail_through_supported=>"1",
+      :instance_id=>"IPL:BIOS.Setup.1-1#BootSeq#HardDisk.List.1-1#c9203080df84781e2ca3d512883dee6f",
+      :pending_assigned_sequence=>"0",
+      :pending_enabled_status=>"1"},
+     {:bios_boot_string=>"Integrated NIC 1 Port 1 Partition 1: QLogic MBA Slot 0100 v7.14.2 BootSeq",
+      :boot_source_type=>"IPL",
+      :boot_string=>"Integrated NIC 1 Port 1 Partition 1: QLogic MBA Slot 0100 v7.14.2 BootSeq",
+      :current_assigned_sequence=>"1",
+      :current_enabled_status=>"1",
+      :element_name=>"Integrated NIC 1 Port 1 Partition 1: QLogic MBA Slot 0100 v7.14.2 BootSeq",
+      :fail_through_supported=>"1",
+      :instance_id=>"IPL:BIOS.Setup.1-1#BootSeq#NIC.Integrated.1-1-1#2dcdef7d8774d794aa09b6d6af82d70a",
+      :pending_assigned_sequence=>"1",
+      :pending_enabled_status=>"1"},
+     {:bios_boot_string=>"Permanent Device: USB Floppy (N/A) BootSeq",
+      :boot_source_type=>"IPL",
+      :boot_string=>"Permanent Device: USB Floppy (N/A) BootSeq",
+      :current_assigned_sequence=>"2",
+      :current_enabled_status=>"0",
+      :element_name=>"Permanent Device: USB Floppy (N/A) BootSeq",
+      :fail_through_supported=>"1",
+      :instance_id=>"IPL:BIOS.Setup.1-1#BootSeq#Floppy.USBFront.1-1#1d707e36583f99024ff59c3fc13509f1",
+      :pending_assigned_sequence=>"2",
+      :pending_enabled_status=>"0"},
+     {:bios_boot_string=>"Permanent Device: USB CD-ROM (N/A) BootSeq",
+      :boot_source_type=>"IPL",
+      :boot_string=>"Permanent Device: USB CD-ROM (N/A) BootSeq",
+      :current_assigned_sequence=>"3",
+      :current_enabled_status=>"0",
+      :element_name=>"Permanent Device: USB CD-ROM (N/A) BootSeq",
+      :fail_through_supported=>"1",
+      :instance_id=>"IPL:BIOS.Setup.1-1#BootSeq#Optical.USBFront.2-1#2aa932592688f5805ea3aa5a6b4f0d3a",
+      :pending_assigned_sequence=>"3",
+      :pending_enabled_status=>"0"},
+     {:bios_boot_string=>"Integrated NIC 1 Port 2 Partition 1: QLogic MBA Slot 0101 v7.14.2 BootSeq",
+      :boot_source_type=>"IPL",
+      :boot_string=>"Integrated NIC 1 Port 2 Partition 1: QLogic MBA Slot 0101 v7.14.2 BootSeq",
+      :current_assigned_sequence=>"4",
+      :current_enabled_status=>"1",
+      :element_name=>"Integrated NIC 1 Port 2 Partition 1: QLogic MBA Slot 0101 v7.14.2 BootSeq",
+      :fail_through_supported=>"1",
+      :instance_id=>"IPL:BIOS.Setup.1-1#BootSeq#NIC.Integrated.1-2-1#9953362b552f72a79702140ed1c8f06c",
+      :pending_assigned_sequence=>"4",
+      :pending_enabled_status=>"1"},
+     {:bios_boot_string=>"Integrated RAID Controller 1: PERC H710 Mini(bus 02 dev 00) HddSeq",
+      :boot_source_type=>"BCV",
+      :boot_string=>"Integrated RAID Controller 1: PERC H710 Mini(bus 02 dev 00) HddSeq",
+      :current_assigned_sequence=>"0",
+      :current_enabled_status=>"1",
+      :element_name=>"Integrated RAID Controller 1: PERC H710 Mini(bus 02 dev 00) HddSeq",
+      :fail_through_supported=>"2",
+      :instance_id=>"BCV:BIOS.Setup.1-1#HddSeq#RAID.Integrated.1-1#0df7c63c2e9f9e120f71ed7ce4aa1abc",
+      :pending_assigned_sequence=>"0",
+      :pending_enabled_status=>"1"},
+     {:bios_boot_string=>"Integrated NIC 1 Port 1 Partition 1: EFI Network 1 UefiBootSeq",
+      :boot_source_type=>"UEFI",
+      :boot_string=>"Integrated NIC 1 Port 1 Partition 1: EFI Network 1 UefiBootSeq",
+      :current_assigned_sequence=>"0",
+      :current_enabled_status=>"1",
+      :element_name=>"Integrated NIC 1 Port 1 Partition 1: EFI Network 1 UefiBootSeq",
+      :fail_through_supported=>"1",
+      :instance_id=>"UEFI:BIOS.Setup.1-1#UefiBootSeq#NIC.Integrated.1-1-1#55f48560803415bd3ebf7c28c1a103e1",
+      :pending_assigned_sequence=>"0",
+      :pending_enabled_status=>"1"},
+     {:bios_boot_string=>"Integrated NIC 1 Port 2 Partition 1: EFI Network 2 UefiBootSeq",
+      :boot_source_type=>"UEFI",
+      :boot_string=>"Integrated NIC 1 Port 2 Partition 1: EFI Network 2 UefiBootSeq",
+      :current_assigned_sequence=>"1",
+      :current_enabled_status=>"1",
+      :element_name=>"Integrated NIC 1 Port 2 Partition 1: EFI Network 2 UefiBootSeq",
+      :fail_through_supported=>"1",
+      :instance_id=>"UEFI:BIOS.Setup.1-1#UefiBootSeq#NIC.Integrated.1-2-1#434452c9dbb0da9d53d948c4aef0d802",
+      :pending_assigned_sequence=>"1",
+      :pending_enabled_status=>"1"},
+     {:bios_boot_string=>"Integrated RAID Controller 1: EFI Fixed Disk Boot Device 1 UefiBootSeq",
+      :boot_source_type=>"UEFI",
+      :boot_string=>"Integrated RAID Controller 1: EFI Fixed Disk Boot Device 1 UefiBootSeq",
+      :current_assigned_sequence=>"2",
+      :current_enabled_status=>"1",
+      :element_name=>"Integrated RAID Controller 1: EFI Fixed Disk Boot Device 1 UefiBootSeq",
+      :fail_through_supported=>"1",
+      :instance_id=>"UEFI:BIOS.Setup.1-1#UefiBootSeq#RAID.Integrated.1-1#8e32524670eeff23dae59733a094284b",
+      :pending_assigned_sequence=>"2",
+      :pending_enabled_status=>"1"}]
+  end
+
   before(:each) do
     @test_config_dir = URI( File.expand_path("../../../../fixtures", __FILE__))
     @view_disk_xml = File.read(@test_config_dir.path + '/disks.xml')
@@ -147,6 +240,7 @@ describe Puppet::Provider::Importtemplatexml do
     }
     @fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'], @idrac_attrib['username'], @idrac_attrib['password'], @idrac_attrib)
     ASM::WsMan.stub(:get_bios_enumeration).and_return([])
+    allow(@fixture.wsman).to receive(:boot_source_settings).and_return(bios_boot_settings)
   end
 
   context " instance validation " do
@@ -369,6 +463,7 @@ describe Puppet::Provider::Importtemplatexml do
       @fixture.resource[:enable_npar] = 'false'
       changes = {'partial' => {}, 'remove' => {'components' => {}}}
       @fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'], @idrac_attrib['username'], @idrac_attrib['password'], @idrac_attrib)
+      allow(@fixture.wsman).to receive(:boot_source_settings).and_return(bios_boot_settings)
       @exported_name = File.basename(@idrac_attrib[:configxmlfilename], ".xml") + "_base.xml"
       #Needed to call original open method by default
       original_method = FileUtils.method(:cp)
@@ -736,6 +831,21 @@ EOF
         @fixture.stub(:fc630_controllers).and_return(supported_controllers)
         message = "Failed to find disks added to controller '%s'" % [supported_controllers]
         expect { @fixture.fc630_disks }.to raise_error(message)
+      end
+    end
+  end
+
+  describe "find_current_boot_attribute" do
+    context "when finding HddSeq" do
+      it "should return the correct HddSeq Device" do
+        expect(@fixture.find_current_boot_attribute(:hddseq)).to eq("RAID.Integrated.1-1")
+      end
+    end
+
+    context "when finding BiosBootSeq" do
+      it "should return the correct BiosBootSeq String" do
+        expected = "HardDisk.List.1-1, NIC.Integrated.1-1-1, Floppy.USBFront.1-1, Optical.USBFront.2-1, NIC.Integrated.1-2-1"
+        expect(@fixture.find_current_boot_attribute(:biosbootseq)).to eq(expected)
       end
     end
   end
