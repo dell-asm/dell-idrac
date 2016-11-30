@@ -241,6 +241,7 @@ describe Puppet::Provider::Importtemplatexml do
     @fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'], @idrac_attrib['username'], @idrac_attrib['password'], @idrac_attrib)
     ASM::WsMan.stub(:get_bios_enumeration).and_return([])
     allow(@fixture.wsman).to receive(:boot_source_settings).and_return(bios_boot_settings)
+    @fixture.attempt = 0
   end
 
   context " instance validation " do
@@ -463,6 +464,7 @@ describe Puppet::Provider::Importtemplatexml do
       @fixture.resource[:enable_npar] = 'false'
       changes = {'partial' => {}, 'remove' => {'components' => {}}}
       @fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'], @idrac_attrib['username'], @idrac_attrib['password'], @idrac_attrib)
+      @fixture.attempt = 0
       allow(@fixture.wsman).to receive(:boot_source_settings).and_return(bios_boot_settings)
       @exported_name = File.basename(@idrac_attrib[:configxmlfilename], ".xml") + "_base.xml"
       #Needed to call original open method by default
@@ -847,6 +849,27 @@ EOF
         expected = "HardDisk.List.1-1, NIC.Integrated.1-1-1, Floppy.USBFront.1-1, Optical.USBFront.2-1, NIC.Integrated.1-2-1"
         expect(@fixture.find_current_boot_attribute(:biosbootseq)).to eq(expected)
       end
+    end
+  end
+
+  describe "#rotate_config_xml_file" do
+    before :each do
+      config_file_path = File.join(Dir.tmpdir, "rspec.xml")
+      File.open(config_file_path, "w") {|f| f.puts "test"}
+      @fixture.instance_variable_set(:@config_xml_path, File.join(Dir.tmpdir, "rspec.xml"))
+      resource = {:configxmlfilename => "rspec", :nfssharepath => Dir.tmpdir}
+      @fixture.instance_variable_set(:@resource, resource)
+      @fixture.attempt = 1
+    end
+
+    it "should rotate the config xml file" do
+      new_file_path = File.join(Dir.tmpdir, "rspec_1.xml")
+      @fixture.rotate_config_xml_file
+      expect(File.exists?(new_file_path)).to eq(true)
+    end
+
+    after :each do
+      File.delete(File.join(Dir.tmpdir, "rspec_1.xml"))
     end
   end
 end

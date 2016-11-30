@@ -63,6 +63,7 @@ Puppet::Type.type(:importsystemconfiguration).provide(
     Puppet::Idrac::Util.wait_or_clear_running_jobs
     attempts = 0
     begin
+      obj.attempt = attempts
       obj.importtemplatexml
     rescue Puppet::Idrac::ConfigError => e
       attempts += 1
