@@ -11,6 +11,7 @@ include REXML
 class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   attr_accessor :embedded_sata_change
+  attr_accessor :attempt
 
   def initialize (ip,username,password,resource, exported_postfix='base')
     @ip = ip
@@ -27,7 +28,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def importtemplatexml
-    munge_config_xml unless @xml_processed
+    munge_config_xml
     execute_import
   end
 
@@ -314,7 +315,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       Puppet.debug("Embedded Mode Change detected running with RAID teardown only")
       @changes.deep_merge!(get_raid_config_changes(xml_base, raid_reset=true))
     else
-      @changes.deep_merge!(get_raid_config_changes(xml_base))
+      @changes.deep_merge!(get_raid_config_changes(xml_base)) if attempt == 0
     end
 
     %w(BiosBootSeq HddSeq).each do |attr|
@@ -373,6 +374,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     remove_invalid_settings(xml_base)
     # Disable SD card and RAID controller for boot from SAN
 
+    # Rotate the old xml files
+    unless attempt == 0
+      rotate_config_xml_file
+    end
+
     File.open(@config_xml_path, 'w+') do |file|
       if embsata_in_sync?
         file.write(xml_base.to_xml(:indent => 2))
@@ -383,8 +389,20 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       end
     end
 
-    @xml_processed = true unless embedded_sata_change # Need to reprocess after we change embedded RAID mode
     xml_base
+  end
+
+  # Rotate the current config xml file for debugging
+  #
+  # First import attempt: {file}_1.xml, Second attempt: {file}_2.xml etc..
+  #
+  # @return void
+  def rotate_config_xml_file
+    return unless File.exists?(@config_xml_path)
+    new_file_name = File.basename(@resource[:configxmlfilename], ".xml")+"_%s.xml" % attempt
+    new_file_path = File.join(@resource[:nfssharepath], new_file_name)
+    Puppet.info("Moving current XML config file from: %s to %s" % [@config_xml_path, new_file_path])
+    File.rename(@config_xml_path, new_file_path)
   end
 
   def remove_invalid_settings(xml_to_edit)
