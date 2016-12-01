@@ -68,10 +68,10 @@ Puppet::Type.type(:importsystemconfiguration).provide(
     rescue Puppet::Idrac::ConfigError => e
       attempts += 1
       case attempts
-      when 1
-        Puppet.info("First import failed.  Retrying import....")
+      when 1, 2
+        Puppet.info("Attempt #%d importsystem failed.  Retrying importing...." % attempts)
         retry
-      when 2
+      when 3
         Puppet.info("Resetting the iDRAC before performing any other operation")
         Puppet::Idrac::Util.reset
         Puppet.info("Waiting for Lifecycle Controller to be ready")
