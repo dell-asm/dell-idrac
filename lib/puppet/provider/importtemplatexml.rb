@@ -406,12 +406,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def remove_invalid_settings(xml_to_edit)
-    # HddSeq seems to cause a lot of issues by letting it stay.
-    # We only allow it to stay if we're specifically trying to set it for booting from hard drive
-    hdd_seq = find_attribute_value(xml_to_edit, 'BIOS.Setup.1-1', 'HddSeq', true)
-    if @changes['partial']['BIOS.Setup.1-1']['HddSeq']
-    @changes['partial']['BIOS.Setup.1-1'].delete('HddSeq') if hdd_seq.eql?(@changes['partial']['BIOS.Setup.1-1']['HddSeq'].split(",").first)
-    end
     # Compare the changes to BIOS.Setup.1-1 with the bios settings that exist on the target server.
     # We do not attempt to set if we cannot find the bios setting in the server's BIOS enumeration
     bios_settings = xml_to_edit.xpath("//Component[@FQDD='BIOS.Setup.1-1']/Attribute")
