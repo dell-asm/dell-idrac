@@ -28,6 +28,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def importtemplatexml
+    reset_xml_base
     munge_config_xml
     execute_import
   end
@@ -281,6 +282,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     suffix = sata_disks.sort.first.split('-')
     disk_name = ('A'..'Z').to_a[suffix[0].to_i]
     "Disk.SATAEmbedded.%s-%s" % [ disk_name, '1' ]
+  end
+
+  def reset_xml_base
+    @xml_base = nil
   end
 
   def xml_base
