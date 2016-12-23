@@ -7,22 +7,21 @@ class Puppet::Provider::Checkjdstatus < Puppet::Provider
     @instanceid = instanceid
   end
 
-  def checkjdstatus
+  def wsman
     require 'asm/wsman'
-    endpoint = {:host => @ip, :user => @username, :password => @password}
-    schema = "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LifecycleJob?InstanceID=#{@instanceid}"
-    job_status, job_message, message_id = ASM::WsMan.invoke(endpoint, 'get', schema,
-                                                            :logger => Puppet,
-                                                            :selector => ["//n1:JobStatus", "//n1:Message", "//n1:MessageID"])
+    @__wsman ||= ASM::WsMan.new({:host => @ip, :user => @username, :password => @password}, :logger => Puppet)
+  end
 
-    if message_id =~ /SYS051|LC068/i
-      message_id
-    elsif job_status =~ /completed with errors/i || job_message =~ /completed with errors/i
+  def checkjdstatus
+    resp = wsman.get_lc_job(@instanceid)
+    if resp[:message_id] =~ /SYS051|LC068/i
+      resp[:message_id]
+    elsif resp[:percent_complete] == "100" && (resp[:job_status] =~ /completed with errors/i || resp[:message] =~ /completed with errors/i)
       'Failed'
-    elsif job_status.nil? || job_status.empty?
+    elsif resp[:job_status].nil? || resp[:job_status].empty?
       raise "Job ID not created"
     else
-      job_status
+      resp[:job_status]
     end
   end
 
