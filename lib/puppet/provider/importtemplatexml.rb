@@ -28,6 +28,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def importtemplatexml
+    Puppet::Idrac::Util.wait_for_lc_ready
     reset_xml_base
     munge_config_xml
     execute_import
@@ -101,6 +102,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def wait_for_import(instance_id)
+    timed_out = false
     job_status_obj = Puppet::Provider::Checkjdstatus.new(@ip, @username, @password, instance_id)
     Puppet.info "Instance id #{instance_id}"
     for i in 0..30
@@ -109,8 +111,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       case response
         when 'Completed'
           Puppet.info 'Import System Configuration is completed.'
-          sleep 60
-          Puppet::Idrac::Util.wait_for_lc_ready
           return
         when 'Failed'
           raise(Puppet::Idrac::ConfigError, 'ImportSystemConfiguration job failed')
@@ -123,7 +123,21 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           sleep 60
       end
     end
+
+    timed_out = true
     raise "Import System Configuration is still running."
+  ensure
+    return if timed_out
+
+    begin
+      # After ImportSystemConfiguration completes iDrac will automatically kick off an
+      # ExportSystemConfiguration. The sleep here is recommended by the LC team to make
+      # sure that job has started before waiting for LC ready.
+      sleep 60
+      Puppet::Idrac::Util.wait_for_lc_ready
+    rescue
+      Puppet.info("Failed to wait for LC ready: %s: %s" % [$!.class, $!.to_s])
+    end
   end
 
   def find_target_bios_setting(attr_name)
