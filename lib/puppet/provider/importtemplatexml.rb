@@ -580,7 +580,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
             disk_types[fqdd] = type
           end
 
-          if unprocessed.nil? && @boot_device.match(/VSAN/i)
+          if (unprocessed.nil? || unprocessed.empty?) && @boot_device.match(/VSAN/i)
             disk_types.keys.each do |disk|
               controller = disk.split(':').last
               raid_configuration[controller][:hotspares] << disk
