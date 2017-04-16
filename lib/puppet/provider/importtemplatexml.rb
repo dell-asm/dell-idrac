@@ -90,7 +90,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     boot_seq_change = changes['partial']['BIOS.Setup.1-1']['BiosBootSeq']
     if(existing_boot_seq && boot_seq_change)
       seq_diff = boot_seq_change.delete(' ').split(',').zip(existing_boot_seq.delete(' ').split(',')).select{|new_val, exist_val| new_val != exist_val}
-      if(seq_diff.size ==0)
+      #If raid_action is delete, the HDD will already be removed from the boot sequence 
+      if(seq_diff.size ==0 || @resource[:raid_action] == :delete)
         changes['partial']['BIOS.Setup.1-1'].delete('BiosBootSeq')
       end
     end
@@ -314,6 +315,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       if((expected - disks).size != 0)
         in_sync = false
         Puppet.debug("RAID config needs to be updated.  Expected IncludedPhysicalDiskIDs to be #{expected}, but got #{disks}") if log
+        if @resource[:raid_action] == :delete
+          return true
+        end
       end
       if(in_sync && raid_types != "RAID 1")
         in_sync = false
