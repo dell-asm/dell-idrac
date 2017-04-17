@@ -904,6 +904,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         partitioned = interface['partitioned']
         interface.partitions.each do |partition|
           fqdd = partition.fqdd
+          # Skipping the FQDDs where MAC address information is not avaialble.
+          next if partition.mac_address.nil?
           #
           # SET UP NIC IN CASE INTERFACE IS BEING PARTITIONED, equivalent to the enable_npar parameter
           #
