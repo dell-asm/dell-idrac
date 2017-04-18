@@ -200,6 +200,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     if @boot_device == 'SD' && @resource[:ensure] != :teardown
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"IntegratedRaid" => "Disabled"})
     end
+    #Enabling raid after 'SD without RAID' deployment
+    if @boot_device == 'SD' && @resource[:ensure] == :teardown
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"IntegratedRaid" => "Enabled"})
+    end
     if @boot_device =~ /HD/i
       #We turn off SD card in case of Hdd boot.  We don't want it on to potentially interfere with the esxi boot order (it doesn't follow the BiosBootSeq)
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "Off"})
