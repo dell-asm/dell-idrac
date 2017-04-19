@@ -1,4 +1,6 @@
 require 'rexml/document'
+require 'asm/racadm'
+require 'asm/util'
 
 include REXML
 
@@ -161,25 +163,8 @@ module Puppet
       end
 
       def self.reset
-        Puppet.info("Resetting Idrac...")
-        transport = get_transport
-        Net::SSH.start( transport[:host],
-                        transport[:user],
-                        :password => transport[:password],
-                        :paranoid => Net::SSH::Verifiers::Null.new,
-                        :global_known_hosts_file=>"/dev/null" ) do |ssh|
-          ssh.exec "racadm racreset soft" do |ch, stream, data|
-            Puppet.debug(data)
-
-            #Issue warning for the message 'Could not chdir to home directory /flash/data0/home/root: No such file or directory' else raise error
-            if data.include? "Could not chdir to home directory"
-              Puppet.warning "Warning for message - #{data}"
-            elsif stream == :stderr
-              raise Puppet::Error, 'Error resetting Idrac'
-            end
-          end
-        end
-        wait_for_idrac(360)
+        ASM::Racadm.new(get_transport, :logger => Puppet).reset_idrac
+        ASM::Util.wait_for_idrac(get_transport, Puppet, 360)
       end
 
       def self.wait_for_idrac (timeout = 180, state = 0)
