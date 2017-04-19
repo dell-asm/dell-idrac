@@ -4,6 +4,10 @@ gem 'activesupport'
 gem 'nokogiri', '1.6.8'
 gem 'dell-asm-util', :git => 'https://github.com/dell-asm/dell-asm-util.git', :branch => 'master'
 
+# Use asm-deployer for unit testing of server and chassis discovery scripts
+gem 'asm-deployer', :git => "git@github.com:dell-asm/asm-deployer.git", :branch => "master"    #use for travisCi
+#gem 'asm-deployer', :git => "https://github.com/dell-asm/asm-deployer.git", :branch => "master" #use for local
+
 # Add gems necessary to run facter on Windows
 platforms :mswin, :mingw do
   gem 'sys-admin'
