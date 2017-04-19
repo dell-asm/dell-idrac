@@ -2,7 +2,7 @@ source 'https://rubygems.org'
 
 gem 'activesupport'
 gem 'nokogiri', '1.5.10'
-gem 'dell-asm-util', :git => 'https://github.com/dell-asm/dell-asm-util.git', :branch => 'master'
+gem 'dell-asm-util', :git => 'https://github.com/dell-asm/dell-asm-util.git', :branch => 'release/dell-asm-8.3.1'
 
 # Add gems necessary to run facter on Windows
 platforms :mswin, :mingw do
