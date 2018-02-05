@@ -1,10 +1,9 @@
 language: ruby
 script: "bundle exec rake lint && bundle exec rake"
 rvm:
-  - 2.1.9
+  - 2.4.2
 env:
-  - PUPPET_GEM_VERSION='3.3.2'
-  - PUPPET_GEM_VERSION=">= 3.0.0"
+  - PUPPET_GEM_VERSION='5.3.3'
 matrix:
   allow_failures:
     - env: PUPPET_GEM_VERSION=">= 3.0.0"
