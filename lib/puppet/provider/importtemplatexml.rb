@@ -141,16 +141,12 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def find_target_bios_setting(attr_name)
-    @bios_enumeration ||=
-      begin
-        cmd = "wsman enumerate http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_BIOSEnumeration -h #{@ip} -P 443 -u #{@username} -p #{@password} -c dummy.cert -y basic -V -v"
-        response = `#{cmd}`
-        bios_xml = Nokogiri::XML("<result>#{response}</result>")
-        bios_xml.remove_namespaces!
-      end
-    enum = @bios_enumeration.at_xpath("//DCIM_BIOSEnumeration[AttributeName='#{attr_name}']")
-    return nil if enum.nil?
-    Hash.from_xml(enum.to_xml)['DCIM_BIOSEnumeration']
+    @__bios_enumeration ||= wsman.bios_enumerations.inject({}) do |acc, enum|
+      acc[enum[:attribute_name]] = enum
+      acc
+    end
+
+    @__bios_enumeration[attr_name]
   end
 
   def get_config_changes
