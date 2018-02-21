@@ -194,6 +194,7 @@ describe Puppet::Provider::Importtemplatexml do
 
             ]
         }
+
     @mock_raid_config = {
         "virtualDisks" => [
             {
@@ -517,6 +518,49 @@ describe Puppet::Provider::Importtemplatexml do
     end
   end
 
+  describe "#boss_controller" do
+    let(:test_config_dir) { URI( File.expand_path("../../../../fixtures", __FILE__)) }
+
+    let(:boss_controller_data) { JSON.parse(File.read(test_config_dir.path + '/boss_controller_view.json'), :symbolize_names=>true) }
+
+    it "should return boss device when present in list of disk_controllers" do
+      @fixture.stub(:disk_controllers).and_return(boss_controller_data)
+      expect(@fixture.boss_controller).to eq("AHCI.Slot.3-1")  
+    end
+
+    let(:controller_data) { JSON.parse(File.read(test_config_dir.path + '/controller_view.json'), :symbolize_names=>true) }
+
+    it "should return nil when no BOSS device present int eh list of disk_controllers" do
+      @fixture.stub(:disk_controllers).and_return(controller_data)
+      expect(@fixture.boss_controller).to eq(nil)
+    end
+  end
+
+  describe "#boss_disks" do
+    let(:test_config_dir) { URI( File.expand_path("../../../../fixtures", __FILE__)) }
+
+    it "Should fail if boss controller is nil" do
+      @fixture.stub(:boss_controller).and_return(nil) 
+      expect { @fixture.boss_disks }.to raise_error("Failed to find BOSS controller.") 
+    end
+
+    let(:physical_disk_view_one_disk) { File.read(test_config_dir.path + '/physical_disks_one_disk.xml') }
+
+    it "Should fail if number of boss disks is less than 2" do
+      @fixture.stub(:boss_controller).and_return("AHCI.Slot.3-1")
+      ASM::WsMan.stub(:invoke).and_return(physical_disk_view_one_disk)
+      expect { @fixture.boss_disks }.to raise_error("Expect 2 disks, got 1")  
+    end
+    
+    let(:physical_disk_view_two_disks) { File.read(test_config_dir.path + '/physical_disks.xml') }
+    
+    it "should return 2 boss disks associated with this controller" do
+      @fixture.stub(:boss_controller).and_return("AHCI.Slot.3-1")
+      ASM::WsMan.stub(:invoke).and_return(physical_disk_view_two_disks)
+      expect(@fixture.boss_disks).to eq(["Disk.Direct.0-0:AHCI.Slot.3-1", "Disk.Direct.1-1:AHCI.Slot.3-1"])
+    end
+  end
+
   describe "#embsata_in_sync?" do
     it "should return true when embSata Raid not required" do
       expect(@fixture.embsata_in_sync?).to eq(true)
@@ -801,10 +845,10 @@ EOF
   describe "#controller_disk_fqdd" do
     before(:each) do
       @test_config_dir = URI( File.expand_path("../../../../fixtures", __FILE__))
-      @controller_disk_xml = eval File.read(@test_config_dir.path + '/controller_view.xml')
+      @controller_disk_data = JSON.parse(File.read(@test_config_dir.path + '/controller_view.json'),:symbolize_names=>true)
       @physical_disk_view = File.read(@test_config_dir.path + '/physical_disk_view.xml')
       Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
-      Puppet::Idrac::Util.stub(:disk_controller).and_return(@controller_disk_xml)
+      Puppet::Idrac::Util.stub(:disk_controller).and_return(@controller_disk_data)
       ASM::WsMan.stub(:invoke).and_return(@physical_disk_view)
     end
 
@@ -878,4 +922,5 @@ EOF
       File.delete(File.join(Dir.tmpdir, "rspec_1.xml"))
     end
   end
+
 end

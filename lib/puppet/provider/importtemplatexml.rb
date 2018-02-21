@@ -22,8 +22,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @templates_dir = File.join(Puppet::Module.find('idrac').path, 'templates')
     @exported_postfix = exported_postfix
     @boot_device = resource[:target_boot_device]
+
     if fc630_with_vsan_on_hdd?
       @resource[:raid_configuration] = fc630_raid_configuration
+    end
+
+    if @boot_device =~ /LOCAL_FLASH_STORAGE/i
+      @resource[:raid_configuration] = boss_raid_configuration
     end
   end
 
@@ -188,14 +193,25 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
     # Always disable ErrPrompt so we can avoid a hangup due to a user needing to put input on the server manually
     changes["partial"]["BIOS.Setup.1-1"]["ErrPrompt"] = "Disabled"
+
     # Always want to turn on IntegratedRaid with teardown, so RAID info can still be gathered from idrac/wsman queries
     if @boot_device =~ /WITH_RAID|HD/i || @resource[:ensure] == :teardown
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"IntegratedRaid" => "Enabled"})
     end
+
     # RAID is disabled in BIOS and re-enabled after teardown
     if @boot_device == 'SD' && @resource[:ensure] != :teardown
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"IntegratedRaid" => "Disabled"})
     end
+
+    if @boot_device =~ /LOCAL_FLASH_STORAGE/i
+      boss_fqdd = boss_controller
+      raise("No valid storage controller. Local flash storage boot requires BOSS storage.") if boss_fqdd.nil?
+      Puppet.info("Boot device controller is: " + boss_fqdd)
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => boss_fqdd})
+      disks = boss_disks
+    end
+
     if @boot_device =~ /HD/i
       #We turn off SD card in case of Hdd boot.  We don't want it on to potentially interfere with the esxi boot order (it doesn't follow the BiosBootSeq)
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "Off"})
@@ -208,6 +224,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"WriteCache" => "Disabled"})
       end
     end
+
     #Boot Device could be SD_WITHOUT_RAID or SD_WITH_RAID.  Raid Settings are handled above for WITH_RAID
     if @boot_device =~ /SD/i
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "On"})
@@ -631,7 +648,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
             changes['whole'][raids.first] = { 'CurrentControllerMode' => "HBA" }
           end
         end
-      elsif @boot_device =~ /WITH_RAID|HD/i || fc630_with_vsan_on_hdd?
+      elsif @boot_device =~ /WITH_RAID|HD/i || fc630_with_vsan_on_hdd? || @boot_device =~ /LOCAL_FLASH_STORAGE/i
         if fc630_with_vsan_on_hdd?
           raids = (raid_configuration.keys || []).reject {|x| x.match(/Embedded/)}
           unless raids.empty?
@@ -679,8 +696,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
               raid_settings["RAIDinitOperation"] = "Fast" unless is_embedded_raid?
 
               changes['whole'][raid_fqdd]["Disk.Virtual.#{index}:#{raid_fqdd}"] = raid_settings
-
-              set_disk_changes!(disk_config[:disks], :raid, changes["whole"][raid_fqdd])
+              unless @boot_device =~ /LOCAL_FLASH_STORAGE/i
+                set_disk_changes!(disk_config[:disks], :raid, changes["whole"][raid_fqdd])
+              end
             end
             set_disk_changes!(raid_configuration[raid_fqdd][:hotspares], :hotspare, changes["whole"][raid_fqdd])
             set_disk_changes!(raid_configuration[raid_fqdd][:nonraid], :nonraid, changes["whole"][raid_fqdd])
@@ -718,7 +736,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def raid_in_sync?(xml_base, log=false)
-    if @boot_device =~ /WITH_RAID|HD/i && !(@boot_device =~ /SD_WITH_RAID_VSAN|AHCI_VSAN/i) || fc630_with_vsan_on_hdd?
+    if @boot_device =~ /WITH_RAID|HD/i && !(@boot_device =~ /SD_WITH_RAID_VSAN|AHCI_VSAN/i) || fc630_with_vsan_on_hdd? || @boot_device =~ /LOCAL_FLASH_STORAGE/i
       raid_configuration.keys.each do |raid_fqdd|
         raid_fqdd_xpath = "//Component[@FQDD='#{raid_fqdd}']"
         controller_xml = xml_base.xpath(raid_fqdd_xpath)
@@ -1039,6 +1057,14 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     return device_id
   end
 
+  def boss_controller
+    disk_controller = disk_controllers.find { |c| c[:product_name].include?("BOSS") }
+
+    return nil unless disk_controller
+
+    disk_controller[:fqdd]
+  end
+
   def fc630_controllers
     ["PERC H330 Mini", "PERC H730 Mini"]
   end
@@ -1055,6 +1081,23 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     disks
   end
 
+  def boss_disks
+    device_fqdd = boss_controller
+    raise("Failed to find BOSS controller.") unless device_fqdd
+    disks = get_disks_for_controller(device_fqdd)
+    raise("Expect 2 disks, got %d" % [disks.size]) if disks.size != 2
+    disks
+  end
+
+  def get_disks_for_controller(controller_fqdd)
+    disks = []
+    physical_disks.xpath("//Envelope/Body/PullResponse/Items/DCIM_PhysicalDiskView").each do |x|
+      fqdd = x.xpath("FQDD").text
+      disks << fqdd if fqdd =~ /\S+#{controller_fqdd}/i
+    end
+    disks
+  end
+  
   #TODO: Find disks under H330 controller
   def fc630_raid_configuration
     {
@@ -1070,6 +1113,30 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
           "configuration" => {
             "raidlevel" => "raid1",
             "numberofdisks" => 1,
+            "comparator" => "minimum",
+            "disktype" => "any"
+          },
+          "mediaType" => "ANY"
+        }
+      ],
+      "hddHotSpares" =>[]
+    }
+  end
+
+  def boss_raid_configuration
+    {
+      "externalVirtualDisks" => [],
+      "externalSsdHotSpares" => [],
+      "externalHddHotSpares" => [],
+      "ssdHotSpares" => [],
+      "virtualDisks" => [
+        {
+          "physicalDisks" => boss_disks,
+          "raidLevel" => "raid1",
+          "controller" => boss_controller,
+          "configuration" => {
+            "raidlevel" => "raid1",
+            "numberofdisks" => 2,
             "comparator" => "minimum",
             "disktype" => "any"
           },
