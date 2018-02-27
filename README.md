@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/dell-asm/dell-idrac.svg?branch=master)](https://travis-ci.org/dell-asm/dell-idrac)
+
 #iDrac
 
 ####Table of Contents
