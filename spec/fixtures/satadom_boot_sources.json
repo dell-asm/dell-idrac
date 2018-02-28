@@ -1,0 +1,110 @@
+[
+  {
+    "bios_boot_string": "Virtual Optical Drive BootSeq",
+    "boot_source_type": "IPL",
+    "boot_string": "Virtual Optical Drive BootSeq",
+    "current_assigned_sequence": "0",
+    "current_enabled_status": "1",
+    "element_name": "Virtual Optical Drive BootSeq",
+    "fail_through_supported": "1",
+    "instance_id": "IPL:BIOS.Setup.1-1#BootSeq#Optical.iDRACVirtual.1-1#8a5eae2669647d9e140c8b2edac24d33",
+    "pending_assigned_sequence": "0",
+    "pending_enabled_status": "1"
+  },
+  {
+    "bios_boot_string": "NIC in Slot 1 Port 1 Partition 1: IBA XE Slot 8400 v2334 BootSeq",
+    "boot_source_type": "IPL",
+    "boot_string": "NIC in Slot 1 Port 1 Partition 1: IBA XE Slot 8400 v2334 BootSeq",
+    "current_assigned_sequence": "1",
+    "current_enabled_status": "1",
+    "element_name": "NIC in Slot 1 Port 1 Partition 1: IBA XE Slot 8400 v2334 BootSeq",
+    "fail_through_supported": "1",
+    "instance_id": "IPL:BIOS.Setup.1-1#BootSeq#NIC.Slot.1-1-1#d3df76a04b2c652b0b595661c4913cdd",
+    "pending_assigned_sequence": "1",
+    "pending_enabled_status": "1"
+  },
+  {
+    "bios_boot_string": "Hard drive C: BootSeq",
+    "boot_source_type": "IPL",
+    "boot_string": "Hard drive C: BootSeq",
+    "current_assigned_sequence": "2",
+    "current_enabled_status": "1",
+    "element_name": "Hard drive C: BootSeq",
+    "fail_through_supported": "1",
+    "instance_id": "IPL:BIOS.Setup.1-1#BootSeq#HardDisk.List.1-1#c9203080df84781e2ca3d512883dee6f",
+    "pending_assigned_sequence": "2",
+    "pending_enabled_status": "1"
+  },
+  {
+    "bios_boot_string": "Integrated NIC 1 Port 1 Partition 1: IBA XE Slot 0100 v2364 BootSeq",
+    "boot_source_type": "IPL",
+    "boot_string": "Integrated NIC 1 Port 1 Partition 1: IBA XE Slot 0100 v2364 BootSeq",
+    "current_assigned_sequence": "3",
+    "current_enabled_status": "1",
+    "element_name": "Integrated NIC 1 Port 1 Partition 1: IBA XE Slot 0100 v2364 BootSeq",
+    "fail_through_supported": "1",
+    "instance_id": "IPL:BIOS.Setup.1-1#BootSeq#NIC.Integrated.1-1-1#97490ee0e6fffeaebf139b069948792e",
+    "pending_assigned_sequence": "3",
+    "pending_enabled_status": "1"
+  },
+  {
+    "bios_boot_string": "Integrated NIC 1 Port 2 Partition 1: IBA XE Slot 0101 v2364 BootSeq",
+    "boot_source_type": "IPL",
+    "boot_string": "Integrated NIC 1 Port 2 Partition 1: IBA XE Slot 0101 v2364 BootSeq",
+    "current_assigned_sequence": "4",
+    "current_enabled_status": "1",
+    "element_name": "Integrated NIC 1 Port 2 Partition 1: IBA XE Slot 0101 v2364 BootSeq",
+    "fail_through_supported": "1",
+    "instance_id": "IPL:BIOS.Setup.1-1#BootSeq#NIC.Integrated.1-2-1#dc1013955817bf0f19cb88fe0ccb8763",
+    "pending_assigned_sequence": "4",
+    "pending_enabled_status": "1"
+  },
+  {
+    "bios_boot_string": "Virtual Floppy Drive BootSeq",
+    "boot_source_type": "IPL",
+    "boot_string": "Virtual Floppy Drive BootSeq",
+    "current_assigned_sequence": "5",
+    "current_enabled_status": "1",
+    "element_name": "Virtual Floppy Drive BootSeq",
+    "fail_through_supported": "1",
+    "instance_id": "IPL:BIOS.Setup.1-1#BootSeq#Floppy.iDRACVirtual.1-1#d4f2481e04c9b4c4922e0b3072623208",
+    "pending_assigned_sequence": "5",
+    "pending_enabled_status": "1"
+  },
+  {
+    "bios_boot_string": "NIC in Slot 1 Port 2 Partition 1: IBA XE Slot 8401 v2334 BootSeq",
+    "boot_source_type": "IPL",
+    "boot_string": "NIC in Slot 1 Port 2 Partition 1: IBA XE Slot 8401 v2334 BootSeq",
+    "current_assigned_sequence": "6",
+    "current_enabled_status": "1",
+    "element_name": "NIC in Slot 1 Port 2 Partition 1: IBA XE Slot 8401 v2334 BootSeq",
+    "fail_through_supported": "1",
+    "instance_id": "IPL:BIOS.Setup.1-1#BootSeq#NIC.Slot.1-2-1#7ce179818e656abf50886525906c7353",
+    "pending_assigned_sequence": "6",
+    "pending_enabled_status": "1"
+  },
+  {
+    "bios_boot_string": "Integrated Storage Controller 1: #0200 ID0A LUN0 TOSHIBA  PX04SHB040 HddSeq",
+    "boot_source_type": "BCV",
+    "boot_string": "Integrated Storage Controller 1: #0200 ID0A LUN0 TOSHIBA  PX04SHB040 HddSeq",
+    "current_assigned_sequence": "0",
+    "current_enabled_status": "1",
+    "element_name": "Integrated Storage Controller 1: #0200 ID0A LUN0 TOSHIBA  PX04SHB040 HddSeq",
+    "fail_through_supported": "2",
+    "instance_id": "BCV:BIOS.Setup.1-1#HddSeq#NonRAID.Integrated.1-1#68dd2d28ce3d8e4718e542e13b305780",
+    "pending_assigned_sequence": "0",
+    "pending_enabled_status": "1"
+  },
+  {
+    "bios_boot_string": "Embedded SATA Port Disk J: SATADOM-ML 3SE HddSeq",
+    "boot_source_type": "BCV",
+    "boot_string": "Embedded SATA Port Disk J: SATADOM-ML 3SE HddSeq",
+    "current_assigned_sequence": "1",
+    "current_enabled_status": "1",
+    "element_name": "Embedded SATA Port Disk J: SATADOM-ML 3SE HddSeq",
+    "fail_through_supported": "2",
+    "instance_id": "BCV:BIOS.Setup.1-1#HddSeq#Disk.SATAEmbedded.J-1#44155cf2a3427d4de357f68725bbf731",
+    "pending_assigned_sequence": "1",
+    "pending_enabled_status": "1"
+  }
+]
