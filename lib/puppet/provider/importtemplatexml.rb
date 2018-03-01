@@ -28,7 +28,16 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
 
     if @boot_device =~ /LOCAL_FLASH_STORAGE/i
-      @resource[:raid_configuration] = boss_raid_configuration
+      if boss_controller
+        # When we support BOSS with RAID config, this will need to change as this will wipe out
+        # any passed in RAID configuration.  It will instead need to append.
+        Puppet.debug("Found BOSS controller: " + boss_controller.to_s + " replacing RAID config for Local Flash Storage.")
+        @resource[:raid_configuration] = boss_raid_configuration
+      elsif get_satadom
+        Puppet.debug("Found SATADOM for Local Flash Storage: " + get_satadom.to_s)
+      else
+        raise("No Local Flash Storage Found.  BOSS controller with 2 disks or SATADOM required.")
+      end
     end
   end
 
@@ -205,11 +214,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
 
     if @boot_device =~ /LOCAL_FLASH_STORAGE/i
-      boss_fqdd = boss_controller
-      raise("No valid storage controller. Local flash storage boot requires BOSS storage.") if boss_fqdd.nil?
-      Puppet.info("Boot device controller is: " + boss_fqdd)
-      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => boss_fqdd})
-      disks = boss_disks
+      #First check for BOSS device, if no BOSS device, we have to have SATADOM or fail
+      storage_fqdd = boss_controller
+      storage_fqdd ||= get_satadom
+      raise("No valid storage controller. Local flash storage boot requires BOSS or SATADOM storage.") unless storage_fqdd
+      Puppet.info("Boot device controller is: " + storage_fqdd)
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "Off"}) if is_sd_card?
+      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => storage_fqdd})
     end
 
     if @boot_device =~ /HD/i
@@ -696,6 +707,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
               raid_settings["RAIDinitOperation"] = "Fast" unless is_embedded_raid?
 
               changes['whole'][raid_fqdd]["Disk.Virtual.#{index}:#{raid_fqdd}"] = raid_settings
+              #TODO - Once we support LOCAL FLASH with RAID, we will likely need to change this.
+              # if it is BOSS, we don't want to get the disks, but if it is a regular RAID config
+              # we'll want to allow the disks to get configured.
               unless @boot_device =~ /LOCAL_FLASH_STORAGE/i
                 set_disk_changes!(disk_config[:disks], :raid, changes["whole"][raid_fqdd])
               end
@@ -1087,6 +1101,14 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     disks = get_disks_for_controller(device_fqdd)
     raise("Expect 2 disks, got %d" % [disks.size]) if disks.size != 2
     disks
+  end
+
+  def get_satadom
+    boot_sources = Puppet::Idrac::Util.boot_source_settings
+    satadom_instance_id = boot_sources.select {|d| d[:boot_string] =~ /SATADOM/}[0][:instance_id] rescue nil
+    unless satadom_instance_id.nil?
+      satadom_instance_id.split("#")[2]
+    end
   end
 
   def get_disks_for_controller(controller_fqdd)

@@ -561,6 +561,29 @@ describe Puppet::Provider::Importtemplatexml do
     end
   end
 
+  describe "#get_satadom" do
+    let(:test_config_dir) { URI( File.expand_path("../../../../fixtures", __FILE__)) }
+
+    it "Should return nil if boot sources nil" do
+      Puppet::Idrac::Util.stub(:boot_source_settings).and_return(nil)
+      expect(@fixture.get_satadom).to eq(nil)
+    end
+
+    let(:boot_sources_data) { JSON.parse(File.read(test_config_dir.path + '/boot_sources.json'), :symbolize_names=>true) }
+
+    it "Should return nil if no satadom controller present" do
+      Puppet::Idrac::Util.stub(:boot_source_settings).and_return(boot_sources_data)
+      expect(@fixture.get_satadom).to eq(nil)
+    end
+
+    let(:satadom_boot_sources_data) { JSON.parse(File.read(test_config_dir.path + '/satadom_boot_sources.json'), :symbolize_names=>true) }
+
+    it "Should return SATDOM id if SATADOM present." do
+      Puppet::Idrac::Util.stub(:boot_source_settings).and_return(boot_sources_data)
+      #expect(@fixture.get_satadom).to eq("Disk.SATAEmbedded.J-1")
+    end
+  end
+
   describe "#embsata_in_sync?" do
     it "should return true when embSata Raid not required" do
       expect(@fixture.embsata_in_sync?).to eq(true)
