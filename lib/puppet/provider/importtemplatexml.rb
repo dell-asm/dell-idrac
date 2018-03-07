@@ -29,10 +29,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
     if @boot_device =~ /LOCAL_FLASH_STORAGE/i
       if boss_controller
-        # When we support BOSS with RAID config, this will need to change as this will wipe out
-        # any passed in RAID configuration.  It will instead need to append.
-        Puppet.debug("Found BOSS controller: " + boss_controller.to_s + " replacing RAID config for Local Flash Storage.")
-        @resource[:raid_configuration] = boss_raid_configuration
+        Puppet.debug("Found BOSS controller: " + boss_controller.to_s + " including RAID config for Local Flash Storage.")
       elsif get_satadom
         Puppet.debug("Found SATADOM for Local Flash Storage: " + get_satadom.to_s)
       else
@@ -594,6 +591,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @raid_configuration ||=
         begin
           unprocessed = @resource[:raid_configuration]
+          #For Local Flash boot device with BOSS we need to add RAID 1
+          #configuration to our existing RAID configuration
+          if boss_controller && @boot_device =~ /LOCAL_FLASH_STORAGE/i
+            unprocessed["virtualDisks"].push(boss_virtual_disk)
+          end
           raid_configuration = Hash.new { |h, k| h[k] = {:virtual_disks => [], :hotspares => [], :nonraid => []} }
           disk_types = {}
           disks_enum = Puppet::Idrac::Util.view_disks(:physical)
@@ -641,13 +643,15 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
               end
             end
           end
-
           raid_configuration
         end
   end
 
   def get_raid_config_changes(target_current_xml, raid_reset=false)
     changes = {'partial'=>{}, 'whole'=>{}, 'remove'=> {'attributes'=>{}, 'components'=>{}}}
+    if (@resource[:ensure] == :teardown && !boss_controller.nil? && @boot_device =~ /LOCAL_FLASH_STORAGE/i)
+      changes['whole'][boss_controller] = { 'RAIDresetConfig' => "True" }
+    end
     if (@resource[:ensure] == :teardown && !@resource[:raid_configuration].nil? && !@nonraid_to_raid) || raid_reset
       Puppet.debug("Setting RAID configuration to be cleared as part of %s" % (raid_reset ? "raid reset" : "teardown"))
       raid_configuration.keys.each{|controller| changes['whole'][controller] = { 'RAIDresetConfig' => "True" } }
@@ -669,6 +673,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         changes['partial'] = {'BIOS.Setup.1-1'=> {'HddSeq' => raid_configuration.keys.first}} if @boot_device =~ /HD/i
         unless raid_in_sync?(target_current_xml, true)
           #Getting the first key should get the first internal disk controller, or the first external if no internal on the server
+          vd_index = 0
           raid_configuration.keys.each do |raid_fqdd|
             changes['whole'][raid_fqdd] = { "RAIDresetConfig" => "True", "RAIDforeignConfig" => "Clear"}
 
@@ -694,7 +699,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
               end
               raid_settings = {
                 "RAIDaction"        => "Create",
-                "Name"              => "ASM VD#{index}",
+                "Name"              => "VD #{vd_index}",
                 "Size"              => "0",
                 "StripeSize"        => "128",
                 "SpanDepth"         => span_depth,
@@ -702,15 +707,14 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
                 "RAIDTypes"         => disk_config[:level].sub("raid", "RAID "),
                 "IncludedPhysicalDiskID"=> disk_config[:disks]
               }
-
+              vd_index += 1
               # This settings is not supported on RAID_Mode.  It defaults to Fast
               raid_settings["RAIDinitOperation"] = "Fast" unless is_embedded_raid?
 
               changes['whole'][raid_fqdd]["Disk.Virtual.#{index}:#{raid_fqdd}"] = raid_settings
-              #TODO - Once we support LOCAL FLASH with RAID, we will likely need to change this.
-              # if it is BOSS, we don't want to get the disks, but if it is a regular RAID config
+              # If it is BOSS, we don't want to get the disks, but if it is a regular RAID config
               # we'll want to allow the disks to get configured.
-              unless @boot_device =~ /LOCAL_FLASH_STORAGE/i
+              unless @boot_device =~ /LOCAL_FLASH_STORAGE/i && raid_fqdd =~ /AHCI/i
                 set_disk_changes!(disk_config[:disks], :raid, changes["whole"][raid_fqdd])
               end
             end
@@ -1145,27 +1149,18 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     }
   end
 
-  def boss_raid_configuration
+  def boss_virtual_disk
     {
-      "externalVirtualDisks" => [],
-      "externalSsdHotSpares" => [],
-      "externalHddHotSpares" => [],
-      "ssdHotSpares" => [],
-      "virtualDisks" => [
-        {
-          "physicalDisks" => boss_disks,
-          "raidLevel" => "raid1",
-          "controller" => boss_controller,
-          "configuration" => {
-            "raidlevel" => "raid1",
-            "numberofdisks" => 2,
-            "comparator" => "minimum",
-            "disktype" => "any"
-          },
-          "mediaType" => "ANY"
-        }
-      ],
-      "hddHotSpares" =>[]
+      "physicalDisks" => boss_disks,
+      "raidLevel" => "raid1",
+      "controller" => boss_controller,
+      "configuration" => {
+        "raidlevel" => "raid1",
+        "numberofdisks" => 2,
+        "comparator" => "exact",
+        "disktype" => "any"
+      },
+      "mediaType" => "ANY"
     }
   end
 
