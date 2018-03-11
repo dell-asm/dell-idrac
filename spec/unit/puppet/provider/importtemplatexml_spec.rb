@@ -312,6 +312,7 @@ describe Puppet::Provider::Importtemplatexml do
     end
 
     it "should munge basic config xml data" do
+      @fixture.stub(:boss_controller).and_return(nil)
       Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
       Puppet::Idrac::Util.stub(:get_transport).and_return({:host => '1.1.1.1', :user => 'root', :password => 'calvin'})
       Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
@@ -333,6 +334,7 @@ describe Puppet::Provider::Importtemplatexml do
     end
 
     it "should get changes based on raid configuration hash" do
+      @fixture.stub(:boss_controller).and_return(nil)
       Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
       Puppet::Provider::Importtemplatexml.any_instance.stub(:raid_in_sync?).and_return(false)
       Puppet::Provider::Importtemplatexml.any_instance.stub(:find_attribute_value).and_return("RAID")
@@ -377,6 +379,7 @@ describe Puppet::Provider::Importtemplatexml do
     end
 
     it "should use the network data to munge the config.xml" do
+      @fixture.stub(:boss_controller).and_return(nil)
       Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
       Puppet::Idrac::Util.stub(:get_transport).and_return({:host => '1.1.1.1', :user => 'root', :password => 'calvin'})
       Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
@@ -409,6 +412,7 @@ describe Puppet::Provider::Importtemplatexml do
     end
 
     it "should remove any bios attributes that don't exist on the server" do
+      @fixture.stub(:boss_controller).and_return(nil)
       Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
       Puppet::Idrac::Util.stub(:get_transport).and_return({:host => '1.1.1.1', :user => 'root', :password => 'calvin'})
       Puppet::Provider::Exporttemplatexml.any_instance.stub(:exporttemplatexml).and_return("12341234")
@@ -717,7 +721,7 @@ EOF
             "RAIDresetConfig" => "True",
             "RAIDforeignConfig" => "Clear",
             "Disk.Virtual.0:RAID.Embedded.1-1" => {
-              "RAIDaction"=>"Create", "Name"=>"ASM VD0", "Size"=>"0",
+              "RAIDaction"=>"Create", "Name"=>"VD 0", "Size"=>"0",
               "StripeSize"=>"128", "SpanDepth"=>"1", "SpanLength"=>2,
               "RAIDTypes"=>"RAID 0",
               "IncludedPhysicalDiskID"=> ["Disk.Direct.1-1:RAID.Embedded.1-1", "Disk.Direct.0-0:RAID.Embedded.1-1"]},
@@ -766,7 +770,7 @@ EOF
               "RAIDresetConfig" => "True",
               "RAIDforeignConfig" => "Clear",
               "Disk.Virtual.0:RAID.Integrated.1-1" => {
-                "RAIDaction"=>"Create", "Name"=>"ASM VD0", "Size"=>"0",
+                "RAIDaction"=>"Create", "Name"=>"VD 0", "Size"=>"0",
                 "StripeSize"=>"128", "SpanDepth"=>"1", "SpanLength"=>2,
                 "RAIDTypes"=>"RAID 0",
                 "IncludedPhysicalDiskID"=> [
@@ -843,7 +847,7 @@ EOF
                     "RAIDresetConfig" => "True",
                     "RAIDforeignConfig" => "Clear",
                     "Disk.Virtual.0:RAID.Integrated.1-1" => {
-                        "RAIDaction"=>"Create", "Name"=>"ASM VD0", "Size"=>"0",
+                        "RAIDaction"=>"Create", "Name"=>"VD 0", "Size"=>"0",
                         "StripeSize"=>"128", "SpanDepth"=>"1", "SpanLength"=>2,
                         "RAIDTypes"=>"RAID 0",
                         "IncludedPhysicalDiskID"=> [
