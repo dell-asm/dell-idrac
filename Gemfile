@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 
 gem 'activesupport'
-gem 'nokogiri', '1.6.8'
+gem 'nokogiri', '~>1.8.1'
 gem 'dell-asm-util', :git => 'https://github.com/dell-asm/dell-asm-util.git', :branch => 'master'
 
 # Add gems necessary to run facter on Windows
@@ -16,14 +16,14 @@ platforms :mswin, :mingw do
 end
 
 group :development, :test do
-  gem 'rake'
+  gem 'rake', '<11.0'
   gem 'rspec', '~>3.4.0', :require => false
-  gem 'puppetlabs_spec_helper', '0.4.1', :require => false
+  gem 'puppetlabs_spec_helper'
   gem 'json_pure', '2.0.1'
   if puppetversion = ENV['PUPPET_GEM_VERSION']
     gem 'puppet', puppetversion
   else
-    gem 'puppet', '3.6.2'
+    gem 'puppet', '5.3.3'
   end
   gem 'puppet-lint'
 end
