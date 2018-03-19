@@ -7,6 +7,8 @@ fixture_path = File.expand_path(File.join(__FILE__, '..', 'fixtures'))
 dir = File.expand_path(File.dirname(__FILE__))
 $LOAD_PATH.unshift File.join(dir, 'spec_lib')
 
+$:.unshift File.dirname(__FILE__) + "/fixtures/modules/transport/lib"
+
 # Don't want puppet getting the command line arguments for rake or autotest
 ARGV.clear
 
@@ -45,10 +47,10 @@ RSpec.configure do |config|
  # include PuppetSpec::Setupcleanup
   #include PuppetSpec::Validation
   #include PuppetSpec::Factervalue
-  
+
   #c.module_path = File.join(fixture_path, 'modules')
   #c.manifest_dir = File.join(fixture_path, 'manifests')
-  
+
   config.filter_run_excluding :broken => true
 
   #config.mock_with :mocha
