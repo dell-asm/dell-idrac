@@ -590,10 +590,14 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
     @raid_configuration ||=
         begin
-          unprocessed = @resource[:raid_configuration]
+          unprocessed = @resource[:raid_configuration] || {}
+          %w(virtualDisks externalVirtualDisks externalSsdHotSpares externalHddHotSpares ssdHotSpares hddHotSpares).each do |key|
+            unprocessed[key] ||= []
+          end
           #For Local Flash boot device with BOSS we need to add RAID 1
           #configuration to our existing RAID configuration
           if boss_controller && @boot_device =~ /LOCAL_FLASH_STORAGE/i
+            # If there is an existing RAID configuration, we just want to add boss virtual disk
             unprocessed["virtualDisks"].push(boss_virtual_disk)
           end
           raid_configuration = Hash.new { |h, k| h[k] = {:virtual_disks => [], :hotspares => [], :nonraid => []} }
@@ -606,15 +610,15 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
             disk_types[fqdd] = type
           end
 
-          if (unprocessed.nil? || unprocessed.empty?) && @boot_device.match(/VSAN/i)
+          if (unprocessed.empty?) && @boot_device.match(/VSAN/i)
             disk_types.keys.each do |disk|
               controller = disk.split(':').last
               raid_configuration[controller][:hotspares] << disk
             end
             Puppet.debug("Inside VSAN RAID Configuration: #{raid_configuration}")
-          elsif unprocessed.nil? || unprocessed.empty?
+          elsif unprocessed.empty?
             Puppet.debug("No RAID Configuration required")
-          elsif !(unprocessed['virtualDisks'] && unprocessed['virtualDisks'].empty? && unprocessed['externalVirtualDisks'] && unprocessed['externalVirtualDisks'].empty?)
+          elsif !(unprocessed['virtualDisks'].empty? && unprocessed['externalVirtualDisks'].empty?)
             (unprocessed['virtualDisks'] + unprocessed['externalVirtualDisks']).each do |config|
               #Just check first disk in the list to get what type of virtual disk it is
               type = disk_types[config["physicalDisks"].first]
