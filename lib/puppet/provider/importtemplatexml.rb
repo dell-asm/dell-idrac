@@ -418,7 +418,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     unless attempt == 0
       rotate_config_xml_file
     end
-
     File.open(@config_xml_path, 'w+') do |file|
       if embsata_in_sync?
         file.write(xml_base.to_xml(:indent => 2))
@@ -428,7 +427,6 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         file.write(xml_base.to_xml(:indent => 2).gsub("AHCI.Embedded", "RAID.Embedded").gsub("ATA.Embedded","RAID.Embedded"))
       end
     end
-
     xml_base
   end
 
@@ -587,7 +585,17 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       @nonraid_to_raid = true
       @resource[:raid_configuration]["virtualDisks"] << non_raid_disks
     end
-
+    # Check that any non-raid virtual disks are being requested on a controller that supports configuration.
+    # Currently only the HBA330 Mini does not support configuration and should already be in non-raid
+    # mode.
+    @resource[:raid_configuration]["virtualDisks"].each do |this_virtual_disk|
+      if this_virtual_disk["raidLevel"] == "nonraid"
+        if !controller_supports_non_raid?(this_virtual_disk["controller"])
+          Puppet.debug("Removing virtual disk for: #{this_virtual_disk["controller"]} as non-raid not supported")
+          @resource[:raid_configuration]["virtualDisks"].delete(this_virtual_disk)
+        end
+      end
+    end
     @raid_configuration ||=
         begin
           unprocessed = @resource[:raid_configuration] || {}
@@ -1050,6 +1058,16 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     false
   end
 
+  # Figure out of the requested RAID controller for nonRAID actually supports nonRAID
+  # Currently only HBA330 mini doesn't support nonRAID, and should already be configured
+  # as a passthrough device.
+  #
+  # @return Boolean
+  def controller_supports_non_raid?(non_raid_fqdd)
+    non_raid_disk_controller = disk_controllers.find { |c| c[:fqdd].include?(non_raid_fqdd) }
+    !(non_raid_disk_controller[:product_name] == "Dell HBA330 Mini")
+  end
+
   # Check for Embedded Sata in sync
   #
   # If the current embedded sata mode is not what is required
@@ -1171,7 +1189,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   def non_raid_not_requested?
     vds = (@resource["raid_configuration"] || {})["virtualDisks"]
     return false unless vds
-    !!vds.find { |vd| vd["raidLevel"] == "nonraid" }
+    !vds.find { |vd| vd["raidLevel"] == "nonraid" }
   end
 
   def wsman
