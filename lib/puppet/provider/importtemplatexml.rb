@@ -581,7 +581,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     # For scenario where non-raid disks already exists on the server but current configruation haven't requested it
     # Need to convert all non-raid disks to raid disks
     # Specifically required for Windows deployment where OS installation is failing due to pre-existing non-raid disks
-    if !non_raid_disks.empty? && non_raid_not_requested? && !@boot_device.match(/vsan/i)
+    if !non_raid_disks.empty? && non_raid_not_requested? && !(@boot_device =~ /vsan/i) && !(@boot_device =~ /LOCAL_FLASH_STORAGE/i)
       @nonraid_to_raid = true
       @resource[:raid_configuration]["virtualDisks"] << non_raid_disks
     end
@@ -1065,7 +1065,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   # @return Boolean
   def controller_supports_non_raid?(non_raid_fqdd)
     non_raid_disk_controller = disk_controllers.find { |c| c[:fqdd].include?(non_raid_fqdd) }
-    !(non_raid_disk_controller[:product_name] == "Dell HBA330 Mini")
+    !(non_raid_disk_controller[:product_name] =~ /Dell HBA330/i)
   end
 
   # Check for Embedded Sata in sync
