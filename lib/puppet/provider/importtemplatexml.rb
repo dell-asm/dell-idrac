@@ -588,11 +588,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     # Check that any non-raid virtual disks are being requested on a controller that supports configuration.
     # Currently only the HBA330 Mini does not support configuration and should already be in non-raid
     # mode.
-    @resource[:raid_configuration]["virtualDisks"].each do |this_virtual_disk|
-      if this_virtual_disk["raidLevel"] == "nonraid"
-        if !controller_supports_non_raid?(this_virtual_disk["controller"])
-          Puppet.debug("Removing virtual disk for: #{this_virtual_disk["controller"]} as non-raid not supported")
-          @resource[:raid_configuration]["virtualDisks"].delete(this_virtual_disk)
+    unless @resource[:raid_configuration].nil? || @resource[:raid_configuration][:virtualDisks].nil?
+      @resource[:raid_configuration]["virtualDisks"].each do |this_virtual_disk|
+        if this_virtual_disk["raidLevel"] == "nonraid"
+          if !controller_supports_non_raid?(this_virtual_disk["controller"])
+            Puppet.debug("Removing virtual disk for: #{this_virtual_disk["controller"]} as non-raid not supported")
+            @resource[:raid_configuration]["virtualDisks"].delete(this_virtual_disk)
+          end
         end
       end
     end
