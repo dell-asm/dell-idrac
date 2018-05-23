@@ -37,9 +37,24 @@ Puppet::Type.type(:server_onboard).provide(:default, :parent => Puppet::Provider
       raise "username or password not specified"
     end
 
-    Puppet.debug("Setting credentials for %s" % resource[:name])
-    racadm_set("idrac", "users", "username", credential["username"], "2", :raise_on_err => true)
-    racadm_set("idrac", "users", "password", credential["password"], "2", :raise_on_err => true)
+    root_slot = nil
+    empty_slot = nil
+
+    (2..16).each do |i|
+      user_name = racadm_get('idrac', 'users', 'username', i )
+      root_slot = i if user_name == "root"
+      break if root_slot
+      empty_slot = i unless user_name
+    end
+
+    if root_slot
+      racadm_set("idrac", "users", "password", credential["password"], root_slot, :raise_on_err => true)
+    elsif empty_slot
+      racadm_set("idrac", "users", "username", credential["username"], empty_slot, :raise_on_err => true)
+      racadm_set("idrac", "users", "password", credential["password"], empty_slot, :raise_on_err => true)
+    else
+      raise("No root user found and no empty slots available") if !root_slot && !empty_slot
+    end
   end
 
   # Set network configuration
