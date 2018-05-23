@@ -36,10 +36,24 @@ Puppet::Type.type(:server_onboard).provide(:default, :parent => Puppet::Provider
     if credential.nil? || credential["username"].nil? || credential["password"].nil?
       raise "username or password not specified"
     end
-
-    Puppet.debug("Setting credentials for %s" % resource[:name])
-    racadm_set("idrac", "users", "username", credential["username"], "2", :raise_on_err => true)
-    racadm_set("idrac", "users", "password", credential["password"], "2", :raise_on_err => true)
+    # User#1 is anonymous and cannot be changed. Lookup other 15 users for the 'root' user availability.
+    # If 'root' user is available at any of the positions from #2 to #16, let it be.
+    # If 'root' user is NOT available at any of the positions from #2 to #16,
+    # set the 'root' user at #2 position as it is reserved for 'root' user
+    is_root_user_present = false
+    (2..16).each do |i|
+      user_name = racadm_get('idrac', 'users', 'username', i )
+      if user_name == credential["username"]
+        racadm_set("idrac", "users", "password", credential["password"], i, :raise_on_err => true)
+        is_root_user_present = true
+        break
+      end
+    end
+    unless is_root_user_present
+      Puppet.debug("Setting credentials for %s" % resource[:name])
+      racadm_set("idrac", "users", "username", credential["username"], "2", :raise_on_err => true)
+      racadm_set("idrac", "users", "password", credential["password"], "2", :raise_on_err => true)
+    end
   end
 
   # Set network configuration
