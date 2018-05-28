@@ -13,6 +13,9 @@ describe Puppet::Type.type(:server_onboard).provider(:default) do
   end
 
   context "set credential" do
+    let(:resource) { Puppet::Type.type(:server_onboard).new({ :name => "rackserver-ABCD123"}) }
+    let(:provider) {resource.provider}
+
     it "should raise error when credentials are not set" do
       provider.resource[:credential] = {}
       expect {provider.setup_credential}.to raise_error(/not specified/)
@@ -27,6 +30,8 @@ describe Puppet::Type.type(:server_onboard).provider(:default) do
   end
 
   context "set network type" do
+    let(:resource) { Puppet::Type.type(:server_onboard).new({ :name => "rackserver-ABCD123"}) }
+    let(:provider) {resource.provider}
     before(:each) do
       provider.stubs(:config_static_network).with(anything())
     end
@@ -56,6 +61,8 @@ describe Puppet::Type.type(:server_onboard).provider(:default) do
   end
 
   context "set static configuration" do
+    let(:resource) { Puppet::Type.type(:server_onboard).new({ :name => "rackserver-ABCD123"}) }
+    let(:provider) {resource.provider}
     before(:each) do
       provider.stubs(:racadm_set).with(anything()).returns("Object Executed Successfully")
       provider.stubs(:racadm_cmd).with(anything()).returns("Object Executed Successfully")

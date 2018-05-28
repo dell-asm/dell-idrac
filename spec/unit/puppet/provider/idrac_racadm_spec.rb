@@ -13,6 +13,9 @@ describe Puppet::Provider::IdracRacadm do
   end
 
   context "#racadm_cmd" do
+    let(:racadm) { Puppet::Provider::IdracRacadm.new }
+    let(:ssh) { Object.new }
+
     it "should execute fine for successful command having params" do
       ssh.stubs(:exec!).with("racadm cmd foo bar").returns("Object executed successfully")
       racadm.stubs(:client).returns(ssh)
