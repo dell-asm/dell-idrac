@@ -3,16 +3,19 @@ require "rspec/expectations"
 require "puppet/provider/idrac_racadm"
 
 describe Puppet::Provider::IdracRacadm do
-  let(:racadm) { Puppet::Provider::IdracRacadm.new }
-  let(:ssh) { Object.new }
-
   context "instance validation" do
+    let(:racadm) { Puppet::Provider::IdracRacadm.new }
+    let(:ssh) { Object.new }
+
     it "should have instance object" do
       expect(racadm.class).to eq(Puppet::Provider::IdracRacadm)
     end
   end
 
   context "#racadm_cmd" do
+    let(:racadm) { Puppet::Provider::IdracRacadm.new }
+    let(:ssh) { "rspec" }
+
     it "should execute fine for successful command having params" do
       ssh.stubs(:exec!).with("racadm cmd foo bar").returns("Object executed successfully")
       racadm.stubs(:client).returns(ssh)
