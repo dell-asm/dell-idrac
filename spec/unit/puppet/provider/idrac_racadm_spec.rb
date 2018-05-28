@@ -3,10 +3,10 @@ require "rspec/expectations"
 require "puppet/provider/idrac_racadm"
 
 describe Puppet::Provider::IdracRacadm do
-  let(:racadm) { Puppet::Provider::IdracRacadm.new }
-  let(:ssh) { Object.new }
-
   context "instance validation" do
+    let(:racadm) { Puppet::Provider::IdracRacadm.new }
+    let(:ssh) { Object.new }
+    
     it "should have instance object" do
       expect(racadm.class).to eq(Puppet::Provider::IdracRacadm)
     end
