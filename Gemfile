@@ -18,6 +18,7 @@ end
 group :development, :test do
   gem 'rake'
   gem 'rspec', '~> 3.7.0', :require => false
+  gem 'mocha', '~> 1.4.0', :require => false
   gem 'puppetlabs_spec_helper', '~> 2.6.2', :require => false
   gem 'json_pure', '~> 2.1.0'
   if puppetversion = ENV['PUPPET_GEM_VERSION']
