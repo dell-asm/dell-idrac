@@ -50,11 +50,11 @@ Puppet::Type.type(:server_onboard).provide(:default, :parent => Puppet::Provider
         break
       end
     end
-    unless is_root_user_present
+    #unless is_root_user_present
       Puppet.debug("Setting credentials for %s" % resource[:name])
       racadm_set("idrac", "users", "username", credential["username"], "2", :raise_on_err => true)
       racadm_set("idrac", "users", "password", credential["password"], "2", :raise_on_err => true)
-    end
+    #end
   end
 
   # Set network configuration
