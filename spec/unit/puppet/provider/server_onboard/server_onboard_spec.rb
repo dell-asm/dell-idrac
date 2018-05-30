@@ -21,7 +21,7 @@ describe Puppet::Type.type(:server_onboard).provider(:default) do
     it "should invoke racadm_set commands for specified credentials" do
       provider.stubs(:racadm_get).with(anything()).returns("foo")
       #provider.expects(:racadm_get).at_least(:once)
-      provider.expects(:racadm_get).times(14)
+      provider.expects(:racadm_get).times(15)
       provider.stubs(:racadm_set).with(anything()).returns("Object Executed Successfully")
       provider.expects(:racadm_set).times(2)
       provider.resource[:credential] = {"username" => "foo", "password" => "bar"}
