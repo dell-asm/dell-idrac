@@ -772,7 +772,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       raid_configuration.keys.each do |raid_fqdd|
         raid_fqdd_xpath = "//Component[@FQDD='#{raid_fqdd}']"
         controller_xml = xml_base.xpath(raid_fqdd_xpath)
-        existing_virtual_disks = controller_xml.xpath("Component[starts-with(@FQDD, 'Disk.')]")
+        existing_virtual_disks = controller_xml.xpath("Component[starts-with(@FQDD, 'Disk.Virtual')]")
 
         raid_configuration[raid_fqdd][:nonraid].each do |nonraid_disk|
           _, enclosure_fqdd = nonraid_disk.split(":", 2)
