@@ -54,9 +54,9 @@ class Puppet::Provider::Exporttemplatexml <  Puppet::Provider
     file_path = File.join(@nfswritepath, @file_name)
     #Need to remove this section because of potentially sensitive data
     xml = Nokogiri::XML(File.read(file_path))
-    xml.xpath("//Component[not(contains(@FQDD, 'NIC.') or contains(@FQDD, 'BIOS.') or contains(@FQDD, 'RAID.') or contains(@FQDD, 'LifecycleController.'))]").remove
+    xml.xpath("//Component[not(contains(@FQDD, 'NIC.') or contains(@FQDD, 'RAID.') or contains(@FQDD, 'AHCI.Slot.') or contains(@FQDD, 'BIOS.') or contains(@FQDD, 'LifecycleController.'))]").remove
     #The remove above leaves many empty lines in the xml.  Just remove all the text() at the top level to keep file clean
     xml.xpath('/SystemConfiguration/text()').remove
-    File.open(file_path, 'w+') { |file| file.write(xml.root.to_xml(:indent => 2)) }
+    File.open(file_path, 'w+') {|file| file.write(xml.root.to_xml(:indent => 2))}
   end
 end
