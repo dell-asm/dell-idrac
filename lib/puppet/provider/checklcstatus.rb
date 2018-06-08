@@ -11,7 +11,9 @@ class Puppet::Provider::Checklcstatus < Puppet::Provider
   end
 
   def checklcstatus
-    executelccmd
+    ASM::Util.block_and_retry_until_ready(300, ASM::WsMan::Error, 60, Puppet) do
+      executelccmd
+    end
   end
 
   def executelccmd
