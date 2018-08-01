@@ -70,8 +70,11 @@ Puppet::Type.type(:server_onboard).provide(:default, :parent => Puppet::Provider
 
     if network_type.to_s == "static"
       network_obj = resource[:networks]
+      network_obj = [network_obj] if network_obj.is_a?(Hash)
+
       Array(network_obj).each do |net|
-        next if net["staticNetworkConfiguration"].nil? || net["staticNetworkConfiguration"].empty?
+        raise "network configuration params are not static" if net["staticNetworkConfiguration"].nil? || net["staticNetworkConfiguration"].empty?
+
         config_static_network net["staticNetworkConfiguration"]
       end
     end
