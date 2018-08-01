@@ -96,10 +96,18 @@ class Puppet::Provider::IdracRacadm <  Puppet::Provider
   end
 
   def parse_output_values(output)
-    lines = output.split("\n")
+    lines = output.split("\n").map do |line|
+      # Get rid of "Warning: It is recommended not to use the default user name" message
+      next if line.start_with?("Warning: It is recommended not to use the default user name")
+
+      # First line of idrac racadm returns something like [Key=Foo.Bar.Foobar] which is unnecessary for use in this module
+      next if line.start_with?("[") && line.end_with?("]")
+
+      line
+    end.compact
+
     return "" if lines.empty?
-    #First line of idrac racadm returns something like [Key=Foo.Bar.Foobar] which is unnecessary for use in this module
-    lines.shift if lines.first.start_with?("[") && lines.first.end_with?("]")
+
     #If we can split by =, it"s a return with key/values we can parse.  Otherwise, just return the output as is split by new line character
     if(lines.first.split("=").size > 1)
       output = Hash[lines.map{|str| str.split("=")}.collect{|line|
