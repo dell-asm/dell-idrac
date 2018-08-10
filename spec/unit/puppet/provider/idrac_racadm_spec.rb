@@ -31,4 +31,22 @@ describe Puppet::Provider::IdracRacadm do
       expect(racadm.racadm_cmd("cmd", [], :raise_on_err => true)).to eq(["Result", "Good"])
     end
   end
+
+  context "#racadm_get" do
+    it "should return user" do
+      ssh.stubs(:exec!)
+         .with("racadm get idrac.users.username.2")
+         .returns("[Key=idrac.Embedded.1#Users.2]\nUserName=root\n")
+      racadm.stubs(:client).returns(ssh)
+      expect(racadm.racadm_get("idrac", "users", "username", 2)).to eq("root")
+    end
+
+    it "should ignore the defautl user warning banner" do
+      ssh.stubs(:exec!)
+          .with("racadm get idrac.users.username.2")
+          .returns("[Key=idrac.Embedded.1#Users.2]\nUserName=root\nWarning: It is recommended not to use the default user name (root) and password as it is a security risk.\n")
+      racadm.stubs(:client).returns(ssh)
+      expect(racadm.racadm_get("idrac", "users", "username", 2)).to eq("root")
+    end
+  end
 end
