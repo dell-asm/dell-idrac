@@ -22,7 +22,7 @@ describe Puppet::Type.type(:server_onboard).provider(:default) do
       provider.stubs(:racadm_get).with(anything()).returns("foo")
       provider.expects(:racadm_get).times(15)
       provider.stubs(:racadm_set).with(anything()).returns("Object Executed Successfully")
-      provider.expects(:racadm_set).times(2)
+      provider.expects(:racadm_set).times(5)
       provider.resource[:credential] = {"username" => "foo", "password" => "bar"}
       provider.setup_credential
     end
