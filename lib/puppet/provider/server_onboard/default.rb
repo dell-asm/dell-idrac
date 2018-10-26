@@ -39,19 +39,25 @@ Puppet::Type.type(:server_onboard).provide(:default, :parent => Puppet::Provider
 
     root_slot = nil
     empty_slot = nil
-
+    user_slot = nil
     (2..16).each do |i|
       user_name = racadm_get('idrac', 'users', 'username', i )
       root_slot = i if user_name == "root"
-      break if root_slot
-      empty_slot = i unless user_name
+      user_slot = i if user_name == credential["username"]
+      empty_slot = i if user_name.nil? || user_name == "UserName="
+      break if root_slot && (user_slot || empty_slot)
     end
 
-    if root_slot
+    if root_slot && credential["username"] == "root"
       racadm_set("idrac", "users", "password", credential["password"], root_slot, :raise_on_err => true)
+    elsif user_slot
+      racadm_set("idrac", "users", "password", credential["password"], user_slot, :raise_on_err => true)
     elsif empty_slot
       racadm_set("idrac", "users", "username", credential["username"], empty_slot, :raise_on_err => true)
       racadm_set("idrac", "users", "password", credential["password"], empty_slot, :raise_on_err => true)
+      racadm_set("idrac", "users", "ipmilanprivilege", lan_permissions["Administrator"], empty_slot, :raise_on_err => true)
+      racadm_set("idrac", "users", "privilege", local_permissions["Administrator"], empty_slot, :raise_on_err => true)
+      racadm_set("idrac", "users", "enable", enabled_bit("Enabled"), empty_slot, :raise_on_err => true)
     else
       raise("No root user found and no empty slots available") if !root_slot && !empty_slot
     end
