@@ -2,6 +2,9 @@ language: ruby
 script: "bundle exec rake lint && bundle exec rake"
 rvm:
   - 2.4.3
+before_install:
+  - gem update --system
+  - gem install bundler
 env:
   - PUPPET_GEM_VERSION='5.4.0'
   - PUPPET_GEM_VERSION=">= 5.4.0"
