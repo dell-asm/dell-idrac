@@ -585,19 +585,16 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       @nonraid_to_raid = true
       @resource[:raid_configuration]["virtualDisks"] << non_raid_disks
     end
+
     # Check that any non-raid virtual disks are being requested on a controller that supports configuration.
     # Currently only the HBA330 Mini does not support configuration and should already be in non-raid
     # mode.
     unless @resource[:raid_configuration].nil? || @resource[:raid_configuration]["virtualDisks"].nil?
-      @resource[:raid_configuration]["virtualDisks"].each do |this_virtual_disk|
-        if this_virtual_disk["raidLevel"] == "nonraid"
-          if !controller_supports_non_raid?(this_virtual_disk["controller"])
-            Puppet.debug("Removing virtual disk for: #{this_virtual_disk["controller"]} as non-raid not supported")
-            @resource[:raid_configuration]["virtualDisks"].delete(this_virtual_disk)
-          end
-        end
+      @resource[:raid_configuration]["virtualDisks"].delete_if do |vd|
+        vd["raidLevel"] == "nonraid" && !controller_supports_non_raid?(vd["controller"])
       end
     end
+
     @raid_configuration ||=
         begin
           unprocessed = @resource[:raid_configuration] || {}
@@ -1067,7 +1064,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   # @return Boolean
   def controller_supports_non_raid?(non_raid_fqdd)
     non_raid_disk_controller = disk_controllers.find { |c| c[:fqdd].include?(non_raid_fqdd) }
-    !(non_raid_disk_controller[:product_name] =~ /Dell HBA330/i)
+    !(non_raid_disk_controller.nil? || non_raid_disk_controller[:product_name] =~ /Dell HBA330/i)
   end
 
   # Check for Embedded Sata in sync

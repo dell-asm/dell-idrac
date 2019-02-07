@@ -950,4 +950,27 @@ EOF
     end
   end
 
+  describe "#controller_supports_non_raid?" do
+    let(:controllers) do
+      [{:fqdd => "NonRAID.Slot.2-1", :product_name => "Dell PERC H730"},
+       {:fqdd => "NonRAID.Slot.3-1", :product_name => "Dell HBA330 Adp"}]
+    end
+
+    before(:each) do
+      @fixture.should_receive(:disk_controllers).once.and_return(controllers)
+    end
+
+    it "should return false for HBA330" do
+      expect(@fixture.controller_supports_non_raid?("NonRAID.Slot.3-1")).to eq(false)
+    end
+
+    it "should return false for NVMe drives (no controller)" do
+      expect(@fixture.controller_supports_non_raid?("Enclosure.Internal.0-1")).to eq(false)
+    end
+
+    it "should return true for anything else" do
+      expect(@fixture.controller_supports_non_raid?("NonRAID.Slot.2-1")).to eq(true)
+    end
+  end
+
 end
