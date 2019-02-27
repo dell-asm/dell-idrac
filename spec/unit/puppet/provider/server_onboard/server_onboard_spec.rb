@@ -62,12 +62,14 @@ describe Puppet::Type.type(:server_onboard).provider(:default) do
       provider.stubs(:racadm_set).with(anything()).returns("Object Executed Successfully")
       provider.stubs(:racadm_cmd).with(anything()).returns("Object Executed Successfully")
       provider.stubs(:wait_for_ip).with(anything())
+      provider.stubs(:wait_for_discover_endpoint).with(anything())
     end
 
     it "should set only static IP and not dns configs" do
       provider.expects(:racadm_set).never
       provider.expects(:racadm_cmd).once
       provider.expects(:wait_for_ip).once
+      provider.expects(:wait_for_discover_endpoint).once
       provider.config_static_network("ipAddress" => "1.2.3.4", "subnet" => "1.1.0.0", "gateway" => "1.2.0.1")
     end
 
@@ -75,6 +77,7 @@ describe Puppet::Type.type(:server_onboard).provider(:default) do
       provider.expects(:racadm_set).once
       provider.expects(:racadm_cmd).once
       provider.expects(:wait_for_ip).once
+      provider.expects(:wait_for_discover_endpoint).once
       provider.config_static_network(
         "ipAddress" => "1.2.3.4", "subnet" => "1.1.0.0", "gateway" => "1.2.0.1", "primaryDns" => "4.5.6.7"
       )
@@ -84,6 +87,7 @@ describe Puppet::Type.type(:server_onboard).provider(:default) do
       provider.expects(:racadm_set).times(2)
       provider.expects(:racadm_cmd).once
       provider.expects(:wait_for_ip).once
+      provider.expects(:wait_for_discover_endpoint).once
       provider.config_static_network(
         "ipAddress" => "1.2.3.4", "subnet" => "1.1.0.0", "gateway" => "1.2.0.1",
         "primaryDns" => "4.5.6.7", "secondaryDns" => "8.9.10.11"
