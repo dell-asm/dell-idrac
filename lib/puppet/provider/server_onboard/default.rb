@@ -88,7 +88,7 @@ Puppet::Type.type(:server_onboard).provide(:default, :parent => Puppet::Provider
 
   # Set static network config
   #
-  # sets static network configuration values like static IP settings, DNS settings, etc
+  # sets static network configuration values like static IP settings, DNS settings, etc; just a comment here...
   #
   # @param config [Hash] static network config to be applied
   # @option config [String] "ipAddress" static IP address
