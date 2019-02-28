@@ -107,6 +107,7 @@ Puppet::Type.type(:server_onboard).provide(:default, :parent => Puppet::Provider
     end
 
     wait_for_ip(config["ipAddress"])
+    wait_for_discover_endpoint(config["ipAddress"])
   end
 
   # Wait for given IP
@@ -128,7 +129,7 @@ Puppet::Type.type(:server_onboard).provide(:default, :parent => Puppet::Provider
     # Invoke wsman identify command in a loop until max wait has elapsed or we get output indicating availability
     while Time.now - current_time < max_wait
       sleep 10
-      output = wsman.identify(10)
+      output = wsman.identify(10) rescue Puppet.info("Still waiting for iDRAC on %s" % ip)
       if output
         Puppet.info("IP %s is now available" % ip)
         return
@@ -137,5 +138,25 @@ Puppet::Type.type(:server_onboard).provide(:default, :parent => Puppet::Provider
 
     # If we reach here, it means no confirmation of connectivity
     raise("Timed out waiting for static IP address to be set for %s" % resource[:name])
+  end
+
+  def wait_for_discover_endpoint(ip, max_wait=300)
+    # Now test to ensure that /cgi-bin/discover endpoint is up
+    require "uri"
+
+    current_time = Time.now
+    endpoint = URI::HTTPS.build(host: ip, path: "/cgi-bin/discover").to_s
+
+    while Time.now - current_time < max_wait
+      sleep 10
+      output = ASM::Util.run_command("curl", "--insecure", "--silent", "-X", "GET", "--Basic", endpoint) rescue Puppet.info("Still waiting for the endpoint, %s" % endpoint)
+      if output&.exit_status && output&.exit_status == 0
+        Puppet.info("The endpoint, https://%s/cgi-bin/discover, is now available" % ip)
+        return
+      end
+    end
+
+    # If we reach here, it means no confirmation of connectivity
+    raise("Timed out waiting for the endpoint, %s, to be available" % endpoint)
   end
 end
