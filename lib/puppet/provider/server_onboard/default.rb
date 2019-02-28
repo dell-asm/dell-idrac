@@ -22,6 +22,9 @@ Puppet::Type.type(:server_onboard).provide(:default, :parent => Puppet::Provider
   # @raise [StandardError] when either credentials or network type cannot be applied
   def create
     setup_credential
+
+    # Hmm..
+    
     setup_network
   end
 
