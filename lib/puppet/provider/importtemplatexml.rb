@@ -22,12 +22,13 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     @templates_dir = File.join(Puppet::Module.find('idrac').path, 'templates')
     @exported_postfix = exported_postfix
     @boot_device = resource[:target_boot_device]
+    @boot_mode = @bios_settings['boot_mode']
 
     if fc630_with_vsan_on_hdd?
       @resource[:raid_configuration] = fc630_raid_configuration
     end
-
-    if @boot_device =~ /LOCAL_FLASH_STORAGE/i
+    Puppet.info("Boot mode is %s" %[@boot_mode])
+    if @boot_mode == 'BIOS_MODE' && @boot_device =~ /LOCAL_FLASH_STORAGE/i
       if boss_controller
         Puppet.debug("Found BOSS controller: " + boss_controller.to_s + " including RAID config for Local Flash Storage.")
       elsif get_satadom
@@ -211,13 +212,15 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
 
     if @boot_device =~ /LOCAL_FLASH_STORAGE/i
-      #First check for BOSS device, if no BOSS device, we have to have SATADOM or fail
-      storage_fqdd = boss_controller
-      storage_fqdd ||= get_satadom
-      raise("No valid storage controller. Local flash storage boot requires BOSS or SATADOM storage.") unless storage_fqdd
-      Puppet.info("Boot device controller is: " + storage_fqdd)
+      if @boot_mode == 'BIOS_MODE'
+        #First check for BOSS device, if no BOSS device, we have to have SATADOM or fail
+        storage_fqdd = boss_controller
+        storage_fqdd ||= get_satadom
+        raise("No valid storage controller. Local flash storage boot requires BOSS or SATADOM storage.") unless storage_fqdd
+        Puppet.info("Boot device controller is: " + storage_fqdd)
+        changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => storage_fqdd})
+      end
       changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "Off"}) if is_sd_card?
-      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => storage_fqdd})
     end
 
     if @boot_device =~ /HD/i
@@ -271,7 +274,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
       changes["remove"]["attributes"]["BIOS.Setup.1-1"] ||= []
       changes["remove"]["attributes"]["BIOS.Setup.1-1"] << "BiosBootSeq"
     else
-      changes["partial"]["BIOS.Setup.1-1"]["BootMode"] = "Bios"
+      if @boot_mode == 'UEFI_MODE'
+        changes["partial"]["BIOS.Setup.1-1"]["BootMode"] = "Uefi"
+      else
+        changes["partial"]["BIOS.Setup.1-1"]["BootMode"] = "Bios"
+      end
     end
     changes
   end
@@ -940,7 +947,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
     #Don't mess with the boot order if the target_boot_device = none
     unless @boot_device =~ /^NONE/i
-      config['partial']['BIOS.Setup.1-1'] = {'BiosBootSeq'=> "HardDisk.List.1-1"}
+      if @boot_mode == 'BIOS_MODE'
+        config['partial']['BIOS.Setup.1-1'] = {'BiosBootSeq'=> "HardDisk.List.1-1"}
+      end
     end
     net_config.cards.each do |card|
       card.interfaces.each do |interface|
@@ -1004,8 +1013,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
             #
             # CONFIGURE LEGACYBOOTPROTO IN CASE NIC IS FOR PXE
             #
-            if partition['networkObjects'] && !partition['networkObjects'].find { |obj| obj['type'] =='PXE' }.nil?
+            if @boot_mode =='BIOS_MODE' && partition['networkObjects'] && !partition['networkObjects'].find { |obj| obj['type'] =='PXE' }.nil?
               changes['LegacyBootProto'] = 'PXE'
+            else
+              changes['LegacyBootProto'] = 'NONE'
             end
           end
         end
