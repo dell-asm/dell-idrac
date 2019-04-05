@@ -139,7 +139,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     timed_out = true
     raise "Import System Configuration is still running."
   ensure
-    return if timed_out
+    raise $! if timed_out
 
     begin
       # After ImportSystemConfiguration completes iDrac will automatically kick off an
