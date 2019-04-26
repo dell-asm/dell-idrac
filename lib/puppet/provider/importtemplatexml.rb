@@ -280,6 +280,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         changes["partial"]["BIOS.Setup.1-1"]["BootMode"] = "Bios"
       end
     end
+
+    unless nvdimm_attrs_in_sync?
+      changes["partial"]["BIOS.Setup.1-1"]["NvdimmFactoryDefault"] = "NvdimmFactoryDefaultEnable"
+    end
+
     changes
   end
 
@@ -838,6 +843,12 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
     Puppet.info("RAID configuration does not need to be updated.")
     true
+  end
+
+  def nvdimm_attrs_in_sync?
+    mem_view = wsman.memory_views
+    nvdimms = mem_view.select {|mem| mem[:rank] == "1" }
+    nvdimms.empty? ? true: false
   end
 
   def get_iscsi_network(network_objects)
