@@ -388,6 +388,7 @@ describe Puppet::Provider::Importtemplatexml do
       ASM::WsMan.stub(:invoke).and_return(@view_disk_xml)
       Puppet::Provider::Importtemplatexml.any_instance.stub(:get_raid_config_changes).and_return({})
       Puppet::Provider::Importtemplatexml.any_instance.stub(:remove_invalid_settings).and_return({})
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:nvdimm_attrs_in_sync?).and_return(true)
       xml = @fixture.munge_config_xml
       xml.xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
       ['NIC.Integrated.1-1-1', 'NIC.Integrated.1-1-2', 'NIC.Integrated.1-1-3', 'NIC.Integrated.1-1-4'].all? do |s|
@@ -423,6 +424,7 @@ describe Puppet::Provider::Importtemplatexml do
       Puppet::Provider::Importtemplatexml.any_instance.stub(:find_attribute_value).and_return("RAID.Integrated.1-1")
       @fixture.stub(:find_target_bios_setting).and_return("value")
       @fixture.stub(:find_target_bios_setting).with('InvalidAttribute').and_return(nil)
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:nvdimm_attrs_in_sync?).and_return(true)
       #The xml that @fixture will read (FOOTAG_original) will have the InvalidAttribute attribute. It should not exist after munging.
       xml = @fixture.munge_config_xml
       xml.at_xpath("//Component[@FQDD='BIOS.Setup.1-1']//Attribute[@Name='InvalidAttribute']").should == nil
@@ -486,6 +488,7 @@ describe Puppet::Provider::Importtemplatexml do
       original_method = File.method(:open)
       File.stub(:open).with(anything()) { |*args| original_method.call(*args) }
       File.stub(:open).with(File.join(@test_config_dir.path, @idrac_attrib[:configxmlfilename]), "w+").and_return('')
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:nvdimm_attrs_in_sync?).and_return(true)
       xml = @fixture.munge_config_xml
       xml.xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
       comp = xml.at_xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
@@ -507,6 +510,58 @@ describe Puppet::Provider::Importtemplatexml do
       comp.at_xpath("Attribute[@Name='FirstTgtIscsiName']").content.should == @fixture.resource[:target_iscsi]
       comp.at_xpath("Attribute[@Name='LegacyBootProto']").content.should == "iSCSI"
       comp.at_xpath("Attribute[@Name='iScsiOffloadMode']").should == nil
+    end
+
+    it "when munging BFS parameters when nvdimm server" do
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:get_raid_config_changes).and_return({})
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:raid_configuration).and_return({})
+      @network_configuration = JSON.parse(File.read(@test_config_dir.path + '/network_configuration.json'))['networkConfiguration']
+      #ASM::NetworkConfiguration.any_instance.stub(:new).and_return(ASM::NetworkConfiguration.new(@network_configuration))
+      #ASM::NetworkConfiguration.any_instance.stub(:add_nics!).and_return(nil)
+      @test_config_dir = URI( File.expand_path("../../../../fixtures", __FILE__))
+      Puppet::Module.stub(:find).with("idrac").and_return(@test_config_dir)
+      #Puppet::Provider::Importtemplatexml.any_instance.stub(:process_nics).and_return({"partial" => {"NIC.Integrated.1-1-1" => {"IntegratedRaid"=>"Disabled"}}})
+      @fixture.resource[:target_boot_device] = 'iSCSI'
+      @fixture.resource[:network_config] = @network_configuration
+      @fixture.resource[:target_ip] = "172.16.15.100"
+      @fixture.resource[:target_iscsi] = "mytargetiscsiiqn"
+      @fixture.resource[:enable_npar] = 'false'
+      changes = {'partial' => {}, 'remove' => {'components' => {}}}
+      @fixture=Puppet::Provider::Importtemplatexml.new(@idrac_attrib['ip'], @idrac_attrib['username'], @idrac_attrib['password'], @idrac_attrib)
+      @fixture.attempt = 0
+      allow(@fixture.wsman).to receive(:boot_source_settings).and_return(bios_boot_settings)
+      @exported_name = File.basename(@idrac_attrib[:configxmlfilename], ".xml") + "_base.xml"
+      #Needed to call original open method by default
+      original_method = FileUtils.method(:cp)
+      FileUtils.stub(:cp).with(anything()) { |*args| original_method.call(*args) }
+      FileUtils.stub(:cp).with(File.join(@test_config_dir.path, @exported_name), File.join(@idrac_attrib[:nfssharepath], @idrac_attrib[:configxmlfilename])).and_return('')
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:remove_invalid_settings).and_return({})
+      original_method = File.method(:open)
+      File.stub(:open).with(anything()) { |*args| original_method.call(*args) }
+      File.stub(:open).with(File.join(@test_config_dir.path, @idrac_attrib[:configxmlfilename]), "w+").and_return('')
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:nvdimm_attrs_in_sync?).and_return(false)
+      xml = @fixture.munge_config_xml
+      xml.xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
+      comp = xml.at_xpath("//Component[@FQDD='NIC.Integrated.1-1-1']")
+      comp.should_not == nil
+      comp.at_xpath("Attribute[@Name='VirtualizationMode']").content.should == "NONE"
+      comp.at_xpath("Attribute[@Name='VirtMacAddr']").content.should == "00:0E:AA:6B:00:05"
+      comp.at_xpath("Attribute[@Name='VirtIscsiMacAddr']").content.should == "00:0E:AA:6B:00:01"
+      comp.at_xpath("Attribute[@Name='TcpIpViaDHCP']").content.should == "Disabled"
+      comp.at_xpath("Attribute[@Name='IscsiViaDHCP']").content.should == "Disabled"
+      comp.at_xpath("Attribute[@Name='ChapAuthEnable']").content.should == "Disabled"
+      comp.at_xpath("Attribute[@Name='IscsiTgtBoot']").content.should == "Enabled"
+      comp.at_xpath("Attribute[@Name='IscsiInitiatorIpAddr']").content.should == "172.16.119.3"
+      comp.at_xpath("Attribute[@Name='IscsiInitiatorSubnet']").content.should == "255.255.0.0"
+      comp.at_xpath("Attribute[@Name='IscsiInitiatorGateway']").content.should == "172.16.0.1"
+      comp.at_xpath("Attribute[@Name='IscsiInitiatorName']").content.should == "iqn.asm:software-asm-01-0000000000:0000000002"
+      comp.at_xpath("Attribute[@Name='ConnectFirstTgt']").content.should == "Enabled"
+      comp.at_xpath("Attribute[@Name='FirstTgtIpAddress']").content.should == @fixture.resource[:target_ip]
+      comp.at_xpath("Attribute[@Name='FirstTgtTcpPort']").content.should == "3260"
+      comp.at_xpath("Attribute[@Name='FirstTgtIscsiName']").content.should == @fixture.resource[:target_iscsi]
+      comp.at_xpath("Attribute[@Name='LegacyBootProto']").content.should == "iSCSI"
+      comp.at_xpath("Attribute[@Name='iScsiOffloadMode']").should == nil
+      comp.at_xpath("//Component[@FQDD='BIOS.Setup.1-1']//Attribute[@Name='NvdimmFactoryDefault']").content.should == "NvdimmFactoryDefaultEnable"
     end
   end
 

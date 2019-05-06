@@ -64,6 +64,7 @@ class Puppet::Provider::Idrac <  Puppet::Provider
       in_sync &= check_removes(fqdd, children, "/SystemConfiguration", xml_base, "Component")
     end
     in_sync &= import_obj.raid_in_sync?(xml_base, true) if in_sync
+    in_sync &= import_obj.nvdimm_attrs_in_sync? if in_sync
     in_sync
   end
 
