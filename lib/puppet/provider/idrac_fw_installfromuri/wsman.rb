@@ -5,6 +5,7 @@ require 'erb'
 require 'tempfile'
 require 'asm/util'
 require 'asm/wsman'
+require "asm/firmware"
 require 'puppet/idrac/util'
 require File.join(provider_path, 'idrac')
 
@@ -34,7 +35,10 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
   end
 
   def create
-    Puppet::Idrac::Util.clear_job_queue_with_retry
+    firmware_instance = ASM::Firmware.new(transport, :logger => Puppet)
+    wsman_instance = ASM::WsMan.new(transport, :logger => Puppet)
+    firmware_instance.clear_job_queue_retry(wsman_instance)
+
     sleep 20
     pre = []
     main = []
