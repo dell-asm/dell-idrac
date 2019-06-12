@@ -65,6 +65,10 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     # Initiate all firmware update jobs
     firmware_list.each do |fw|
       Puppet.debug(fw)
+
+      # Ensure LC is up and in good state before installing the next package, previous update may rebooted iDRAC
+      Puppet::Idrac::Util.wait_for_lc_ready
+      
       config_file = create_xml_config_file(fw["instance_id"],fw["uri_path"])
       job_id = install_from_uri(config_file)
       raise(Puppet::Error, "Failed to initiate firmware job for #{fw}") unless job_id
@@ -74,7 +78,9 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
         sleep 30
         begin
           statuses[job_id][:status] = checkjobstatus job_id
-        rescue ASM::WsMan::Error => e
+        rescue ASM::WsMan::Error, RuntimeError => e
+          raise if e.is_a?(RuntimeError) && !e.to_s.match(/Job ID not created/)
+
           statuses[job_id][:status] = 'TemporaryFailure'
           Puppet.warning("Look up job status for #{job_id} failed: #{e}")
         end
