@@ -220,7 +220,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
         Puppet.info("Boot device controller is: " + storage_fqdd)
         changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"HddSeq" => storage_fqdd})
       end
-      changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "Off"}) if is_sd_card?
+      if is_sd_card?
+        changes["partial"].deep_merge!("BIOS.Setup.1-1" => {"InternalSdCard" => "Off"})
+        changes["remove"]["attributes"]["BIOS.Setup.1-1"] ||= []
+        changes["remove"]["attributes"]["BIOS.Setup.1-1"].push("InternalSdCardRedundancy", "InternalSdCardPrimaryCard")
+      end
     end
 
     if @boot_device =~ /HD/i
