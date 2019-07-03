@@ -9,8 +9,15 @@ module Puppet
     class JobClearError < Exception; end
     class ShutdownError < Exception; end
     class PendingChangesError < Exception; end
-    module Util
 
+    class WsManError < Exception
+      attr_accessor :code, :reason
+
+      @code = "Unknown"
+      @reason = "Unknown"
+    end
+
+    module Util
       def self.get_transport
         @transport
       end

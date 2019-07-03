@@ -16,6 +16,12 @@ class Puppet::Provider::Checkjdstatus < Puppet::Provider
     resp = wsman.get_lc_job(@instanceid)
     if resp[:message_id] =~ /SYS051|LC068/i
       resp[:message_id]
+    elsif resp[:code]
+      wsman_err = WsManError.new
+      wsman_err.code = resp[:code]
+      wsman_err.reason = resp[:reason] if resp[:reason]
+
+      raise wsman_err
     elsif resp[:percent_complete] == "100" && (resp[:job_status] =~ /completed with errors/i || resp[:message] =~ /completed with errors/i)
       'Failed'
     elsif resp[:job_status].nil? || resp[:job_status].empty?

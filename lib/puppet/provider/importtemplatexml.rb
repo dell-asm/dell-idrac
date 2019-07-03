@@ -5,6 +5,7 @@ require 'hashie'
 require 'active_support'
 require 'active_support/core_ext'
 require 'puppet/idrac/util'
+require 'asm/util'
 
 include REXML
 
@@ -70,6 +71,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   def execute_import(file_name=@resource['configxmlfilename'])
     require 'asm/util'
     pending_attempts = 1
+    timeoutRescue = 0
     props = {'IPAddress' => @resource[:nfsipaddress] || ASM::Util.get_preferred_ip(@ip),
              'ShareName' => @resource['nfssharepath'],
              'ShareType' => '0',
@@ -79,6 +81,12 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     begin
       job_id = Puppet::Idrac::Util.wsman_system_config_action(:import, props)
       wait_for_import(job_id)
+    rescue Puppet::Idrac::WsManError
+      wsman_err_code = $!.code
+      if wsman_err_code == "wsman:TimedOut"
+        timeoutRescue += 1
+        retry if timeoutRescue < 2
+      end
     rescue Puppet::Idrac::ShutdownError
       if forced_shutdown
         raise('Server could not be shut down during ImportSystemConfiguration')
@@ -114,33 +122,29 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
   end
 
   def wait_for_import(instance_id)
-    timed_out = false
-    job_status_obj = Puppet::Provider::Checkjdstatus.new(@ip, @username, @password, instance_id)
     Puppet.info "Instance id #{instance_id}"
-    for i in 0..30
-      response = job_status_obj.checkjdstatus
+    job_status_obj = Puppet::Provider::Checkjdstatus.new(@ip, @username, @password, instance_id)
+
+    resp = ASM::Util.block_and_retry_until_ready(1800, [RetryException, WsManError], 60) do
+      resp = job_status_obj.checkjdstatus
       Puppet.info "JD status : #{response}"
-      case response
-        when 'Completed'
-          Puppet.info 'Import System Configuration is completed.'
-          return
-        when 'Failed'
-          raise(Puppet::Idrac::ConfigError, 'ImportSystemConfiguration job failed')
-        when 'SYS051'
-          raise(Puppet::Idrac::ShutdownError, 'System could not be gracefully shut down')
-        when 'LC068'
-          raise(Puppet::Idrac::PendingChangesError, 'System has changes pending')
-        else
-          Puppet.info "Job is running, wait for 1 minute"
-          sleep 60
+
+      case resp
+      when 'Completed'
+        Puppet.info 'Import System Configuration is completed.'
+      when 'Failed'
+        raise(Puppet::Idrac::ConfigError, 'ImportSystemConfiguration job failed')
+      when 'SYS051'
+        raise(Puppet::Idrac::ShutdownError, 'System could not be gracefully shut down')
+      when 'LC068'
+        raise(Puppet::Idrac::PendingChangesError, 'System has changes pending')
       end
+
+      resp
     end
 
-    timed_out = true
-    raise "Import System Configuration is still running."
+    resp
   ensure
-    raise $! if timed_out
-
     begin
       # After ImportSystemConfiguration completes iDrac will automatically kick off an
       # ExportSystemConfiguration. The sleep here is recommended by the LC team to make
@@ -150,6 +154,8 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     rescue
       Puppet.info("Failed to wait for LC ready: %s: %s" % [$!.class, $!.to_s])
     end
+
+    raise $! if $!
   end
 
   def find_target_bios_setting(attr_name)
