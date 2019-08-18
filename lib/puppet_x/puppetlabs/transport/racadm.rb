@@ -3,6 +3,7 @@ module PuppetX::Puppetlabs::Transport
   class Racadm
     attr_accessor :ssh
     attr_reader :name
+    attr_reader :options
 
     def initialize(opts)
       @name    = opts[:name]

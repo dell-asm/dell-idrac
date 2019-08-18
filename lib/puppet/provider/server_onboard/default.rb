@@ -1,6 +1,7 @@
 # Puppet provider for server on-boarding
 # Copyright (C) 2016 Dell, Inc.
 provider_path = Pathname.new(__FILE__).parent.parent
+require "asm"
 require File.join(provider_path, "idrac_racadm")
 require "open3"
 Puppet::Type.type(:server_onboard).provide(:default, :parent => Puppet::Provider::IdracRacadm) do
@@ -23,8 +24,22 @@ Puppet::Type.type(:server_onboard).provide(:default, :parent => Puppet::Provider
   def create
     setup_credential
     setup_network
+    setup_snmp
   end
 
+  # Set snmp
+  #
+  # sets relevant username, password
+  #
+  # @return [void]
+  # @raise [StandardError] when credentials cannot be applied
+  def setup_snmp
+    if resource[:idrac_init_snmp] == "1" then
+      #puts "host = %s, user = %s, password = %s" % [@transport.options[:host], @transport.options[:user], @transport.options[:password]]
+      ASM::Util.run_command_with_args({"HOST" => @transport.options[:host]}, "/opt/Dell/scripts/snmp_idrac_settings.py", "--ipaddress", @transport.options[:host])
+    end  
+  end
+  
   # Set credential
   #
   # sets relevant username, password

@@ -59,4 +59,7 @@ Puppet::Type.newtype(:server_onboard) do
     newvalue(:static)
     newvalue(:existing)
   end
+  newproperty(:idrac_init_snmp) do
+    desc "initialize the idrac to send snmp traps to flex manager"
+  end
 end
