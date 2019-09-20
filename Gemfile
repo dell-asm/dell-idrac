@@ -1,6 +1,6 @@
 source 'https://rubygems.org'
 
-gem 'activesupport'
+gem 'activesupport', '5.2.0'
 gem 'nokogiri', '~> 1.8.2'
 gem 'dell-asm-util', :git => 'https://github.com/dell-asm/dell-asm-util.git', :branch => 'master'
 

@@ -286,7 +286,10 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     end
 
     unless nvdimm_attrs_in_sync?
+      changes["partial"]["BIOS.Setup.1-1"]["PersistentMemoryMode"] = "NVDIMM"
       changes["partial"]["BIOS.Setup.1-1"]["NvdimmFactoryDefault"] = "NvdimmFactoryDefaultEnable"
+      changes["partial"]["BIOS.Setup.1-1"]["NvdimmReadOnly"] = "NvdimmReadOnlyDisable"
+      changes["partial"]["BIOS.Setup.1-1"]["NvdimmInterleaveSupport"] = "NvdimmInterleaveDisable"
     end
 
     changes
@@ -429,6 +432,11 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
     xml_base.xpath('//comment()').remove
     remove_invalid_settings(xml_base)
     # Disable SD card and RAID controller for boot from SAN
+
+    # Include NVDIMM setting that will only be included after NVDIMM enabled
+    unless nvdimm_attrs_in_sync?
+      @changes["partial"]["BIOS.Setup.1-1"]["PersistentMemoryScrubbing"] = "Auto"
+    end
 
     # Rotate the old xml files
     unless attempt == 0
