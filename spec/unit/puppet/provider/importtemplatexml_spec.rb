@@ -324,6 +324,7 @@ describe Puppet::Provider::Importtemplatexml do
            'whole' => {'LifecycleController.Embedded.1' => {'ProcVirtualization' => 'Enabled'}},
            'remove' => {'attributes' => {'BIOS.Setup.1-1' => ["Remove"]}, 'components' => {'RemoveMe' => []}}})
       ASM::WsMan.stub(:invoke).and_return(@view_disk_xml)
+      Puppet::Provider::Importtemplatexml.any_instance.stub(:nvdimm_attrs_in_sync?).and_return(true)
       #Needed to call original open method by default
       original_method = File.method(:open)
       xml = @fixture.munge_config_xml
