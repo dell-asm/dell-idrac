@@ -19,7 +19,7 @@ module PuppetX::Puppetlabs::Transport
       begin
         port = @options[:port] ? @options[:port] : 22
         @ssh = Net::SSH.start(@options[:host], @options[:user], :port => port, :password => @options[:password],
-                              :paranoid => Net::SSH::Verifiers::Null.new)
+                              :verify_host_key => false)
       rescue => e
         i += 1
          if i < 4
