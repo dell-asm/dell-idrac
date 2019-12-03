@@ -705,7 +705,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
             changes['whole'][raids.first] = { 'CurrentControllerMode' => "RAID" }
           end
         end
-        changes['partial'] = {'BIOS.Setup.1-1'=> {'HddSeq' => raid_configuration.keys.first}} if @boot_device =~ /HD/i
+        changes['partial'] = {'BIOS.Setup.1-1'=> {'HddSeq' => raid_configuration.keys.first}} if @boot_device =~ /HD/i && @boot_mode == 'BIOS_MODE'
         unless raid_in_sync?(target_current_xml, true)
           #Getting the first key should get the first internal disk controller, or the first external if no internal on the server
           vd_index = 0

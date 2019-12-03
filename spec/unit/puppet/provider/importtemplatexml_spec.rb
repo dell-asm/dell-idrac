@@ -768,6 +768,7 @@ EOF
       end
 
       it "should return the correct hash" do
+        @fixture.instance_variable_set(:@boot_mode, 'BIOS_MODE')
         raid_changes = @fixture.get_raid_config_changes(@fixture.xml_base)
 
         expected_changes = {
@@ -817,6 +818,7 @@ EOF
       end
 
       it "should return the correct hash" do
+        @fixture.instance_variable_set(:@boot_mode, 'BIOS_MODE')
         raid_changes = @fixture.get_raid_config_changes(@fixture.xml_base)
 
         expected_changes = {
@@ -894,6 +896,7 @@ EOF
       end
 
       it "should return the correct hash" do
+        @fixture.instance_variable_set(:@boot_mode, 'BIOS_MODE')
         raid_changes = @fixture.get_raid_config_changes(@fixture.xml_base)
 
         expected_changes = {
