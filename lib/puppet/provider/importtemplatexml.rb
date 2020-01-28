@@ -310,11 +310,9 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def get_boot_sata_disk
     # If we find a SATADOM device, prefer it, else fallback to getting first SATA disk
-    boot_sources = Puppet::Idrac::Util.boot_source_settings
-    satadom_instance_id = boot_sources.select {|d| d[:boot_string] =~ /SATADOM/}[0][:instance_id] rescue nil
-    if satadom_instance_id
-      Puppet.debug("Prefering SATADOM disk for booting")
-      satadom_instance_id.split("#")[2]
+    sata_disk = get_satadom
+    if sata_disk
+      sata_disk
     else
       get_first_sata_disk
     end
@@ -1164,7 +1162,7 @@ class Puppet::Provider::Importtemplatexml <  Puppet::Provider
 
   def get_satadom
     boot_sources = Puppet::Idrac::Util.boot_source_settings
-    satadom_instance_id = boot_sources.select {|d| d[:boot_string] =~ /SATADOM/}[0][:instance_id] rescue nil
+    satadom_instance_id = boot_sources.select {|d| d[:boot_string] =~ /SATADOM/ || d[:boot_string] =~ /Embedded SATA Port Disk [A-Z]/}[0][:instance_id] rescue nil
     unless satadom_instance_id.nil?
       satadom_instance_id.split("#")[2]
     end

@@ -639,8 +639,15 @@ describe Puppet::Provider::Importtemplatexml do
     let(:satadom_boot_sources_data) { JSON.parse(File.read(test_config_dir.path + '/satadom_boot_sources.json'), :symbolize_names=>true) }
 
     it "Should return SATDOM id if SATADOM present." do
-      Puppet::Idrac::Util.stub(:boot_source_settings).and_return(boot_sources_data)
-      #expect(@fixture.get_satadom).to eq("Disk.SATAEmbedded.J-1")
+      Puppet::Idrac::Util.stub(:boot_source_settings).and_return(satadom_boot_sources_data)
+      expect(@fixture.get_satadom).to eq("Disk.SATAEmbedded.J-1")
+    end
+
+    let(:satadom_boot_sources_1_data) { JSON.parse(File.read(test_config_dir.path + '/satadom_boot_sources_1.json'), :symbolize_names=>true) }
+
+    it "Should return SATDOM id if SATADOM present." do
+      Puppet::Idrac::Util.stub(:boot_source_settings).and_return(satadom_boot_sources_1_data)
+      expect(@fixture.get_satadom).to eq("Disk.SATAEmbedded.I-1")
     end
   end
 
