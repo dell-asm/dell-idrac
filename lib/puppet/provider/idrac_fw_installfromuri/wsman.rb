@@ -37,7 +37,7 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
   def create
     firmware_instance = ASM::Firmware.new(transport, :logger => Puppet)
     wsman_instance = ASM::WsMan.new(transport, :logger => Puppet)
-    firmware_instance.clear_job_queue_retry(wsman_instance)
+    firmware_instance.clear_job_queue_retry(wsman_instance) unless resource[:install_staged_firmware]
 
     sleep 20
     pre = []
@@ -50,13 +50,29 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
         main << firmware
       end
     end
-    if pre.size > 0
+    if pre.size > 0 && !resource[:install_staged_firmware]
       Puppet.debug("LC Update required, installing first")
       update(pre)
     end
     update(main)
     # Ensure LC is up and in good state before exiting
     Puppet::Idrac::Util.wait_for_lc_ready
+  end
+
+  def downloaded_jobs
+    @scheduled_jobs ||= begin
+      jobs = wsman_client.enumerate("http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LifecycleJob")
+
+      jobs.select {|j| j[:job_status] == "Downloaded"}
+    end
+  end
+
+  def find_downloaded_firmware_job(firmware)
+    downloaded_jobs.find do |j|
+      j[:name] =~ /Firmware Update:\s+(\S+)/
+
+      firmware["instance_id"] =~ /#{$1}/i
+    end
   end
 
   def update(firmware_list)
@@ -68,9 +84,15 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
 
       # Ensure LC is up and in good state before installing the next package, previous update may rebooted iDRAC
       Puppet::Idrac::Util.wait_for_lc_ready
-      
-      config_file = create_xml_config_file(fw["instance_id"],fw["uri_path"])
-      job_id = install_from_uri(config_file)
+
+      if resource[:install_staged_firmware]
+        job = find_downloaded_firmware_job(fw)
+        job_id = job[:instance_id] if job
+      else
+        config_file = create_xml_config_file(fw["instance_id"],fw["uri_path"])
+        job_id = install_from_uri(config_file)
+      end
+
       raise(Puppet::Error, "Failed to initiate firmware job for #{fw}") unless job_id
       raise(Puppet::Error, "Duplicate job id #{job_id} for firmware #{fw}: #{statuses[job_id]}") if statuses[job_id]
       statuses[job_id] = { :job_id => job_id, :status => 'new', :firmware => fw, :start_time => Time.now }
@@ -109,9 +131,20 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
       end
     end
 
-    reboot_firmwares = statuses.select {|_,v| v[:reboot_required]}
-    completed_endstate_firmwares = statuses.select {|_,v| v[:desired] == "Completed"}
-    scheduled_endstate_firmwares = statuses.select{|_,v| v[:desired] == "Scheduled"}
+    Puppet.debug("Disruptive update: %s" % [resource[:disruptive_firmware_update]])
+    Puppet.debug("Force Restart: %s" % [resource[:force_restart]])
+
+    if resource[:disruptive_firmware_update] && !resource[:force_restart]
+      Puppet.debug("Inside blank loop")
+      reboot_firmwares = []
+      completed_endstate_firmwares = []
+      scheduled_endstate_firmwares = []
+    else
+      Puppet.debug("Inside normal loop")
+      reboot_firmwares = statuses.select {|_,v| v[:reboot_required]}
+      completed_endstate_firmwares = statuses.select {|_,v| v[:desired] == "Completed"}
+      scheduled_endstate_firmwares = statuses.select{|_,v| v[:desired] == "Scheduled"}
+    end
 
     unless reboot_firmwares.empty?
       reboot_id = nil
@@ -133,6 +166,8 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
     end
 
     [scheduled_endstate_firmwares, completed_endstate_firmwares].each do |firmware_set|
+      next if firmware_set.empty?
+
       until firmware_set.values.all? {|v| v[:status] =~ /#{v[:desired]}|Failed|InternalTimeout/}
         firmware_set.each do |key, val|
           if val[:status] != val[:desired] && Time.now - val[:start_time] > MAX_WAIT_SECONDS
