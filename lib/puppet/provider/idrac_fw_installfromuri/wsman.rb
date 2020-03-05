@@ -70,8 +70,9 @@ Puppet::Type.type(:idrac_fw_installfromuri).provide(
   def find_downloaded_firmware_job(firmware)
     downloaded_jobs.find do |j|
       j[:name] =~ /Firmware Update:\s+(\S+)/
+      match = $1
 
-      firmware["instance_id"] =~ /#{$1}/i
+      firmware["instance_id"] =~ /#{match}/i || firmware["uri_path"] =~ /#{match}/i
     end
   end
 
